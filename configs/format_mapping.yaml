@@ -1,0 +1,137 @@
+# =============================================================================
+# Data Format Mapping & Service URL Patterns
+# =============================================================================
+# Maps source format strings to RDLS canonical data_format values.
+# Generic aliases work across all sources; source-specific overrides go in
+# configs/sources/<source>.yaml.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Generic format aliases → RDLS data_format
+# Keys are UPPERCASED source format strings.
+# ---------------------------------------------------------------------------
+format_aliases:
+  # Raster
+  GEOTIFF: "GeoTIFF (tif)"
+  TIFF: "GeoTIFF (tif)"
+  TIF: "GeoTIFF (tif)"
+  COG: "Cloud Optimized GeoTIFF (cog)"
+  NETCDF: "NetCDF (nc)"
+  NC: "NetCDF (nc)"
+  GRIB: "GRIB (grib)"
+  GRIB2: "GRIB (grib)"
+  HDF5: "HDF5 (hdf5)"
+  HDF: "HDF5 (hdf5)"
+  ZARR: "Zarr (zarr)"
+  GRID: "GRID (grd)"
+  GRD: "GRID (grd)"
+
+  # Vector
+  GEOJSON: "GeoJSON (geojson)"
+  SHP: "Shapefile (shp)"
+  SHAPEFILE: "Shapefile (shp)"
+  GPKG: "GeoPackage (gpkg)"
+  GEOPACKAGE: "GeoPackage (gpkg)"
+  FGB: "FlatGeobuf (fgb)"
+  FLATGEOBUF: "FlatGeobuf (fgb)"
+  KML: "KML (kml)"
+  KMZ: "KML (kml)"
+  GDB: "File Geodatabase (gdb)"
+  GEODATABASE: "File Geodatabase (gdb)"
+  TOPOJSON: "GeoJSON (geojson)"
+  MBTILES: "GeoPackage (gpkg)"
+
+  # Tabular
+  CSV: "CSV (csv)"
+  TSV: "CSV (csv)"
+  TXT: "CSV (csv)"
+  PARQUET: "Parquet (parquet)"
+  "APACHE PARQUET": "Parquet (parquet)"
+  XLSX: "Excel (xlsx)"
+  XLS: "Excel (xlsx)"
+  EXCEL: "Excel (xlsx)"
+  "GOOGLE SHEET": "Excel (xlsx)"
+
+  # Document / other
+  JSON: "JSON (json)"
+  XML: "XML (xml)"
+  GML: "XML (xml)"
+  PDF: "PDF (pdf)"
+  DOCX: "PDF (pdf)"
+  SQL: "CSV (csv)"
+
+  # Specialized / approximate mappings
+  "ESRI MAP PACKAGE": "File Geodatabase (gdb)"
+  "GDAL VIRTUAL FORMAT": "GeoTIFF (tif)"
+
+  # Point cloud
+  LAS: "LAS (las)"
+  LAZ: "LAS (las)"
+  COPC: "COPC (copc)"
+
+# ---------------------------------------------------------------------------
+# Formats to skip (non-data formats)
+# ---------------------------------------------------------------------------
+skip_formats:
+  - HTML
+  - PNG
+  - JPEG
+  - JPG
+  - GIF
+  - EMF
+  - SVG
+  - "WEB APP"
+  - RAR
+  - QGIS
+  - "ESRI ARCMAP PROJECT FILE"
+  - MXD
+  - APR
+  - STYLE
+  - SLD
+
+# ---------------------------------------------------------------------------
+# ZIP inner-format inference
+# When a resource is a ZIP, try to infer the actual data format from filename.
+# Patterns are matched against resource name/description (case-insensitive).
+# ---------------------------------------------------------------------------
+zip_inner_formats:
+  - pattern: '\.shp'
+    format: "Shapefile (shp)"
+  - pattern: '\.geojson'
+    format: "GeoJSON (geojson)"
+  - pattern: '\.gpkg'
+    format: "GeoPackage (gpkg)"
+  - pattern: '\.tif'
+    format: "GeoTIFF (tif)"
+  - pattern: '\.csv'
+    format: "CSV (csv)"
+  - pattern: '\.kml'
+    format: "KML (kml)"
+  - pattern: '\.gdb'
+    format: "File Geodatabase (gdb)"
+  - pattern: '\.nc'
+    format: "NetCDF (nc)"
+
+# ---------------------------------------------------------------------------
+# Service URL patterns → (format, access_modality)
+# When a resource URL matches, override format and access type.
+# ---------------------------------------------------------------------------
+service_url_patterns:
+  - pattern: 'arcgis\.com/.*/rest/services/'
+    format: "GeoJSON (geojson)"
+    modality: REST
+  - pattern: '/rest/services/.*(?:Feature|Map)Server'
+    format: "GeoJSON (geojson)"
+    modality: REST
+  - pattern: 'geoserver.*(?:/wms|/wfs|/ows)'
+    format: "GeoJSON (geojson)"
+    modality: WFS
+  - pattern: '/wms\b'
+    format: "XML (xml)"
+    modality: WMS
+  - pattern: '/wfs\b'
+    format: "GeoJSON (geojson)"
+    modality: WFS
+  - pattern: '/wcs\b'
+    format: "GeoTIFF (tif)"
+    modality: WCS

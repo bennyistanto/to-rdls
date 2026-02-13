@@ -1,0 +1,164 @@
+# =============================================================================
+# HDX (Humanitarian Data Exchange) Source Configuration
+# =============================================================================
+# HDX-specific settings: API, rate limits, OSM markers, field paths.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# API configuration
+# ---------------------------------------------------------------------------
+api:
+  base_url: "https://data.humdata.org"
+  action_path: "/api/3/action"
+  export_path: "/dataset/{id}/download_metadata?format=json"
+  rows_per_page: 500
+  timeout: 60
+  max_retries: 6
+  rate_limit: 2.0  # requests per second
+
+# ---------------------------------------------------------------------------
+# Crawler settings
+# ---------------------------------------------------------------------------
+crawler:
+  add_slug_to_filename: true
+  slug_max_length: 80
+
+# ---------------------------------------------------------------------------
+# Bot detection patterns (if these appear, the response is a bot check page)
+# ---------------------------------------------------------------------------
+bot_check_patterns:
+  - "verify that you're not a robot"
+  - "javascript is disabled"
+
+# ---------------------------------------------------------------------------
+# HDX field paths — where to find metadata in CKAN/HDX JSON
+# This allows different sources to map their fields to a common structure.
+# ---------------------------------------------------------------------------
+field_paths:
+  id: "id"
+  name: "name"
+  title: "title"
+  notes: "notes"
+  methodology: "methodology"
+  organization: "organization.title"
+  org_name: "organization.name"
+  org_description: "organization.description"
+  license_title: "license_title"
+  license_id: "license_id"
+  license_url: "license_url"
+  groups: "groups"            # list of {name, title} dicts
+  tags: "tags"                # list of {name} dicts
+  resources: "resources"      # list of resource dicts
+  dataset_date: "dataset_date"
+  data_update_frequency: "data_update_frequency"
+  maintainer: "maintainer"
+  dataset_source: "dataset_source"
+  url: "url"
+
+# Resource field paths
+resource_fields:
+  id: "id"
+  name: "name"
+  description: "description"
+  format: "format"
+  url: "url"
+  last_modified: "last_modified"
+
+# ---------------------------------------------------------------------------
+# HDX format name overrides (HDX-specific names → generic format aliases)
+# These supplement the generic format_mapping.yaml with HDX-specific names.
+# ---------------------------------------------------------------------------
+format_overrides:
+  "APACHE PARQUET": "Parquet (parquet)"
+  "ESRI MAP PACKAGE": "File Geodatabase (gdb)"
+  "GDAL VIRTUAL FORMAT": "GeoTIFF (tif)"
+  "SQL": "CSV (csv)"
+  "DOCX": "PDF (pdf)"
+
+# HDX service format names
+service_formats:
+  GEOSERVICE:
+    format: "GeoJSON (geojson)"
+    modality: REST
+  API:
+    format: "JSON (json)"
+    modality: API
+
+# ---------------------------------------------------------------------------
+# OSM Policy Exclusion Markers
+# Used to detect OpenStreetMap-derived datasets for policy filtering.
+# ---------------------------------------------------------------------------
+osm_detection:
+  use_prefilter: true
+  supporting_evidence_threshold: 2
+
+  fast_markers:
+    - "openstreetmap contributors"
+    - '"dataset_source":'
+    - '"license_title": "odbl"'
+    - "open database license"
+    - "hotosm"
+    - "export.hotosm.org"
+
+  url_markers:
+    - "openstreetmap.org"
+    - "hotosm.org"
+    - "export.hotosm.org"
+    - "exports-stage.hotosm.org"
+    - "production-raw-data-api"
+
+  org_markers:
+    - "humanitarian openstreetmap"
+    - "hotosm"
+    - "openstreetmap"
+
+  title_markers:
+    - "openstreetmap export"
+    - "(openstreetmap export)"
+    - "openstreetmap"
+
+  notes_markers:
+    - "openstreetmap"
+    - "wiki.openstreetmap.org"
+    - "osm"
+
+# ---------------------------------------------------------------------------
+# Risk component mapping (HDX classification → RDLS enum)
+# ---------------------------------------------------------------------------
+component_map:
+  hazard: hazard
+  exposure: exposure
+  vulnerability_proxy: vulnerability
+  loss_impact: loss
+  vulnerability: vulnerability
+  loss: loss
+
+# ---------------------------------------------------------------------------
+# Hazard keyword → type mapping (for NB 06 filename inference)
+# ---------------------------------------------------------------------------
+hazard_keywords:
+  flood: flood
+  flooding: flood
+  "river flood": flood
+  "flash flood": flood
+  inundation: flood
+  drought: drought
+  "dry spell": drought
+  "water scarcity": drought
+  cyclone: windstorm
+  hurricane: windstorm
+  typhoon: windstorm
+  windstorm: windstorm
+  storm: windstorm
+  heatwave: heat
+  "extreme heat": heat
+  wildfire: wildfire
+  fire: wildfire
+  earthquake: earthquake
+  tsunami: tsunami
+  landslide: landslide
+  mudslide: landslide
+  avalanche: landslide
+
+# Hazard filename aliases (REMOVED — item codes now in configs/naming.yaml)
+# hazard_item_codes maps hazard_type → 2-char code (e.g. strong_wind → tc)

@@ -1,0 +1,486 @@
+# =============================================================================
+# RDLS HEVL Signal Dictionary v1.0
+# =============================================================================
+#
+# Purpose: Map HDX metadata text patterns to RDLS v0.3 codelist values
+#
+# Usage: This dictionary is used by HEVL extraction notebooks (09-12) to
+#        infer component block values from unstructured HDX metadata.
+#
+# Structure:
+#   - Each section maps to an RDLS codelist
+#   - Patterns are regex (case-insensitive by default)
+#   - Confidence levels: high (0.9), medium (0.7), low (0.5)
+#   - Multiple patterns can map to the same RDLS value
+#
+# Author: HDX-RDLS Pipeline
+# Version: 1.0.0
+# Date: 2025-02-05
+# License: CC-BY-4.0
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# HAZARD TYPE MAPPINGS
+# Maps to: RDLS hazard_type (closed codelist)
+# Reference: https://docs.riskdatalibrary.org/en/latest/reference/codelists#hazard_type
+# -----------------------------------------------------------------------------
+hazard_type:
+  # Flood-related
+  flood:
+    patterns:
+      - '\b(flood|flooding|inundation)\b'
+      - '\b(fluvial|pluvial|riverine)\b'
+      - '\bfl\d{8}\b'  # UNOSAT flood codes like FL20220301
+    confidence: high
+
+  coastal_flood:
+    patterns:
+      - '\b(coastal.?flood|storm.?surge|tidal.?flood)\b'
+      - '\b(sea.?level.?rise|slr)\b'
+      - '\b(marine.?inundation)\b'
+    confidence: high
+
+  # Seismic-related
+  earthquake:
+    patterns:
+      - '\b(earthquake|seismic|quake|tremor)\b'
+      - '\b(ground.?motion|pga|pgv|psa)\b'
+      - '\b(magnitude|richter|moment.?magnitude)\b'
+      - '\beq\d{8}\b'  # UNOSAT earthquake codes
+    confidence: high
+
+  tsunami:
+    patterns:
+      - '\b(tsunami|tidal.?wave)\b'
+      - '\b(run.?up|wave.?height)\b'
+    confidence: high
+
+  # Mass movement
+  landslide:
+    patterns:
+      - '\b(landslide|mudslide|rockfall)\b'
+      - '\b(debris.?flow|mass.?movement)\b'
+      - '\b(slope.?failure|slope.?instability)\b'
+    confidence: high
+
+  volcanic:
+    patterns:
+      - '\b(volcan|eruption|lava)\b'
+      - '\b(pyroclastic|ash.?fall|tephra)\b'
+      - '\b(lahar|volcanic.?hazard)\b'
+    confidence: high
+
+  # Meteorological
+  convective_storm:
+    patterns:
+      - '\b(cyclone|typhoon|hurricane)\b'
+      - '\b(tropical.?storm|tropical.?depression)\b'
+      - '\b(tornado|twister|waterspout)\b'
+      - '\btc\d{8}\b'  # UNOSAT tropical cyclone codes
+    confidence: high
+
+  strong_wind:
+    patterns:
+      - '\b(wind.?gust|gale)\b'
+      - '\b(windstorm|derecho)\b'
+      - '\b(strong.?wind|high.?wind|extreme.?wind)\b'
+    confidence: medium
+    notes: "wind_speed removed - too generic, matches input variables in climate datasets"
+
+  extreme_temperature:
+    patterns:
+      - '\b(heat.?wave|cold.?wave|cold.?spell)\b'
+      - '\b(extreme.?temperature|thermal.?stress)\b'
+      - '\b(frost|freeze|freezing)\b'
+    confidence: high
+
+  drought:
+    patterns:
+      - '\b(drought|water.?scarcity|aridity)\b'
+      - '\b(dry.?spell|precipitation.?deficit)\b'
+      - '\b(spi|spei|pdsi)\b'  # Drought indices
+    confidence: high
+
+  wildfire:
+    patterns:
+      - '\b(wildfire|wild.?fire|forest.?fire)\b'
+      - '\b(bushfire|brush.?fire|grassfire)\b'
+      - '\b(fire.?hazard|fire.?risk|fire.?danger)\b'
+    confidence: high
+
+# -----------------------------------------------------------------------------
+# HAZARD PROCESS TYPE MAPPINGS
+# Maps to: RDLS process_type (closed codelist)
+# Reference: https://docs.riskdatalibrary.org/en/latest/reference/codelists#hazard_process_type
+# -----------------------------------------------------------------------------
+process_type:
+  # Flood processes
+  fluvial_flood:
+    patterns:
+      - '\b(fluvial|river.?flood|riverine.?flood)\b'
+      - '\b(river.?overflow|river.?inundation)\b'
+    parent_hazard: flood
+    confidence: high
+
+  pluvial_flood:
+    patterns:
+      - '\b(pluvial|flash.?flood|surface.?water)\b'
+      - '\b(urban.?flood|drainage.?flood)\b'
+      - '\b(rainfall.?flood|rain.?flood)\b'
+    parent_hazard: flood
+    confidence: high
+
+  coastal_flood:
+    patterns:
+      - '\b(coastal.?flood|storm.?surge)\b'
+      - '\b(tidal.?flood|marine.?flood)\b'
+    parent_hazard: coastal_flood
+    confidence: high
+
+  # Seismic processes
+  ground_motion:
+    patterns:
+      - '\b(ground.?motion|shaking|seismic.?intensity)\b'
+      - '\b(pga|pgv|psa|spectral.?acceleration)\b'
+      - '\b(mmi|modified.?mercalli)\b'
+    parent_hazard: earthquake
+    confidence: high
+
+  liquefaction:
+    patterns:
+      - '\b(liquefaction|soil.?liquefaction)\b'
+    parent_hazard: earthquake
+    confidence: high
+
+  # Storm processes
+  tropical_cyclone:
+    patterns:
+      - '\b(tropical.?cyclone|typhoon|hurricane)\b'
+      - '\b(cyclonic.?wind|cyclone.?track)\b'
+    parent_hazard: convective_storm
+    confidence: high
+
+  tornado:
+    patterns:
+      - '\b(tornado|twister|tornadic)\b'
+    parent_hazard: convective_storm
+    confidence: high
+
+# -----------------------------------------------------------------------------
+# EXPOSURE CATEGORY MAPPINGS
+# Maps to: RDLS exposure_category (closed codelist)
+# Reference: https://docs.riskdatalibrary.org/en/latest/reference/codelists/#exposure-category
+#
+# Codelist definitions (used to guide pattern selection):
+#   agriculture         - Agriculture including crops, livestock and agribusiness
+#   buildings           - Residential, commercial, industrial and public-service
+#                         buildings such as education, healthcare, governmental
+#   infrastructure      - Lifelines infrastructure, including transport,
+#                         communications, energy, water
+#   population          - People
+#   natural_environment - The natural environment, including forestry and other
+#                         types of vegetation
+#   economic_indicator  - Macroeconomic metrics representing the economic
+#                         performance, capacity, or stability of a region
+#   development_index   - Composite statistics measuring levels of social and
+#                         economic development
+# -----------------------------------------------------------------------------
+exposure_category:
+  # Definition: Residential, commercial, industrial and public-service buildings
+  buildings:
+    patterns:
+      - '\b(building|dwelling)\b'
+      - '\b(house|housing|residential)\b'
+      - '\b(commercial.?building|industrial.?building)\b'
+      - '\b(public.?service.?building|governmental.?building)\b'
+      - '\b(footprint|building.?stock|floor.?area)\b'
+      - '\b(construction|built.?environment)\b'
+      - '\b(built[\s._-]?up|builtup)\b'
+    confidence: high
+
+  # Definition: Lifelines infrastructure — transport, communications, energy, water
+  infrastructure:
+    patterns:
+      # Transport
+      - '\b(infrastructure|road|highway|street)\b'
+      - '\b(bridge|railway|rail.?line|train)\b'
+      - '\b(airport|port|harbor|terminal)\b'
+      # Communications
+      - '\b(telecom|communication.?tower|cell.?tower)\b'
+      - '\b(fibre|fiber.?optic|broadband)\b'
+      # Energy
+      - '\b(energy|power.?station|substation|transformer)\b'
+      - '\b(power.?line|electricity|(?:power|electric(?:al)?|smart|energy|national)\s*grid|utility)\b'
+      - '\b(power.?plant|power.?generation|electricity.?generation)\b'
+      - '\b(gas.?station|petro|petroleum|fuel.?station)\b'
+      # Water
+      - '\b(water.?supply|pipeline|transmission)\b'
+      - '\b(water.?treatment|wastewater|sewage|sanitation)\b'
+      # Lifelines general
+      - '\b(critical.?infrastructure|lifeline)\b'
+      - '\b(hospital|school|health.?facility)\b'
+    confidence: high
+
+  # Definition: People
+  population:
+    patterns:
+      - '\b(population|people|inhabitant)\b'
+      - '\b(resident|demographic)\b'
+      - '\b(census[\s._-]?(?:data|population|survey|count|record|result|figure|statistic))\b'
+      - '\b(displaced|refugee|idp)\b'
+      - '\b(mortality|casualty|fatality|injury)\b'
+      - '\b(household|family)\b'
+    confidence: high
+
+  # Definition: Agriculture including crops, livestock and agribusiness
+  agriculture:
+    patterns:
+      - '\b(agriculture|agricultural|farming)\b'
+      - '\b(crop|cropland|harvest|yield)\b'
+      - '\b(livestock|cattle|poultry|fishery|aquaculture)\b'
+      - '\b(farmland|arable|cultivation|plantation)\b'
+      - '\b(agribusiness|agro.?industry)\b'
+      - '\b(food.?security|food.?production)\b'
+    confidence: high
+
+  # Definition: Natural environment, including forestry and other vegetation
+  natural_environment:
+    patterns:
+      - '\b(ecosystem|habitat|biodiversity)\b'
+      - '\b(forest|woodland|wetland|grassland)\b'
+      - '\b(coral|reef|mangrove|estuary)\b'
+      - '\b(natural[\s._-]?resource)\b'
+      - '\b(land[\s._-]?cover|land[\s._-]?use)\b'
+      - '\b(vegetation|canopy|deforestation|reforestation)\b'
+      - '\b(protected[\s._-]?area|nature[\s._-]?reserve|biosphere)\b'
+      - '\b(species[\s._-]?(?:richness|diversity|distribution))\b'
+      - '\b(ecological|environmental[\s._-]?(?:degradation|conservation|restoration))\b'
+    confidence: medium
+    notes: "Bare 'environment' excluded — too ambiguous"
+
+  # Definition: Macroeconomic metrics (GDP, trade, fiscal performance)
+  economic_indicator:
+    patterns:
+      - '\b(gdp|gross.?domestic.?product)\b'
+      - '\b(gni|gross.?national.?income)\b'
+      - '\b(economic.?loss|economic.?damage|damage.?cost)\b'
+      - '\b(economic.?indicator|economic.?impact)\b'
+      - '\b(trade|export|import|inflation)\b'
+      - '\b(fiscal|revenue|budget.?allocation)\b'
+    confidence: high
+
+  # Definition: Composite statistics measuring social/economic development
+  development_index:
+    patterns:
+      - '\b(hdi|human.?development.?index)\b'
+      - '\b(poverty.?index|poverty.?rate|poverty.?line)\b'
+      - '\b(vulnerability.?index|resilience.?index)\b'
+      - '\b(svi|social.?vulnerability)\b'
+      - '\b(inform.?risk|inform.?index|inform.?severity)\b'
+      - '\b(development.?indicator|development.?index)\b'
+      - '\b(multidimensional.?poverty|mpi)\b'
+      - '\b(gini|inequality.?index)\b'
+    confidence: high
+
+# -----------------------------------------------------------------------------
+# ANALYSIS TYPE MAPPINGS
+# Maps to: RDLS analysis_type (closed codelist)
+# Reference: https://docs.riskdatalibrary.org/en/latest/reference/codelists#analysis_type
+# -----------------------------------------------------------------------------
+analysis_type:
+  probabilistic:
+    patterns:
+      - '\b(probabilistic|stochastic)\b'
+      - '\b(return.?period|recurrence.?interval|rp\d+)\b'
+      - '\b(annual.?exceedance|aep|annual.?probability)\b'
+      - '\b(frequency.?analysis|extreme.?value)\b'
+      - '\b(\d+).?year.?(return|event|flood|storm)\b'
+      - '\b(aal|average.?annual.?loss)\b'
+      - '\b(ep.?curve|loss.?exceedance)\b'
+    confidence: high
+
+  deterministic:
+    patterns:
+      - '\b(deterministic|scenario.?based)\b'
+      - '\b(susceptibility|hazard.?index)\b'
+      - '\b(ranking|classification|score)\b'
+      - '\b(worst.?case|maximum.?credible)\b'
+    confidence: medium
+    notes: "'index' and 'score' need context verification"
+
+  empirical:
+    patterns:
+      - '\b(empirical|historical|observed)\b'
+      - '\b(actual|recorded|past.?event)\b'
+      - '\b(inventory|catalogue|database)\b'
+      - '\b(damage.?survey|field.?assessment)\b'
+      - '\b(event.?based|real.?event)\b'
+    confidence: high
+
+# -----------------------------------------------------------------------------
+# RETURN PERIOD EXTRACTION PATTERNS
+# Extracts numeric return period values (in years)
+# -----------------------------------------------------------------------------
+return_period:
+  patterns:
+    # "return period of 100 years"
+    - 'return.?period.?(?:of)?\\s*(\\d+)\\s*(?:year|yr)?'
+    # "RP100", "RP500"
+    - '\\brp\\s*(\\d+)\\b'
+    # "100-year flood", "500 year event"
+    - '(\\d+).?year.?(?:return|event|flood|storm|hazard)'
+    # "1-in-100 year"
+    - '1.?in.?(\\d+).?year'
+    # "recurrence interval of 50 years"
+    - 'recurrence.?interval.?(?:of)?\\s*(\\d+)'
+    # "T100", "T500" (European notation)
+    - '\\bt\\s*(\\d+)\\b'
+  valid_range:
+    min: 1
+    max: 100000
+  common_values:
+    - 5
+    - 10
+    - 20
+    - 25
+    - 50
+    - 100
+    - 200
+    - 250
+    - 500
+    - 1000
+    - 2500
+    - 10000
+
+# -----------------------------------------------------------------------------
+# SPATIAL SCALE INFERENCE
+# Maps to: RDLS spatial.scale (closed codelist)
+# -----------------------------------------------------------------------------
+spatial_scale:
+  global:
+    patterns:
+      - '\b(global|worldwide|world)\b'
+      - '\b(all.?countries|international)\b'
+    confidence: high
+
+  regional:
+    patterns:
+      - '\b(regional|multi.?country)\b'
+      - '\b(africa|asia|europe|americas|oceania)\b'
+      - '\b(south.?east.?asia|latin.?america|caribbean)\b'
+      - '\b(sahel|horn.?of.?africa|middle.?east)\b'
+    confidence: medium
+
+  national:
+    patterns:
+      - '\b(national|country.?wide|nationwide)\b'
+      - '\b(country.?level)\b'
+    confidence: medium
+    notes: "Often inferred from 'groups' field containing single country"
+
+  sub-national:
+    patterns:
+      - '\b(province|state|region|district)\b'
+      - '\b(municipality|county|prefecture)\b'
+      - '\b(admin.?1|admin.?2|admin.?3)\b'
+    confidence: medium
+
+  urban:
+    patterns:
+      - '\b(city|urban|metropolitan)\b'
+      - '\b(town|settlement|municipality)\b'
+    confidence: medium
+
+# -----------------------------------------------------------------------------
+# VULNERABILITY/LOSS INDICATORS
+# Used to flag datasets for V/L component consideration
+# -----------------------------------------------------------------------------
+vulnerability_indicators:
+  patterns:
+    - '\b(vulnerability|fragility|susceptibility)\b'
+    - '\b(damage.?function|loss.?function|impact.?function)\b'
+    - '\b(vulnerability.?curve|fragility.?curve)\b'
+    - '\b(damage.?ratio|loss.?ratio|mean.?damage)\b'
+    - '\b(social.?vulnerability|socio.?economic.?vulnerability)\b'
+  confidence: high
+
+loss_indicators:
+  patterns:
+    - '\b(loss|damage|impact)\b'
+    - '\b(economic.?loss|financial.?loss|monetary.?loss)\b'
+    - '\b(casualty|fatality|mortality|injury)\b'
+    - '\b(displaced|affected|impacted)\b'
+    - '\b(aal|average.?annual.?loss|expected.?loss)\b'
+    - '\b(cat.?model|catastrophe.?model)\b'
+  confidence: medium
+  notes: "'loss' and 'damage' are common words - verify with hazard context"
+
+# -----------------------------------------------------------------------------
+# DATA FORMAT TO RDLS RESOURCE TYPE HINTS
+# -----------------------------------------------------------------------------
+format_hints:
+  geospatial:
+    patterns:
+      - '\b(shp|shapefile|geojson|geopackage|gpkg)\b'
+      - '\b(tif|tiff|geotiff|raster)\b'
+      - '\b(kml|kmz|gml)\b'
+    suggests: "Likely spatial hazard/exposure data"
+
+  tabular:
+    patterns:
+      - '\b(csv|xlsx|xls|json)\b'
+    suggests: "Could be attribute data, statistics, or loss tables"
+
+  document:
+    patterns:
+      - '\b(pdf|doc|docx)\b'
+    suggests: "Likely report or methodology documentation"
+
+# -----------------------------------------------------------------------------
+# ORGANIZATION HINTS
+# Known organizations and their typical data types
+# -----------------------------------------------------------------------------
+organization_hints:
+  high_confidence_risk_orgs:
+    - name: "United Nations Office for Disaster Risk Reduction (UNDRR)"
+      typical_content: ["hazard", "exposure", "risk"]
+
+    - name: "Global Earthquake Model Foundation"
+      typical_content: ["hazard", "exposure", "vulnerability"]
+
+    - name: "UNOSAT"
+      typical_content: ["hazard", "empirical"]
+
+    - name: "Pacific Disaster Center"
+      typical_content: ["hazard", "exposure"]
+
+    - name: "OCHA"
+      typical_content: ["exposure", "population"]
+
+  medium_confidence_orgs:
+    - name: "World Bank"
+      typical_content: ["exposure", "infrastructure"]
+
+    - name: "WFP"
+      typical_content: ["exposure", "population", "food_security"]
+
+# -----------------------------------------------------------------------------
+# EXCLUDED PATTERNS (False Positive Reduction)
+# Patterns that look like HEVL signals but aren't
+# -----------------------------------------------------------------------------
+exclusion_patterns:
+  # "flood of data" is not a flood hazard
+  flood_false_positives:
+    - 'flood.?of.?(data|information|requests)'
+    - 'flood.?(light|fill)'
+
+  # "population" in non-exposure contexts
+  population_false_positives:
+    - 'population.?(health|nutrition|immunization)'
+    - 'target.?population'
+
+  # "infrastructure" in non-physical contexts
+  infrastructure_false_positives:
+    - 'data.?infrastructure'
+    - 'it.?infrastructure'
+    - 'digital.?infrastructure'

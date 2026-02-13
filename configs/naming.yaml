@@ -1,0 +1,372 @@
+# =============================================================================
+# RDLS Record Naming Convention Configuration
+# =============================================================================
+# Defines the structure of RDLS record IDs and JSON filenames:
+#   rdls_{types}-{iso3}{org}_{titleslug}_{items}.json
+#
+# - types:     Component codes (single: hzd/exp/vln/lss, multi: h/e/v/l concat)
+# - iso3:      Lowercase ISO3 codes concatenated (3-char fixed width, sorted)
+# - org:       Org abbreviation appended after ISO3 (from lookup or auto-truncate)
+# - titleslug: Slugified dataset title (stop words + country + org removed, max 20)
+# - items:     2-char hazard/exposure item codes concatenated
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Component type encoding
+# Single component  → 3-letter code (hzd, exp, vln, lss)
+# Multiple components → single-letter concatenation in HEVL order
+# ---------------------------------------------------------------------------
+component_codes:
+  single:
+    hazard: hzd
+    exposure: exp
+    vulnerability: vln
+    loss: lss
+  letter:
+    hazard: h
+    exposure: e
+    vulnerability: v
+    loss: l
+  # Canonical order for multi-component letter concatenation
+  order:
+    - hazard
+    - exposure
+    - vulnerability
+    - loss
+
+# ---------------------------------------------------------------------------
+# Hazard type → 2-char item code
+# All codes are exactly 2 characters, concatenated without separator
+# ---------------------------------------------------------------------------
+hazard_item_codes:
+  flood: fl
+  earthquake: eq
+  tsunami: ts
+  strong_wind: tc       # tropical cyclone / strong wind
+  volcanic: vo
+  landslide: ls
+  convective_storm: cs
+  wildfire: wf
+  drought: dr
+  extreme_temperature: et
+  coastal_flood: cf
+
+# ---------------------------------------------------------------------------
+# Exposure category → 2-char item code
+# ---------------------------------------------------------------------------
+exposure_item_codes:
+  buildings: bd
+  population: pp
+  infrastructure: if
+  agriculture: ag
+  natural_environment: en
+  economic_indicator: ec
+  development_index: dv
+
+# ---------------------------------------------------------------------------
+# Organization abbreviation lookup
+# Keys are slugified org names (lowercase, underscores).
+# Values are short names (max 15 chars, lowercase).
+#
+# Resolution order in resolve_shortname():
+#   1. Exact match on org slug
+#   2. Exact match on slugified org display name
+#   3. Fallback: auto-truncate slug to max_length
+#
+# This table is extensible — add more as needed.
+# ---------------------------------------------------------------------------
+org_abbreviations:
+  # --- UN agencies ---
+  world_bank_group: worldbank
+  humanitarian_openstreetmap_team_hot: hotosm
+  worldpop: worldpop
+  united_nations_satellite_centre_unosat: unosat
+  unhcr_the_un_refugee_agency: unhcr
+  fews_net: fewsnet
+  world_health_organization: who
+  heigit_heidelberg_institute_for_geoinformation_technology: heigit
+  hdx: hdx
+  kontur: kontur
+  wfp_world_food_programme: wfp
+  copernicus: copernicus
+  food_and_agriculture_organization_fao_of_the_united_nations: fao
+  internal_displacement_monitoring_centre_idmc: idmc
+  unicef_data_and_analytics_hq: unicef
+  united_nations_human_settlements_programmes_data_and_analytics_section: unhabitat
+  international_organization_for_migration_iom: iom
+  unesco: unesco
+  undp_human_development_reports_office_hdro: undp
+  united_nations_office_for_disaster_risk_reduction_undrr: undrr
+  international_federation_of_red_cross_and_red_crescent_societies_ifrc: ifrc
+  unfpa: unfpa
+
+  # --- OCHA offices ---
+  ocha_field_information_services_section_fiss: ochafiss
+  ocha_financial_tracking_system_fts: ochafts
+  ocha_latin_america_and_the_caribbean_rolac: ocharolac
+  ocha_regional_office_for_southern_and_eastern_africa_rosea: ocharosea
+  ocha_humanitarian_programme_cycle_tools_hpc_tools: ochahpc
+  ocha_regional_office_for_asia_and_the_pacific_roap: ocharoap
+  ocha_west_and_central_africa_rowca: ocharowca
+  ocha_colombia: ochacol
+  ocha_sudan: ochasdn
+  ocha_afghanistan: ochaafg
+  ocha_philippines: ochaphl
+
+  # --- Research / NGOs ---
+  armed_conflict_location_event_data_project_acled: acled
+  reach_initiative: reach
+  immap_inc: immap
+  portwatch: portwatch
+  the_dhs_program: dhs
+  green_climate_fund: gcf
+  centre_for_research_on_the_epidemiology_of_disasters: cred
+  geoboundaries: geobndry
+  oxford_poverty_human_development_initiative: ophi
+  global_healthsites_mapping_project: healthsites
+  violence_impacts_early_warning_system: views
+  data_for_children_collaborative: d4cc
+  international_aid_transparency_initiative: iati
+  ai_and_data_for_good_at_meta: metad4g
+  ourairports: ourairports
+  who_s_on_first: whosonfirst
+  # --- Specialized / regional ---
+  wfp_advanced_disaster_analysis_mapping: wfpadam
+  igad_climate_prediction_and_applications_center_icpac: icpac
+  grid3: grid3
+  3is: 3is
+  global_earthquake_model_foundation: gem
+  pacific_community: spc
+  mapaction: mapaction
+  inform: inform
+  jrc_european_commission: jrc
+  gfdrr: gfdrr
+  hub_latin_america: hublatam
+  opennepal_inactive: opennepal
+  international_rescue_committee_ethiopia: irceth
+  united_nations_peace_and_security_data_hub: unpeace
+  united_nations_economic_commission_for_africa: uneca
+  the_philippine_space_agency: philsa
+  climada: climada
+  hdx_humanitarian_api_data: hdxhapi
+
+# ---------------------------------------------------------------------------
+# Shortname settings
+# ---------------------------------------------------------------------------
+shortname:
+  max_length: 15
+
+# ---------------------------------------------------------------------------
+# Component validation
+# When false: V-only, L-only, V+L are valid combinations
+# When true: V/L require H or E to be present
+# ---------------------------------------------------------------------------
+validation:
+  require_he_for_vl: false
+
+# ---------------------------------------------------------------------------
+# Collision avoidance
+# When duplicate stems are detected, append this suffix.
+# {uuid8} is replaced with first 8 chars of source dataset UUID.
+# ---------------------------------------------------------------------------
+collision:
+  suffix_format: "__{uuid8}"
+
+# ---------------------------------------------------------------------------
+# Title slug settings
+# The title slug is a compact representation of the dataset title.
+# Stop words, country names (from iso3_to_name), and org names are stripped
+# before slugification. No separators — pure alphanumeric concatenation.
+# ---------------------------------------------------------------------------
+title_slug:
+  max_length: 20
+  stop_words:
+    - "for"
+    - "of"
+    - "the"
+    - "and"
+    - "in"
+    - "a"
+    - "an"
+    - "to"
+    - "at"
+    - "by"
+    - "on"
+    - "with"
+    - "from"
+
+# ---------------------------------------------------------------------------
+# ISO3 → Country name mapping (for title slug stripping)
+# When a dataset title contains a country name that matches one of the
+# record's ISO3 codes, the name is stripped to avoid redundancy.
+# Extensible — add more entries as needed.
+# ---------------------------------------------------------------------------
+iso3_to_name:
+  AFG: "afghanistan"
+  AGO: "angola"
+  ALB: "albania"
+  ARE: "united arab emirates"
+  ARG: "argentina"
+  ARM: "armenia"
+  AUS: "australia"
+  AUT: "austria"
+  AZE: "azerbaijan"
+  BDI: "burundi"
+  BEL: "belgium"
+  BEN: "benin"
+  BFA: "burkina faso"
+  BGD: "bangladesh"
+  BIH: "bosnia and herzegovina"
+  BLR: "belarus"
+  BOL: "bolivia"
+  BRA: "brazil"
+  BTN: "bhutan"
+  BWA: "botswana"
+  CAF: "central african republic"
+  CAN: "canada"
+  CHE: "switzerland"
+  CHL: "chile"
+  CHN: "china"
+  CIV: "cote divoire"
+  CMR: "cameroon"
+  COD: "democratic republic of the congo"
+  COG: "congo"
+  COL: "colombia"
+  COM: "comoros"
+  CRI: "costa rica"
+  CUB: "cuba"
+  CYP: "cyprus"
+  CZE: "czechia"
+  DEU: "germany"
+  DJI: "djibouti"
+  DNK: "denmark"
+  DOM: "dominican republic"
+  DZA: "algeria"
+  ECU: "ecuador"
+  EGY: "egypt"
+  ERI: "eritrea"
+  ESP: "spain"
+  EST: "estonia"
+  ETH: "ethiopia"
+  FIN: "finland"
+  FJI: "fiji"
+  FRA: "france"
+  GAB: "gabon"
+  GBR: "united kingdom"
+  GEO: "georgia"
+  GHA: "ghana"
+  GIN: "guinea"
+  GMB: "gambia"
+  GNB: "guinea bissau"
+  GNQ: "equatorial guinea"
+  GRC: "greece"
+  GTM: "guatemala"
+  GUY: "guyana"
+  HND: "honduras"
+  HRV: "croatia"
+  HTI: "haiti"
+  HUN: "hungary"
+  IDN: "indonesia"
+  IND: "india"
+  IRL: "ireland"
+  IRN: "iran"
+  IRQ: "iraq"
+  ISR: "israel"
+  ITA: "italy"
+  JAM: "jamaica"
+  JOR: "jordan"
+  JPN: "japan"
+  KAZ: "kazakhstan"
+  KEN: "kenya"
+  KGZ: "kyrgyzstan"
+  KHM: "cambodia"
+  LAO: "laos"
+  LBN: "lebanon"
+  LBR: "liberia"
+  LBY: "libya"
+  LKA: "sri lanka"
+  LSO: "lesotho"
+  LTU: "lithuania"
+  LVA: "latvia"
+  MAR: "morocco"
+  MDA: "moldova"
+  MDG: "madagascar"
+  MDV: "maldives"
+  MEX: "mexico"
+  MKD: "north macedonia"
+  MLI: "mali"
+  MMR: "myanmar"
+  MNE: "montenegro"
+  MNG: "mongolia"
+  MOZ: "mozambique"
+  MRT: "mauritania"
+  MUS: "mauritius"
+  MWI: "malawi"
+  MYS: "malaysia"
+  NAM: "namibia"
+  NER: "niger"
+  NGA: "nigeria"
+  NIC: "nicaragua"
+  NLD: "netherlands"
+  NOR: "norway"
+  NPL: "nepal"
+  NZL: "new zealand"
+  PAK: "pakistan"
+  PAN: "panama"
+  PER: "peru"
+  PHL: "philippines"
+  PNG: "papua new guinea"
+  POL: "poland"
+  PRT: "portugal"
+  PRY: "paraguay"
+  PSE: "palestine"
+  QAT: "qatar"
+  ROU: "romania"
+  RUS: "russia"
+  RWA: "rwanda"
+  SAU: "saudi arabia"
+  SDN: "sudan"
+  SEN: "senegal"
+  SGP: "singapore"
+  SLB: "solomon islands"
+  SLE: "sierra leone"
+  SLV: "el salvador"
+  SOM: "somalia"
+  SRB: "serbia"
+  SSD: "south sudan"
+  SUR: "suriname"
+  SVK: "slovakia"
+  SVN: "slovenia"
+  SWE: "sweden"
+  SWZ: "eswatini"
+  SYR: "syria"
+  TCD: "chad"
+  TGO: "togo"
+  THA: "thailand"
+  TJK: "tajikistan"
+  TKM: "turkmenistan"
+  TLS: "timor leste"
+  TON: "tonga"
+  TTO: "trinidad and tobago"
+  TUN: "tunisia"
+  TUR: "turkiye"
+  TWN: "taiwan"
+  TZA: "tanzania"
+  UGA: "uganda"
+  UKR: "ukraine"
+  URY: "uruguay"
+  USA: "united states"
+  UZB: "uzbekistan"
+  VEN: "venezuela"
+  VNM: "vietnam"
+  VUT: "vanuatu"
+  YEM: "yemen"
+  ZAF: "south africa"
+  ZMB: "zambia"
+  ZWE: "zimbabwe"
+
+# ---------------------------------------------------------------------------
+# ISO3 validation
+# Valid ISO3 codes are loaded from spatial.yaml (region_to_countries).
+# No duplication here — naming.py loads spatial config for validation.
+# ---------------------------------------------------------------------------

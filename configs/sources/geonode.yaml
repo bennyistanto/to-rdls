@@ -1,0 +1,59 @@
+# =============================================================================
+# GeoNode Source Configuration (Stub)
+# =============================================================================
+# GeoNode-specific settings for future implementation.
+# Follows the same structure as hdx.yaml for consistency.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# API configuration
+# ---------------------------------------------------------------------------
+api:
+  # base_url: "https://your-geonode-instance.org"
+  # GeoNode REST API v2
+  # datasets_endpoint: "/api/v2/datasets"
+  # resources_endpoint: "/api/v2/datasets/{id}"
+  rows_per_page: 100
+  timeout: 60
+  max_retries: 3
+  rate_limit: 5.0
+
+# ---------------------------------------------------------------------------
+# GeoNode field paths — where to find metadata in GeoNode API JSON
+# ---------------------------------------------------------------------------
+field_paths:
+  id: "pk"
+  name: "name"
+  title: "title"
+  notes: "abstract"
+  methodology: "supplemental_information"
+  organization: "owner.organization"
+  license_title: "license.name"
+  groups: "regions"          # GeoNode regions
+  tags: "keywords"           # list of keyword dicts
+  resources: "links"         # download links
+  dataset_date: "date"
+  url: "detail_url"
+
+# Resource field paths
+resource_fields:
+  id: "pk"
+  name: "name"
+  description: "description"
+  format: "extension"
+  url: "url"
+
+# ---------------------------------------------------------------------------
+# GeoNode format name overrides
+# ---------------------------------------------------------------------------
+format_overrides: {}
+
+# ---------------------------------------------------------------------------
+# Notes
+# ---------------------------------------------------------------------------
+# To implement GeoNode support:
+# 1. Create src/sources/geonode.py with GeoNodeClient class
+# 2. Implement normalize_geonode_record() to match the common record format
+# 3. Implement extract_geonode_fields() using the field_paths above
+# 4. The rest of the pipeline (classification, translation, HEVL extraction,
+#    validation) works identically — no changes needed.

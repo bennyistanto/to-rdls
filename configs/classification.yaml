@@ -1,0 +1,141 @@
+# =============================================================================
+# RDLS Dataset Classification Configuration
+# =============================================================================
+# Scoring rules for classifying source datasets into RDLS components.
+# Combines tag weights, keyword patterns, and organization hints.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Scoring parameters
+# ---------------------------------------------------------------------------
+scoring:
+  keyword_hit_weight: 2
+  candidate_min_score: 5
+  confidence_thresholds:
+    high: 7
+    medium: 4
+
+# ---------------------------------------------------------------------------
+# RDLS component names used in classification
+# ---------------------------------------------------------------------------
+components:
+  - hazard
+  - exposure
+  - vulnerability_proxy
+  - loss_impact
+
+# ---------------------------------------------------------------------------
+# Tag weights by component
+# (tag name → score contribution)
+# Source: config/tag_to_rdls_component.yaml
+# ---------------------------------------------------------------------------
+tag_weights:
+  hazard:
+    flooding: 5
+    drought: 5
+    "cyclones-hurricanes-typhoons": 5
+    "earthquake-tsunami": 5
+    "climate hazards": 4
+    hydrology: 3
+    "natural disasters": 3
+    "hazards and risk": 3
+    forecasting: 2
+    topography: 2
+
+  exposure:
+    "facilities-infrastructure": 5
+    "populated places-settlements": 4
+    population: 4
+    roads: 4
+    ports: 3
+    railways: 3
+    aviation: 3
+    energy: 3
+    "education facilities-schools": 4
+    "health facilities": 4
+    "points of interest-poi": 3
+    geodata: 2
+    gazetteer: 2
+
+  vulnerability_proxy:
+    demographics: 4
+    poverty: 4
+    socioeconomics: 4
+    disability: 3
+    gender: 3
+    "food security": 3
+    nutrition: 2
+    livelihoods: 2
+    health: 2
+    education: 2
+
+  loss_impact:
+    "damage assessment": 5
+    casualties: 5
+    fatalities: 5
+    mortality: 4
+    "affected population": 4
+    "affected area": 4
+    "people in need-pin": 3
+    severity: 3
+
+# ---------------------------------------------------------------------------
+# Keyword regex patterns by component
+# (case-insensitive, applied to title + notes)
+# Source: config/keyword_to_rdls_component.yaml
+# ---------------------------------------------------------------------------
+keyword_patterns:
+  hazard:
+    - '\bflood(s|ing)?\b'
+    - '\bdrought\b'
+    - '\bcyclone(s)?\b'
+    - '\bhurricane(s)?\b'
+    - '\btyphoon(s)?\b'
+    - '\bearthquake(s)?\b'
+    - '\btsunami\b'
+    - '\breturn period\b'
+    - '\bhazard\b'
+
+  exposure:
+    - '\bairport(s)?\b'
+    - '\broad(s)?\b'
+    - '\bbridge(s)?\b'
+    - '\bport(s)?\b'
+    - '\bhospital(s)?\b'
+    - '\bschool(s)?\b'
+    - '\bfacilit(y|ies)\b'
+    - '\binfrastructure\b'
+    - '\bbuildings?\b'
+    - '\bsettlement(s)?\b'
+
+  vulnerability_proxy:
+    - '\bpoverty\b'
+    - '\bdisabilit(y|ies)\b'
+    - '\bmalnutrition\b'
+    - '\bfood security\b'
+    - '\bhealth indicator(s)?\b'
+    - '\bdemographic(s)?\b'
+    - '\bvulnerability\b'
+    - '\bhousehold(s)?\b'
+
+  loss_impact:
+    - '\bdamage\b'
+    - '\bloss(es)?\b'
+    - '\bcost(s)?\b'
+    - '\bfatalit(y|ies)\b'
+    - '\bcasualt(y|ies)\b'
+    - '\baffected\b'
+
+# ---------------------------------------------------------------------------
+# Organization hints (org name → component score boosts)
+# Source: config/org_hints.yaml
+# ---------------------------------------------------------------------------
+org_hints:
+  "Food and Agriculture Organization":
+    vulnerability_proxy: 3
+  "The DHS Program":
+    vulnerability_proxy: 4
+  "UNICEF":
+    vulnerability_proxy: 3
+  "World Bank Group":
+    vulnerability_proxy: 2

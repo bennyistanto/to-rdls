@@ -1,0 +1,67 @@
+# =============================================================================
+# Pipeline Orchestration Configuration
+# =============================================================================
+# Runtime settings for the RDLS transformation pipeline.
+# Paths, output modes, thresholds, batch sizes.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Output settings
+# ---------------------------------------------------------------------------
+output:
+  # "in_place" writes to a fixed output dir; "run_folder" creates timestamped dirs
+  mode: in_place
+  write_pretty_json: true
+  clean_before_run: true
+  # Cleanup mode: replace | prompt | skip | abort
+  cleanup_mode: replace
+
+# ---------------------------------------------------------------------------
+# Confidence thresholds for tiered distribution
+# ---------------------------------------------------------------------------
+thresholds:
+  high: 0.8
+  medium: 0.5
+
+# ---------------------------------------------------------------------------
+# Tiered distribution folder names
+# ---------------------------------------------------------------------------
+distribution:
+  tiers:
+    - name: high
+      min_confidence: 0.8
+      schema_valid: true
+    - name: medium
+      min_confidence: 0.5
+      schema_valid: true
+    - name: low
+      min_confidence: 0.0
+      schema_valid: true
+    - name: invalid/high
+      min_confidence: 0.8
+      schema_valid: false
+    - name: invalid/medium
+      min_confidence: 0.5
+      schema_valid: false
+    - name: invalid/low
+      min_confidence: 0.0
+      schema_valid: false
+
+# ---------------------------------------------------------------------------
+# Processing limits (for testing / debugging)
+# ---------------------------------------------------------------------------
+limits:
+  max_datasets: null   # null = process all
+  batch_log_every: 500
+
+# ---------------------------------------------------------------------------
+# Directory structure template
+# These are relative to the working output root.
+# ---------------------------------------------------------------------------
+directories:
+  records: records
+  index: index
+  reports: reports
+  extracted: extracted
+  integrated: integrated
+  dist: dist

@@ -1,0 +1,584 @@
+# =============================================================================
+# RDLS Default Mappings & Logic Rules
+# =============================================================================
+# Default values inferred when the source metadata doesn't provide specifics.
+# These are RDLS logic rules — independent of any data source.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# hazard_type → default process_type
+# When a hazard type is detected but no specific process, use this default.
+# ---------------------------------------------------------------------------
+hazard_process_defaults:
+  flood: fluvial_flood
+  earthquake: ground_motion
+  tsunami: tsunami
+  drought: meteorological_drought
+  landslide: landslide_general
+  wildfire: wildfire
+  volcanic: ashfall
+  extreme_temperature: extreme_heat
+  strong_wind: tropical_cyclone
+  convective_storm: tornado
+  coastal_flood: storm_surge
+
+# ---------------------------------------------------------------------------
+# hazard_type → default intensity_measure
+# ---------------------------------------------------------------------------
+default_intensity_measures:
+  earthquake: "PGA:g"
+  flood: "wd:m"
+  coastal_flood: "wd:m"
+  tsunami: "Rh_tsi:m"
+  strong_wind: "sws_10m:m/s"
+  convective_storm: "sws_10m:m/s"
+  drought: "SPI:-"
+  wildfire: "FWI:-"
+  landslide: "PGA:g"
+  volcanic: "AirTemp:C"
+  extreme_temperature: "AirTemp:C"
+
+# ---------------------------------------------------------------------------
+# exposure_category → default (dimension, quantity_kind)
+# First entry in valid_triplets is the default for that category.
+# ---------------------------------------------------------------------------
+exposure_metric_defaults:
+  buildings:
+    dimension: structure
+    quantity_kind: count
+  infrastructure:
+    dimension: structure
+    quantity_kind: length
+  population:
+    dimension: population
+    quantity_kind: count
+  agriculture:
+    dimension: structure
+    quantity_kind: area
+  natural_environment:
+    dimension: structure
+    quantity_kind: area
+  economic_indicator:
+    dimension: product
+    quantity_kind: monetary
+  development_index:
+    dimension: index
+    quantity_kind: count
+
+# ---------------------------------------------------------------------------
+# Valid (dimension, quantity_kind) triplets per exposure_category.
+# Multiple entries per category allow detecting multiple metrics from text.
+# ---------------------------------------------------------------------------
+exposure_valid_triplets:
+  agriculture:
+    - dimension: structure
+      quantity_kind: area        # hectares of cultivated land
+    - dimension: product
+      quantity_kind: monetary    # value of crop yield
+    - dimension: product
+      quantity_kind: count       # head of livestock
+
+  buildings:
+    - dimension: structure
+      quantity_kind: count       # number of buildings
+    - dimension: structure
+      quantity_kind: monetary    # replacement cost of building stock
+    - dimension: structure
+      quantity_kind: area        # total floor area
+    - dimension: content
+      quantity_kind: monetary    # value of contents/inventory
+
+  infrastructure:
+    - dimension: structure
+      quantity_kind: length      # km of road/railway
+    - dimension: structure
+      quantity_kind: monetary    # construction cost of utility network
+    - dimension: disruption
+      quantity_kind: time        # duration of service outage
+    - dimension: disruption
+      quantity_kind: monetary    # economic loss from service interruption
+
+  population:
+    - dimension: population
+      quantity_kind: count       # number of people
+
+  natural_environment:
+    - dimension: structure
+      quantity_kind: area        # sq km of protected forest/vegetation
+
+  economic_indicator:
+    - dimension: product
+      quantity_kind: monetary    # total GDP exposure
+    - dimension: index
+      quantity_kind: count       # inflation rate, unemployment rate
+
+  development_index:
+    - dimension: index
+      quantity_kind: count       # HDI score, SVI score
+
+# ---------------------------------------------------------------------------
+# Vulnerability: function_type → default impact_metric + quantity_kind
+# ---------------------------------------------------------------------------
+function_impact_metric_defaults:
+  vulnerability:
+    default_metric: damage_ratio
+    default_qty: ratio
+  fragility:
+    default_metric: probability
+    default_qty: ratio
+  damage_to_loss:
+    default_metric: loss_ratio
+    default_qty: ratio
+  engineering_demand:
+    default_metric: damage_index
+    default_qty: count
+
+# ---------------------------------------------------------------------------
+# Vulnerability: function_type constraints
+# Which impact_metric values are valid for each function type.
+# ---------------------------------------------------------------------------
+function_type_constraints:
+  vulnerability:
+    default_metric: damage_ratio
+    default_qty: ratio
+    allowed_metrics:
+      - damage_ratio
+      - mean_damage_ratio
+      - casualty_ratio_vulnerability
+      - downtime_vulnerability
+  fragility:
+    default_metric: probability
+    default_qty: ratio
+    allowed_metrics:
+      - probability
+      - damage_index
+      - damage_ratio
+      - mean_damage_ratio
+  damage_to_loss:
+    default_metric: loss_ratio
+    default_qty: ratio
+    allowed_metrics:
+      - loss_ratio
+      - mean_loss_ratio
+      - economic_loss_value
+      - insured_loss_value
+      - asset_loss
+      - downtime_loss
+      - casualty_count
+      - displaced_count
+  engineering_demand:
+    default_metric: damage_index
+    default_qty: count
+    allowed_metrics:
+      - damage_index
+      - damage_ratio
+      - mean_damage_ratio
+      - probability
+
+# ---------------------------------------------------------------------------
+# Vulnerability: function_type → typical approach + relationship
+# Used as fallback when approach/relationship cannot be detected from text.
+# ---------------------------------------------------------------------------
+function_type_approach_defaults:
+  vulnerability:
+    typical_approach: empirical
+    typical_relationship: discrete
+  fragility:
+    typical_approach: analytical
+    typical_relationship: math_parametric
+  damage_to_loss:
+    typical_approach: empirical
+    typical_relationship: discrete
+  engineering_demand:
+    typical_approach: analytical
+    typical_relationship: math_parametric
+
+# ---------------------------------------------------------------------------
+# Vulnerability: category-specific function type/metric overrides
+# When exposure category is known, override default function type & metric.
+# ---------------------------------------------------------------------------
+vuln_category_defaults:
+  buildings:
+    typical_function: fragility
+    metric_override: damage_ratio
+    qty_override: ratio
+  infrastructure:
+    typical_function: vulnerability
+    metric_override: downtime_vulnerability
+    qty_override: time
+  population:
+    typical_function: vulnerability
+    metric_override: casualty_ratio_vulnerability
+    qty_override: ratio
+  agriculture:
+    typical_function: vulnerability
+    metric_override: damage_ratio
+    qty_override: ratio
+  natural_environment:
+    typical_function: vulnerability
+    metric_override: damage_ratio
+    qty_override: ratio
+  economic_indicator:
+    typical_function: damage_to_loss
+    metric_override: economic_loss_value
+    qty_override: monetary
+  development_index:
+    typical_function: vulnerability
+    metric_override: damage_index
+    qty_override: count
+
+# ---------------------------------------------------------------------------
+# Impact metric constraints (shared between Vulnerability and Loss)
+# Maps impact_metric → (quantity_kind, allowed_impact_types)
+# ---------------------------------------------------------------------------
+impact_metric_constraints:
+  # Physical damage metrics (direct only)
+  damage_ratio:
+    quantity_kind: ratio
+    allowed_impact_types: [direct]
+  mean_damage_ratio:
+    quantity_kind: ratio
+    allowed_impact_types: [direct]
+  damage_index:
+    quantity_kind: count
+    allowed_impact_types: [direct]
+  # Loss ratio metrics
+  loss_ratio:
+    quantity_kind: ratio
+    allowed_impact_types: [direct, indirect, total]
+  mean_loss_ratio:
+    quantity_kind: ratio
+    allowed_impact_types: [direct, indirect, total]
+  # Probability
+  probability:
+    quantity_kind: ratio
+    allowed_impact_types: [direct, indirect, total]
+  # Vulnerability-specific
+  downtime_vulnerability:
+    quantity_kind: time
+    allowed_impact_types: [indirect]
+  casualty_ratio_vulnerability:
+    quantity_kind: ratio
+    allowed_impact_types: [direct]
+  # Economic/monetary loss metrics
+  economic_loss_value:
+    quantity_kind: monetary
+    allowed_impact_types: [direct, indirect, total]
+  insured_loss_value:
+    quantity_kind: monetary
+    allowed_impact_types: [direct, indirect, total]
+  loss_annual_average_value:
+    quantity_kind: monetary
+    allowed_impact_types: [total]
+  loss_probable_maximum_value:
+    quantity_kind: monetary
+    allowed_impact_types: [total]
+  at_risk_value:
+    quantity_kind: monetary
+    allowed_impact_types: [total]
+  at_risk_tail_value:
+    quantity_kind: monetary
+    allowed_impact_types: [total]
+  asset_loss:
+    quantity_kind: monetary
+    allowed_impact_types: [direct]
+  # Time-based loss
+  downtime_loss:
+    quantity_kind: time
+    allowed_impact_types: [indirect]
+  # Count-based metrics
+  casualty_count:
+    quantity_kind: count
+    allowed_impact_types: [direct]
+  casualty_ratio_loss:
+    quantity_kind: ratio
+    allowed_impact_types: [direct]
+  displaced_count:
+    quantity_kind: count
+    allowed_impact_types: [direct]
+  exposure_to_hazard:
+    quantity_kind: count
+    allowed_impact_types: [direct]
+
+# ---------------------------------------------------------------------------
+# Loss: signal type → default field values
+# Complete defaults for each loss signal type.
+# ---------------------------------------------------------------------------
+loss_signal_defaults:
+  human_loss:
+    asset_category: population
+    asset_dimension: population
+    impact_type: direct
+    impact_metric: casualty_count
+    quantity_kind: count
+    loss_type: count
+  displacement:
+    asset_category: population
+    asset_dimension: population
+    impact_type: direct
+    impact_metric: displaced_count
+    quantity_kind: count
+    loss_type: count
+  affected_population:
+    asset_category: population
+    asset_dimension: population
+    impact_type: direct
+    impact_metric: exposure_to_hazard
+    quantity_kind: count
+    loss_type: count
+  economic_loss:
+    asset_category: buildings
+    asset_dimension: structure
+    impact_type: direct
+    impact_metric: economic_loss_value
+    quantity_kind: monetary
+    loss_type: ground_up
+  structural_damage:
+    asset_category: buildings
+    asset_dimension: structure
+    impact_type: direct
+    impact_metric: damage_ratio
+    quantity_kind: ratio
+    loss_type: ground_up
+  agricultural_loss:
+    asset_category: agriculture
+    asset_dimension: product
+    impact_type: direct
+    impact_metric: asset_loss
+    quantity_kind: monetary
+    loss_type: ground_up
+  catastrophe_model:
+    asset_category: buildings
+    asset_dimension: structure
+    impact_type: total
+    impact_metric: loss_annual_average_value
+    quantity_kind: monetary
+    loss_type: ground_up
+  general_loss:
+    asset_category: population
+    asset_dimension: population
+    impact_type: direct
+    impact_metric: asset_loss
+    quantity_kind: count
+    loss_type: ground_up
+
+# ---------------------------------------------------------------------------
+# Loss: valid asset dimensions per category
+# ---------------------------------------------------------------------------
+loss_valid_asset_triplets:
+  agriculture: [product, structure, content]
+  buildings: [structure, content]
+  infrastructure: [structure, disruption]
+  population: [population]
+  natural_environment: [structure, index]
+  economic_indicator: [product, index]
+  development_index: [index]
+
+# ---------------------------------------------------------------------------
+# Loss: loss_type → allowed approaches
+# ---------------------------------------------------------------------------
+loss_type_approach_rules:
+  net_precat: [analytical]
+  net_postcat: [analytical]
+  insured: [analytical, empirical, hybrid]
+  gross: [analytical, empirical, hybrid]
+  ground_up: [analytical, empirical, hybrid, judgement]
+  count: [analytical, empirical, hybrid, judgement]
+
+# ---------------------------------------------------------------------------
+# Compound tag handling (tags that map to multiple hazards)
+# ---------------------------------------------------------------------------
+compound_tags:
+  "earthquake-tsunami":
+    primary: earthquake
+    secondary: tsunami
+    rule: corroborate_secondary
+  "cyclones-hurricanes-typhoons":
+    primary: strong_wind
+    secondary: coastal_flood
+    rule: corroborate_secondary
+  "flood-landslide":
+    primary: flood
+    secondary: landslide
+    rule: corroborate_secondary
+  "drought-food-insecurity":
+    primary: drought
+    secondary: null
+    rule: single
+
+# ---------------------------------------------------------------------------
+# Component dependency rules
+# V or L alone → auto-add exposure
+# ---------------------------------------------------------------------------
+component_dependencies:
+  require_he_for_vl: false   # standalone V, L, V+L now valid
+  rules:
+    vulnerability:
+      requires_one_of: [hazard, exposure]
+      auto_add: exposure
+    loss:
+      requires_one_of: [hazard, exposure]
+      auto_add: exposure
+
+# ---------------------------------------------------------------------------
+# Component order & filename prefix priority
+# ---------------------------------------------------------------------------
+component_order:
+  - hazard
+  - exposure
+  - vulnerability
+  - loss
+
+# Filename prefix / ID generation now handled by configs/naming.yaml
+# and src/naming.py (encode_component_types, build_rdls_id, etc.)
+# Old prefix_priority and prefix_map removed — see naming.yaml for
+# component_codes.single and component_codes.letter mappings.
+
+# ---------------------------------------------------------------------------
+# Confidence scoring weights (for composite HEVL confidence)
+# ---------------------------------------------------------------------------
+confidence_weights:
+  hazard: 0.3
+  exposure: 0.3
+  vulnerability: 0.2
+  loss: 0.2
+
+# ---------------------------------------------------------------------------
+# Socioeconomic indicators (for vulnerability detection)
+# Full list from NB 11 with patterns, codes, schemes, and descriptions.
+# ---------------------------------------------------------------------------
+socioeconomic_indicators:
+  - code: POV_HEADCOUNT
+    name: Poverty headcount ratio
+    scheme: Custom
+    description: Population living below the poverty line with limited resources for disaster preparedness and recovery
+    patterns:
+      - '\b(poverty[\s._-]?headcount|poverty[\s._-]?ratio|below[\s._-]?poverty[\s._-]?line)\b'
+      - '\b(poverty[\s._-]?index|poverty[\s._-]?rate|poor[\s._-]?population)\b'
+  - code: HDI
+    name: Human Development Index
+    scheme: Custom
+    description: Composite index measuring average achievement in health, education, and standard of living
+    patterns:
+      - '\b(human[\s._-]?development[\s._-]?index|hdi)\b'
+  - code: SVI_OVERALL
+    name: Social Vulnerability Index
+    scheme: CDC-SVI
+    description: Overall social vulnerability score combining socioeconomic status, household composition, minority status, and housing factors
+    patterns:
+      - '\b(social[\s._-]?vulnerability[\s._-]?index|svi)\b'
+      - '\b(socio[\s._-]?economic[\s._-]?vulnerability[\s._-]?index)\b'
+  - code: FOOD_SECURITY
+    name: Food security classification
+    scheme: Custom
+    description: Food security status indicating population vulnerability to food crises and famine
+    patterns:
+      - '\b(food[\s._-]?security|food[\s._-]?insecurity|ipc[\s._-]?phase|ipc[\s._-]?classification)\b'
+      - '\b(food[\s._-]?crisis|famine[\s._-]?early[\s._-]?warning)\b'
+  - code: POP_DENSITY
+    name: Population density
+    scheme: Custom
+    description: Number of people per unit area, indicating exposure concentration and potential vulnerability
+    patterns:
+      - '\b(population[\s._-]?density)\b'
+  - code: AGE_65_PLUS
+    name: Elderly population percentage
+    scheme: Custom
+    description: Population aged 65 years and older, more vulnerable to hazard-related health impacts
+    patterns:
+      - '\b(elderly[\s._-]?population|aging[\s._-]?population|aged[\s._-]?(?:65|over))\b'
+      - '\b(population[\s._-]?(?:over|above)[\s._-]?65)\b'
+  - code: EDU_ATTAINMENT
+    name: Educational attainment
+    scheme: Custom
+    description: Level of educational attainment indicating capacity to understand and respond to hazard warnings
+    patterns:
+      - '\b(education[\s._-]?attainment|literacy[\s._-]?rate|school[\s._-]?enrollment)\b'
+      - '\b(out[\s._-]?of[\s._-]?school|educational[\s._-]?level)\b'
+  - code: HEALTH_ACCESS
+    name: Access to healthcare facilities
+    scheme: Custom
+    description: Proximity and access to healthcare services affecting disaster response and recovery capacity
+    patterns:
+      - '\b(health[\s._-]?(?:access|facility|service|indicator))\b'
+      - '\b(healthcare[\s._-]?access|medical[\s._-]?facility)\b'
+  - code: INFORM_RISK
+    name: INFORM Risk Index
+    scheme: INFORM
+    description: Composite risk index combining hazard exposure, vulnerability, and lack of coping capacity
+    patterns:
+      - '\b(inform[\s._-]?(?:risk|index|severity))\b'
+  - code: DISPLACEMENT
+    name: Displacement indicator
+    scheme: Custom
+    description: Population displaced by conflict or disaster, indicating heightened vulnerability
+    patterns:
+      - '\b(displaced|displacement|idp|internally[\s._-]?displaced)\b'
+      - '\b(refugee[\s._-]?(?:population|camp|settlement))\b'
+  - code: COPING_CAPACITY
+    name: Coping capacity index
+    scheme: Custom
+    description: Capacity of communities to cope with and recover from hazard impacts
+    patterns:
+      - '\b(coping[\s._-]?capacity|adaptive[\s._-]?capacity)\b'
+      - '\b(lack[\s._-]?of[\s._-]?coping[\s._-]?capacity)\b'
+  - code: RESILIENCE
+    name: Resilience index
+    scheme: Custom
+    description: Composite index measuring community resilience to natural hazards and disasters
+    patterns:
+      - '\b(resilience[\s._-]?index|community[\s._-]?resilience)\b'
+  - code: DEPRIVATION
+    name: Deprivation index
+    scheme: Custom
+    description: Multi-dimensional deprivation index measuring socio-economic disadvantage
+    patterns:
+      - '\b(deprivation[\s._-]?index|multi[\s._-]?dimensional[\s._-]?poverty)\b'
+  - code: MALNUTRITION
+    name: Malnutrition prevalence
+    scheme: Custom
+    description: Prevalence of malnutrition indicating population health vulnerability to hazard impacts
+    patterns:
+      - '\b(malnutrition|stunting|wasting|underweight|nutrition[\s._-]?status)\b'
+      - '\b(global[\s._-]?acute[\s._-]?malnutrition|gam)\b'
+  - code: VULN_INDEX
+    name: Vulnerability index
+    scheme: Custom
+    description: Composite vulnerability index combining multiple socio-economic and environmental factors
+    patterns:
+      - '\b(vulnerability[\s._-]?index|nexus[\s._-]?risk)\b'
+      - '\b(climate[\s._-]?vulnerability|climate[\s._-]?risk[\s._-]?index)\b'
+  - code: GENDER_INEQUALITY
+    name: Gender inequality index
+    scheme: Custom
+    description: Gender inequality indicator reflecting differential vulnerability to hazard impacts
+    patterns:
+      - '\b(gender[\s._-]?(?:inequality|index|gap))\b'
+      - '\b(women[\s._-]?(?:vulnerability|empowerment))\b'
+  - code: DISABILITY
+    name: Disability prevalence
+    scheme: Custom
+    description: Prevalence of disability in the population indicating heightened vulnerability to hazard impacts
+    patterns:
+      - '\b(disability[\s._-]?(?:prevalence|rate|population))\b'
+      - '\b(persons[\s._-]?with[\s._-]?disabilities)\b'
+  - code: LIVELIHOOD
+    name: Livelihood vulnerability
+    scheme: Custom
+    description: Livelihood vulnerability indicator measuring economic susceptibility to hazard disruption
+    patterns:
+      - '\b(livelihood[\s._-]?(?:zone|index|vulnerability))\b'
+      - '\b(livelihood[\s._-]?coping[\s._-]?strategy)\b'
+
+# Generic patterns that suggest socio-economic vulnerability but need
+# corroboration from a specific indicator above
+generic_socioeconomic_patterns:
+  - '\b(socio[\s._-]?economic[\s._-]?vulnerability)\b'
+  - '\b(socioeconomic[\s._-]?(?:indicator|index|data))\b'
+  - '\b(vulnerability[\s._-]?assessment[\s._-]?(?:data|indicator))\b'
+
+# Indicator codes that are insufficient on their own to classify as vulnerability
+single_indicator_insufficient:
+  - DISPLACEMENT
+  - POP_DENSITY
+  - SOCIO_VULN

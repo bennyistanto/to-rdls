@@ -1,0 +1,480 @@
+# =============================================================================
+# Spatial Configuration — Region Mappings & Country Name Fixes
+# =============================================================================
+# Geographic reference data used for inferring RDLS spatial blocks.
+# Independent of any data source.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Common country name fixes → ISO3 code
+# Maps non-standard country names to their ISO 3166-1 alpha-3 codes.
+# Keys should be lowercase.
+# ---------------------------------------------------------------------------
+country_name_fixes:
+  # Standard variants
+  "cote d'ivoire": CIV
+  "ivory coast": CIV
+  "democratic republic of the congo": COD
+  "dr congo": COD
+  "republic of the congo": COG
+  "congo, rep.": COG
+  "congo, dem. rep.": COD
+  "lao pdr": LAO
+  "viet nam": VNM
+  "korea, rep.": KOR
+  "korea, dem. rep.": PRK
+  "syrian arab republic": SYR
+  "iran, islamic republic of": IRN
+  "tanzania, united republic of": TZA
+  "venezuela, bolivarian republic of": VEN
+  "bolivia, plurinational state of": BOL
+  "moldova, republic of": MDA
+  "palestine": PSE
+  "russia": RUS
+  "united states": USA
+  "united kingdom": GBR
+  "state of palestine": PSE
+  "republic of korea": KOR
+  "south korea": KOR
+  "holy see": VAT
+  "kosovo": XKX
+  "united states virgin islands": VIR
+  "sint maarten": SXM
+  "saint martin": MAF
+  "svalbard and jan mayen islands": SJM
+  "svalbard and jan mayen": SJM
+  "bonaire, sint eustatius and saba": BES
+  "bonaire; sint eustatius and saba": BES
+  "wallis and futuna islands": WLF
+  "wallis and futuna": WLF
+  "french southern and antarctic territories": ATF
+  "french southern territories": ATF
+  "saint helena": SHN
+  "eswatini": SWZ
+  "kingdom of eswatini": SWZ
+  "swaziland": SWZ
+  "north macedonia": MKD
+  "timor-leste": TLS
+  "east timor": TLS
+  "cabo verde": CPV
+  "cape verde": CPV
+  "micronesia": FSM
+  "micronesia (federated states of)": FSM
+  "brunei": BRN
+  "brunei darussalam": BRN
+  "turkiye": TUR
+  "czechia": CZE
+  "iraq": IRQ
+  "yemen": YEM
+  "syria": SYR
+  "iran": IRN
+  "venezuela": VEN
+  "bolivia": BOL
+  "tanzania": TZA
+  "moldova": MDA
+  "laos": LAO
+  "vietnam": VNM
+
+# ---------------------------------------------------------------------------
+# Non-country group names (skip without warning)
+# ---------------------------------------------------------------------------
+non_country_groups:
+  - world
+  - global
+
+# ---------------------------------------------------------------------------
+# Region → member ISO3 country codes
+# ---------------------------------------------------------------------------
+region_to_countries:
+  africa:
+    - DZA
+    - AGO
+    - BEN
+    - BWA
+    - BFA
+    - BDI
+    - CPV
+    - CMR
+    - CAF
+    - TCD
+    - COM
+    - COG
+    - COD
+    - CIV
+    - DJI
+    - EGY
+    - GNQ
+    - ERI
+    - SWZ
+    - ETH
+    - GAB
+    - GMB
+    - GHA
+    - GIN
+    - GNB
+    - KEN
+    - LSO
+    - LBR
+    - LBY
+    - MDG
+    - MWI
+    - MLI
+    - MRT
+    - MUS
+    - MAR
+    - MOZ
+    - NAM
+    - NER
+    - NGA
+    - RWA
+    - STP
+    - SEN
+    - SYC
+    - SLE
+    - SOM
+    - ZAF
+    - SSD
+    - SDN
+    - TZA
+    - TGO
+    - TUN
+    - UGA
+    - ZMB
+    - ZWE
+
+  east africa:
+    - BDI
+    - COM
+    - DJI
+    - ERI
+    - ETH
+    - KEN
+    - MDG
+    - MWI
+    - MUS
+    - MOZ
+    - RWA
+    - SYC
+    - SOM
+    - SSD
+    - TZA
+    - UGA
+    - ZMB
+    - ZWE
+
+  west africa:
+    - BEN
+    - BFA
+    - CPV
+    - CIV
+    - GMB
+    - GHA
+    - GIN
+    - GNB
+    - LBR
+    - MLI
+    - MRT
+    - NER
+    - NGA
+    - SEN
+    - SLE
+    - TGO
+
+  southern africa:
+    - BWA
+    - SWZ
+    - LSO
+    - MOZ
+    - NAM
+    - ZAF
+    - ZMB
+    - ZWE
+
+  asia:
+    - AFG
+    - BGD
+    - BTN
+    - BRN
+    - KHM
+    - CHN
+    - IND
+    - IDN
+    - IRN
+    - IRQ
+    - ISR
+    - JPN
+    - JOR
+    - KAZ
+    - KWT
+    - KGZ
+    - LAO
+    - LBN
+    - MYS
+    - MDV
+    - MNG
+    - MMR
+    - NPL
+    - PRK
+    - OMN
+    - PAK
+    - PSE
+    - PHL
+    - QAT
+    - SAU
+    - SGP
+    - KOR
+    - LKA
+    - SYR
+    - TWN
+    - TJK
+    - THA
+    - TLS
+    - TUR
+    - TKM
+    - ARE
+    - UZB
+    - VNM
+    - YEM
+
+  southeast asia:
+    - BRN
+    - KHM
+    - IDN
+    - LAO
+    - MYS
+    - MMR
+    - PHL
+    - SGP
+    - THA
+    - TLS
+    - VNM
+
+  south asia:
+    - AFG
+    - BGD
+    - BTN
+    - IND
+    - MDV
+    - NPL
+    - PAK
+    - LKA
+
+  central asia:
+    - KAZ
+    - KGZ
+    - TJK
+    - TKM
+    - UZB
+
+  europe:
+    - ALB
+    - AND
+    - AUT
+    - BLR
+    - BEL
+    - BIH
+    - BGR
+    - HRV
+    - CYP
+    - CZE
+    - DNK
+    - EST
+    - FIN
+    - FRA
+    - DEU
+    - GRC
+    - HUN
+    - ISL
+    - IRL
+    - ITA
+    - LVA
+    - LIE
+    - LTU
+    - LUX
+    - MLT
+    - MDA
+    - MCO
+    - MNE
+    - NLD
+    - MKD
+    - NOR
+    - POL
+    - PRT
+    - ROU
+    - RUS
+    - SMR
+    - SRB
+    - SVK
+    - SVN
+    - ESP
+    - SWE
+    - CHE
+    - UKR
+    - GBR
+    - VAT
+
+  middle east:
+    - BHR
+    - EGY
+    - IRN
+    - IRQ
+    - ISR
+    - JOR
+    - KWT
+    - LBN
+    - OMN
+    - PSE
+    - QAT
+    - SAU
+    - SYR
+    - TUR
+    - ARE
+    - YEM
+
+  americas:
+    - ATG
+    - ARG
+    - BHS
+    - BRB
+    - BLZ
+    - BOL
+    - BRA
+    - CAN
+    - CHL
+    - COL
+    - CRI
+    - CUB
+    - DMA
+    - DOM
+    - ECU
+    - SLV
+    - GRD
+    - GTM
+    - GUY
+    - HTI
+    - HND
+    - JAM
+    - MEX
+    - NIC
+    - PAN
+    - PRY
+    - PER
+    - KNA
+    - LCA
+    - VCT
+    - SUR
+    - TTO
+    - URY
+    - USA
+    - VEN
+
+  latin america:
+    - ARG
+    - BOL
+    - BRA
+    - CHL
+    - COL
+    - CRI
+    - CUB
+    - DOM
+    - ECU
+    - SLV
+    - GTM
+    - HTI
+    - HND
+    - MEX
+    - NIC
+    - PAN
+    - PRY
+    - PER
+    - URY
+    - VEN
+
+  latin america and the caribbean:
+    - ATG
+    - ARG
+    - BHS
+    - BRB
+    - BLZ
+    - BOL
+    - BRA
+    - CHL
+    - COL
+    - CRI
+    - CUB
+    - DMA
+    - DOM
+    - ECU
+    - SLV
+    - GRD
+    - GTM
+    - GUY
+    - HTI
+    - HND
+    - JAM
+    - MEX
+    - NIC
+    - PAN
+    - PRY
+    - PER
+    - KNA
+    - LCA
+    - VCT
+    - SUR
+    - TTO
+    - URY
+    - VEN
+
+  caribbean:
+    - ATG
+    - BHS
+    - BRB
+    - CUB
+    - DMA
+    - DOM
+    - GRD
+    - HTI
+    - JAM
+    - KNA
+    - LCA
+    - VCT
+    - TTO
+
+  central america:
+    - BLZ
+    - CRI
+    - SLV
+    - GTM
+    - HND
+    - NIC
+    - PAN
+
+  oceania:
+    - AUS
+    - FJI
+    - KIR
+    - MHL
+    - FSM
+    - NRU
+    - NZL
+    - PLW
+    - PNG
+    - WSM
+    - SLB
+    - TON
+    - TUV
+    - VUT
+
+  pacific:
+    - FJI
+    - KIR
+    - MHL
+    - FSM
+    - NRU
+    - PLW
+    - PNG
+    - WSM
+    - SLB
+    - TON
+    - TUV
+    - VUT

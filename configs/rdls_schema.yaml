@@ -1,0 +1,312 @@
+# =============================================================================
+# RDLS v0.3 Schema Codelists & Structural Requirements
+# =============================================================================
+# Source: rdls_schema_v0.3.json
+# These are the RDLS-specific values — independent of any data source.
+# Closed codelists must be matched exactly; open codelists are extensible.
+# =============================================================================
+
+version: "0.3"
+
+# ---------------------------------------------------------------------------
+# REQUIRED FIELDS (at dataset level)
+# ---------------------------------------------------------------------------
+required_fields:
+  - id
+  - title
+  - risk_data_type
+  - attributions
+  - spatial
+  - license
+  - resources
+
+required_attribution_roles:
+  - publisher
+  - creator
+  - contact_point
+
+required_resource_fields:
+  - id
+  - title
+  - data_format
+  - access_modality
+
+# ---------------------------------------------------------------------------
+# CLOSED CODELISTS (strict — must match exactly)
+# ---------------------------------------------------------------------------
+codelists:
+
+  risk_data_type:
+    - hazard
+    - exposure
+    - vulnerability
+    - loss
+
+  hazard_type:
+    - coastal_flood
+    - convective_storm
+    - drought
+    - extreme_temperature
+    - flood
+    - wildfire
+    - strong_wind
+    - earthquake
+    - landslide
+    - tsunami
+    - volcanic
+
+  process_type:
+    - coastal_flood
+    - storm_surge
+    - tornado
+    - agricultural_drought
+    - hydrological_drought
+    - meteorological_drought
+    - socioeconomic_drought
+    - primary_rupture
+    - secondary_rupture
+    - ground_motion
+    - liquefaction
+    - extreme_cold
+    - extreme_heat
+    - fluvial_flood
+    - pluvial_flood
+    - groundwater_flood
+    - snow_avalanche
+    - landslide_general
+    - landslide_rockslide
+    - landslide_mudflow
+    - landslide_rockfall
+    - tsunami
+    - ashfall
+    - volcano_ballistics
+    - lahar
+    - lava
+    - pyroclastic_flow
+    - wildfire
+    - extratropical_cyclone
+    - tropical_cyclone
+
+  analysis_type:
+    - probabilistic
+    - deterministic
+    - empirical
+
+  function_approach:
+    - analytical
+    - empirical
+    - hybrid
+    - judgement
+
+  relationship_type:
+    - math_parametric
+    - math_bespoke
+    - discrete
+
+  exposure_category:
+    - agriculture
+    - buildings
+    - infrastructure
+    - population
+    - natural_environment
+    - economic_indicator
+    - development_index
+
+  taxonomy:
+    - GED4ALL
+    - MOVER
+    - GLIDE
+    - EMDAT
+    - USGS_EHP
+    - OED
+    - HAZUS
+    - EMS-98
+    - PAGER
+    - CDC-SVI
+    - INFORM
+    - Custom
+
+  metric_dimension:
+    - structure
+    - content
+    - product
+    - disruption
+    - population
+    - index
+
+  data_calculation_type:
+    - inferred
+    - observed
+    - simulated
+
+  impact_metric:
+    - damage_ratio
+    - mean_damage_ratio
+    - probability
+    - damage_index
+    - loss_ratio
+    - mean_loss_ratio
+    - downtime_vulnerability
+    - casualty_ratio_vulnerability
+    - economic_loss_value
+    - insured_loss_value
+    - casualty_count
+    - casualty_ratio_loss
+    - loss_annual_average_value
+    - loss_probable_maximum_value
+    - at_risk_value
+    - at_risk_tail_value
+    - downtime_loss
+    - asset_loss
+    - displaced_count
+    - exposure_to_hazard
+
+  impact_type:
+    - direct
+    - indirect
+    - total
+
+  data_format:
+    - "GeoTIFF (tif)"
+    - "Cloud Optimized GeoTIFF (cog)"
+    - "GRID (grd)"
+    - "NetCDF (nc)"
+    - "GRIB (grib)"
+    - "HDF5 (hdf5)"
+    - "Zarr (zarr)"
+    - "GeoPackage (gpkg)"
+    - "GeoJSON (geojson)"
+    - "FlatGeobuf (fgb)"
+    - "Shapefile (shp)"
+    - "File Geodatabase (gdb)"
+    - "KML (kml)"
+    - "CSV (csv)"
+    - "Parquet (parquet)"
+    - "Excel (xlsx)"
+    - "JSON (json)"
+    - "XML (xml)"
+    - "PDF (pdf)"
+    - "LAS (las)"
+    - "COPC (copc)"
+
+  access_modality:
+    - file_download
+    - download_page
+    - API
+    - OGC_API
+    - GEE_collection
+    - WMS
+    - WFS
+    - WCS
+    - STAC
+    - REST
+    - dashboard
+
+  roles:
+    - publisher
+    - creator
+    - contact_point
+    - world_bank_team_lead
+    - resource_provider
+    - custodian
+    - owner
+    - user
+    - distributor
+    - principal_investigator
+    - processor
+    - author
+    - sponsor
+    - co_author
+    - collaborator
+    - editor
+    - mediator
+    - rights_holder
+    - contributor
+    - funder
+    - stakeholder
+
+  spatial_scale:
+    - global
+    - regional
+    - national
+    - sub-national
+    - urban
+
+  location_gazetteers:
+    - "ISO 3166-2"
+    - "NUTS"
+    - "ISO 3166-1 alpha-2"
+    - "ISO 3166-1 alpha-3"
+    - "GEONAMES"
+    - "OSMN"
+    - "OSMR"
+
+  geometry_type:
+    - Point
+    - MultiPoint
+    - LineString
+    - MultiLineString
+    - Polygon
+    - MultiPolygon
+
+  frequency_distribution:
+    - poisson
+    - negative_binomial
+    - user_defined
+    - generalized_extreme_value
+
+  seasonality:
+    - uniform
+    - user_defined
+
+  loss_type:
+    - ground_up
+    - insured
+    - gross
+    - count
+    - net_precat
+    - net_postcat
+
+  source_type:
+    - dataset
+    - model
+
+# ---------------------------------------------------------------------------
+# OPEN CODELISTS (extensible — suggestions below)
+# ---------------------------------------------------------------------------
+open_codelists:
+
+  license:
+    - CC0-1.0
+    - CC-BY-4.0
+    - CC-BY-SA-4.0
+    - CC-BY-NC-SA-4.0
+    - "CC BY-ND 4.0"
+    - "CC BY-NC-ND 4.0"
+    - ODbL-1.0
+    - ODC-By-1.0
+    - PDDL-1.0
+    - Custom
+    - Copyright
+
+  intensity_measure:
+    - "PGA:g"
+    - "PGV:m/s"
+    - "MMI:-"
+    - "wd:m"
+    - "sws_10m:m/s"
+    - "AirTemp:C"
+
+  quantity_kind:
+    - area
+    - count
+    - monetary
+    - length
+    - time
+
+  damage_scale_name:
+    - EMS-98
+    - HAZUS-MH_MR4
+    - Vision_2000
+    - FEMA_356
+    - Milutinovic_Trendafiloski_2003

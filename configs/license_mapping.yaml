@@ -1,0 +1,37 @@
+# =============================================================================
+# License String → RDLS License Code Mapping
+# =============================================================================
+# Maps common license text strings found in metadata to RDLS license codes.
+# Keys are lowercased for case-insensitive matching.
+# Separate file because different sources use different license naming.
+# =============================================================================
+
+# Exact matches (key is lowercased source license string)
+license_map:
+  "public domain": "PDDL-1.0"
+  "pddl": "PDDL-1.0"
+  "pddl-1.0": "PDDL-1.0"
+  "odbl": "ODbL-1.0"
+  "odbl-1.0": "ODbL-1.0"
+  "open database license": "ODbL-1.0"
+  "odc-odbl": "ODbL-1.0"
+  "cc-by-4.0": "CC-BY-4.0"
+  "cc by 4.0": "CC-BY-4.0"
+  "cc-by": "CC-BY-4.0"
+  "creative commons attribution 4.0": "CC-BY-4.0"
+  "creative commons attribution international": "CC-BY-4.0"
+  "cc-by-sa-4.0": "CC-BY-SA-4.0"
+  "cc by-sa 4.0": "CC-BY-SA-4.0"
+  "cc-by-nc-sa-4.0": "CC-BY-NC-SA-4.0"
+  "cc-by-nc-4.0": "CC-BY-NC-SA-4.0"
+  "cc0": "CC0-1.0"
+  "cc0-1.0": "CC0-1.0"
+  "cc zero": "CC0-1.0"
+  "creative commons public domain": "CC0-1.0"
+  "odc-by": "ODC-By-1.0"
+  "odc-by-1.0": "ODC-By-1.0"
+  "copyright": "Copyright"
+  "other": "Custom"
+
+# Fallback: if no exact match, use this
+default: "Custom"
