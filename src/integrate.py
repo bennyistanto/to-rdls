@@ -113,24 +113,18 @@ def build_integrated_id(
     iso3_codes: List[str],
     org_name: str,
     org_slug: str,
-    hazard_types: List[str],
-    exposure_categories: List[str],
     naming_config: Dict[str, Any],
     title: str = "",
 ) -> str:
     """Build the integrated record ID using the new naming convention.
 
     Wrapper around naming.build_rdls_id() for use in the integration step.
-    After HEVL merge, the final component list and extracted items are known,
-    so this function produces the definitive record ID.
 
     Args:
         components: Final risk_data_type list after HEVL merge.
         iso3_codes: ISO3 country codes from spatial block.
         org_name: Organization display name.
         org_slug: Organization slug.
-        hazard_types: Hazard types extracted from hazard block.
-        exposure_categories: Exposure categories extracted from exposure block.
         naming_config: Loaded naming config dict.
         title: Dataset title for slug generation.
 
@@ -142,8 +136,6 @@ def build_integrated_id(
         iso3_codes=iso3_codes,
         org_name=org_name,
         org_slug=org_slug,
-        hazard_types=hazard_types,
-        exposure_categories=exposure_categories,
         config=naming_config,
         title=title,
     )
@@ -220,6 +212,23 @@ def extract_org_from_attributions(attributions: List[Dict[str, Any]]) -> str:
 # ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
+
+def build_hdx_provenance_note(dataset_url: str) -> str:
+    """Build standard HDX provenance note.
+
+    Format: [Source: ...HDX); Original dataset: URL]
+
+    Args:
+        dataset_url: Full HDX dataset URL.
+
+    Returns:
+        Formatted provenance string.
+    """
+    return (
+        "[Source: This metadata record was automatically extracted from the "
+        f"Humanitarian Data Exchange (HDX); Original dataset: {dataset_url}]"
+    )
+
 
 def append_provenance(
     record: Dict[str, Any],
@@ -334,8 +343,6 @@ def integrate_record(
 
     # Rebuild ID if naming config provided
     if naming_config:
-        hz_types = extract_hazard_types_from_block(hazard_block)
-        exp_cats = extract_exposure_categories_from_block(exposure_block)
         iso3_list = extract_iso3_from_spatial(record.get("spatial", {}))
         org_name = extract_org_from_attributions(record.get("attributions", []))
         title = record.get("title", "")
@@ -345,8 +352,6 @@ def integrate_record(
             iso3_codes=iso3_list,
             org_name=org_name,
             org_slug="",  # slug not available in integrated record
-            hazard_types=hz_types,
-            exposure_categories=exp_cats,
             naming_config=naming_config,
             title=title,
         )

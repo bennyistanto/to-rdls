@@ -2,15 +2,15 @@
 RDLS record ID and filename generation.
 
 Builds structured IDs in the format:
-    rdls_{types}-{iso3}{org}_{titleslug}_{items}
+    rdls_{types}-{iso3}{org}_{titleslug}
 
 Where:
     types      = Component codes (single: hzd/exp/vln/lss;
                  multi: single-letter concat in HEVL order, e.g. he, hev, hevl)
-    iso3       = Lowercase ISO3 codes concatenated without separator (3-char fixed width)
+    iso3       = Lowercase ISO3 codes concatenated without separator (3-char fixed width);
+                 omitted for regional/global datasets (>max_countries)
     org        = Org abbreviation appended after ISO3 (from YAML lookup or auto-truncate)
     titleslug  = Slugified dataset title (country + org + stop words removed, max 20 chars)
-    items      = 2-char hazard/exposure item codes concatenated without separator
 
 Source-independent. Loads naming convention from configs/naming.yaml.
 """
@@ -87,20 +87,30 @@ def encode_component_types(components: List[str], config: Dict[str, Any]) -> str
 # Country encoding
 # ---------------------------------------------------------------------------
 
-def encode_countries(iso3_codes: List[str]) -> str:
+def encode_countries(
+    iso3_codes: List[str],
+    config: Optional[Dict[str, Any]] = None,
+) -> str:
     """Encode country ISO3 codes into the countries segment.
 
     Concatenates 3-char lowercase ISO3 codes without separator, sorted
-    alphabetically for determinism.
+    alphabetically for determinism. When the number of unique codes
+    exceeds ``max_countries`` (default 5), returns "" (empty) so that
+    only the org segment remains in the ID.
 
     Args:
         iso3_codes: List of ISO3 country codes (e.g. ["URY", "ITA"]).
+        config: Optional naming config dict.  Reads countries.max_countries.
 
     Returns:
-        Concatenated country string (e.g. "itaury"), or "" if global.
+        Concatenated country string (e.g. "itaury"), or "" if no codes
+        or if the dataset is regional/global (>max_countries).
     """
     if not iso3_codes:
         return ""
+
+    max_countries = (config or {}).get("countries", {}).get("max_countries", 5)
+
     # Deduplicate, sort, lowercase, take first 3 chars
     seen = set()
     clean = []
@@ -109,6 +119,10 @@ def encode_countries(iso3_codes: List[str]) -> str:
         if low and len(low) == 3 and low.isalpha() and low not in seen:
             seen.add(low)
             clean.append(low)
+
+    if len(clean) > max_countries:
+        return ""
+
     return "".join(clean)
 
 
@@ -259,7 +273,7 @@ def slugify_title(
         4. Tokenize into alphanumeric words
         5. Remove stop words (from config)
         6. Concatenate without separators
-        7. Truncate to max_length (default 20)
+        7. Truncate to max_length (default 25)
 
     Args:
         title: Dataset title string.
@@ -284,8 +298,18 @@ def slugify_title(
         # Word-boundary removal for multi-word names too
         t = re.sub(r'\b' + re.escape(name) + r'\b', ' ', t)
 
+    # 2b. Strip country name aliases (variants, adjectives, abbreviations)
+    aliases_cfg = config.get("country_name_aliases", {})
+    for code in (iso3_codes or []):
+        for alias in aliases_cfg.get(code.upper(), []):
+            a = unicodedata.normalize("NFKD", alias)
+            a = a.encode("ascii", "ignore").decode("ascii").lower()
+            if a and len(a) >= 4:
+                t = re.sub(r'\b' + re.escape(a) + r'\b', ' ', t)
+
     # 3. Strip org name and abbreviation
     org_lower = (org_name or "").strip().lower()
+    org_ascii = ""
     if org_lower:
         # Normalize org name to ASCII for matching
         org_ascii = unicodedata.normalize("NFKD", org_lower)
@@ -297,6 +321,14 @@ def slugify_title(
     org_short = resolve_shortname(org_name, org_slug, config).lower()
     if org_short and org_short != "unknown":
         t = re.sub(r'\b' + re.escape(org_short) + r'\b', ' ', t)
+
+    # 3c. Strip individual words from org name (catches partial matches
+    #     like "heidelberg" from "HeiGIT Heidelberg Institute...")
+    if org_ascii:
+        org_words = re.findall(r'[a-z]{4,}', org_ascii)
+        for w in org_words:
+            if w not in stop_words:
+                t = re.sub(r'\b' + re.escape(w) + r'\b', ' ', t)
 
     # 4. Tokenize: extract alphanumeric words
     words = re.findall(r'[a-z0-9]+', t)
@@ -322,49 +354,39 @@ def build_rdls_id(
     iso3_codes: List[str],
     org_name: str,
     org_slug: str,
-    hazard_types: List[str],
-    exposure_categories: List[str],
     config: Dict[str, Any],
     title: str = "",
 ) -> str:
     """Build the full RDLS record ID.
 
-    Format: rdls_{types}-{iso3}{org}_{titleslug}_{items}
+    Format: rdls_{types}-{iso3}_{org}_{titleslug}
 
-    The iso3 and org are concatenated in a single segment (no separator).
-    ISO3 codes are fixed 3-char width; org follows immediately after.
-    Parsing: chunk 3-char ISO3 codes from left, remainder = org.
+    The iso3 and org are separated by underscore.
+    ISO3 codes are fixed 3-char width; org follows after underscore.
+    For regional/global datasets (>max_countries), iso3 is omitted
+    and the format becomes: rdls_{types}-{org}_{titleslug}
 
     Args:
         components: RDLS risk_data_type list (e.g. ["hazard", "exposure"]).
         iso3_codes: ISO3 country codes (e.g. ["URY"]).
         org_name: Organization display name.
         org_slug: Organization slug/machine name.
-        hazard_types: Detected hazard types (e.g. ["flood"]).
-        exposure_categories: Detected exposure categories (e.g. ["buildings"]).
         config: Naming config dict.
         title: Dataset title for slug generation.
 
     Returns:
-        RDLS record ID string (e.g. "rdls_hzd-uryucra_floodhazardmap_fl").
+        RDLS record ID string (e.g. "rdls_hzd-ury_ucra_floodhazardmap").
     """
     types_seg = encode_component_types(components, config)
-    countries_seg = encode_countries(iso3_codes)
+    countries_seg = encode_countries(iso3_codes, config)
     shortname_seg = resolve_shortname(org_name, org_slug, config)
     title_seg = slugify_title(title, iso3_codes, org_name, org_slug, config)
-    items_seg = encode_items(hazard_types, exposure_categories, config)
 
-    # Merged segment: {iso3}{org} (concatenated, no separator)
-    geo_org = f"{countries_seg}{shortname_seg}"
+    # Segment: {iso3}_{org} (underscore separator) or just {org} if no countries
+    geo_org = f"{countries_seg}_{shortname_seg}" if countries_seg else shortname_seg
 
-    # Build: rdls_{types}-{geo_org}_{titleslug}[_{items}]
-    prefix = f"rdls_{types_seg}-{geo_org}"
-
-    parts = [prefix, title_seg]
-    if items_seg:
-        parts.append(items_seg)
-
-    return "_".join(parts)
+    # Build: rdls_{types}-{geo_org}_{titleslug}
+    return f"rdls_{types_seg}-{geo_org}_{title_seg}"
 
 
 # ---------------------------------------------------------------------------
@@ -409,11 +431,10 @@ _ID_PATTERN = re.compile(
     r'^rdls_'
     r'([a-z]{1,4})'          # types segment (1-4 chars: h, he, hev, hevl, hzd, etc.)
     r'-'                       # dash separator
-    r'([a-z0-9_]*?)'          # geo_org segment (iso3+org, non-greedy)
-    r'_'                       # underscore separator
-    r'([a-z0-9]+?)'           # title_slug (alphanumeric, non-greedy)
-    r'(?:_([a-z]{2,}))?'      # optional items segment (2+ lowercase alpha)
-    r'(?:__([a-f0-9]{8}))?'   # optional collision suffix
+    r'(.+?)'                   # geo_org segment (iso3_org, may contain _)
+    r'_'                       # underscore separator before title
+    r'([a-z0-9]+)'            # title_slug (alphanumeric, no underscores)
+    r'(?:__([a-f0-9]{8}))?'   # optional collision suffix (__hex8)
     r'$'
 )
 
@@ -424,11 +445,10 @@ def parse_rdls_id(
 ) -> Dict[str, str]:
     """Parse an RDLS ID back into its component segments.
 
-    Format: rdls_{types}-{iso3}{org}_{titleslug}_{items}
+    Format: rdls_{types}-{iso3}_{org}_{titleslug}
 
-    The geo_org segment is parsed by chunking 3-char ISO3 codes from the
-    left. Each chunk is validated against the iso3_to_name mapping in config.
-    Once a chunk is not a valid ISO3, the remainder is the org shortname.
+    The geo_org segment uses underscore between iso3 and org.
+    For regional/global datasets, geo_org is just the org (no ISO3 prefix).
 
     Args:
         rdls_id: Full RDLS ID string.
@@ -436,7 +456,7 @@ def parse_rdls_id(
 
     Returns:
         Dict with keys: types, geo_org, iso3, iso3_list, org, title_slug,
-        items, items_list, collision.
+        collision.
         If parsing fails, returns {"raw": rdls_id}.
     """
     m = _ID_PATTERN.match(rdls_id or "")
@@ -445,28 +465,31 @@ def parse_rdls_id(
 
     geo_org_str = m.group(2)
     title_slug = m.group(3) or ""
-    items_str = m.group(4) or ""
-
-    # Parse geo_org: chunk 3-char ISO3 codes from left
-    iso3_list = []
-    pos = 0
     cfg = config or {}
-    while pos + 3 <= len(geo_org_str):
-        candidate = geo_org_str[pos:pos + 3]
-        if candidate.isalpha() and is_valid_iso3(candidate, cfg):
-            iso3_list.append(candidate.upper())
-            pos += 3
-        else:
-            break
-    org_part = geo_org_str[pos:]
 
-    # Parse items (2-char chunks)
-    items = []
-    if items_str:
-        for i in range(0, len(items_str), 2):
-            chunk = items_str[i:i + 2]
-            if len(chunk) == 2:
-                items.append(chunk)
+    # Parse geo_org: split on first underscore to get iso3_part vs org_part
+    iso3_list = []
+    org_part = geo_org_str
+
+    if "_" in geo_org_str:
+        iso3_candidate, org_candidate = geo_org_str.split("_", 1)
+        # Validate: iso3_candidate should be 3-char chunks of valid ISO3
+        pos = 0
+        valid = True
+        while pos + 3 <= len(iso3_candidate):
+            chunk = iso3_candidate[pos:pos + 3]
+            if chunk.isalpha() and is_valid_iso3(chunk, cfg):
+                iso3_list.append(chunk.upper())
+                pos += 3
+            else:
+                valid = False
+                break
+        if valid and pos == len(iso3_candidate) and iso3_list:
+            org_part = org_candidate
+        else:
+            # No valid ISO3 prefix — entire string is org
+            iso3_list = []
+            org_part = geo_org_str
 
     return {
         "types": m.group(1),
@@ -475,7 +498,5 @@ def parse_rdls_id(
         "iso3_list": iso3_list,
         "org": org_part,
         "title_slug": title_slug,
-        "items": items_str,
-        "items_list": items,
-        "collision": m.group(5) or "",
+        "collision": m.group(4) or "",
     }

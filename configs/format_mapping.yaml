@@ -69,6 +69,17 @@ format_aliases:
   LAZ: "LAS (las)"
   COPC: "COPC (copc)"
 
+  # Newly mapped formats (2026-02-14)
+  "ARC/INFO GRID": "GRID (grd)"           # ESRI raster grid
+  "STATA DATA FILE": "CSV (csv)"          # Tabular statistical data (.dta)
+  "ZIPPED TIF": "GeoTIFF (tif)"           # ZIP'd GeoTIFF
+  SQLITE: "GeoPackage (gpkg)"             # SpatiaLite / spatial DB
+  "ERDAS IMAGE": "GeoTIFF (tif)"          # Raster imagery (.img)
+  DBF: "CSV (csv)"                         # dBASE tabular data
+  DOC: "PDF (pdf)"                         # Document format
+  "SPSS SAVE FILE": "CSV (csv)"           # SPSS statistical data
+  "ACCESS DATABASE": "CSV (csv)"          # MS Access tabular data
+
 # ---------------------------------------------------------------------------
 # Formats to skip (non-data formats)
 # ---------------------------------------------------------------------------
@@ -80,7 +91,6 @@ skip_formats:
   - GIF
   - EMF
   - SVG
-  - "WEB APP"
   - RAR
   - QGIS
   - "ESRI ARCMAP PROJECT FILE"
@@ -135,3 +145,19 @@ service_url_patterns:
   - pattern: '/wcs\b'
     format: "GeoTIFF (tif)"
     modality: WCS
+
+# ---------------------------------------------------------------------------
+# Service formats → (data_format, access_modality)
+# When the source format string matches a key, set both format and modality.
+# Keys are UPPERCASED source format strings.
+# ---------------------------------------------------------------------------
+service_formats:
+  GEOSERVICE:
+    format: "GeoJSON (geojson)"
+    modality: REST
+  API:
+    format: "JSON (json)"
+    modality: API
+  "WEB APP":
+    format: "CSV (csv)"
+    modality: download_page

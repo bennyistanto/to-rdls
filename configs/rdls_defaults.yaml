@@ -582,3 +582,26 @@ single_indicator_insufficient:
   - DISPLACEMENT
   - POP_DENSITY
   - SOCIO_VULN
+
+# ---------------------------------------------------------------------------
+# Schema gap fields: fields NOT in the JSON schema $defs but intentionally
+# kept because they appear in all example records and will likely be added
+# in a future schema revision.
+# Key = $def name from schema, value = list of gap field names to preserve.
+# Used by the auto-fix engine Pass 4 to avoid stripping these fields.
+# ---------------------------------------------------------------------------
+schema_gap_fields:
+  Exposure_item:
+    - id
+  VulnerabilityFunction:
+    - id
+  FragilityFunction:
+    - id
+  DamageToLossFunction:
+    - id
+  EngineeringDemandFunction:
+    - id
+  SocioEconomicIndex:
+    - id
+  Metric:
+    - currency

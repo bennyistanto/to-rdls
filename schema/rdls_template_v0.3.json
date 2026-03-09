@@ -1,0 +1,247 @@
+{
+  "datasets": [
+    {
+      "id": "rdls_hzd-entity_datasetname",
+      "title": "The title of the dataset.",
+      "description": "A short description of the dataset.",
+      "risk_data_type": [
+        "hazard"
+      ],
+      "version": "1",
+      "purpose": "Dataset purpose.",
+      "project": {
+        "name": "Project name",
+        "url": "https://www.projectname.com/"
+      },
+      "details": "Additional details about the dataset.",
+      "spatial": {
+        "scale": "national",
+        "countries": [
+          "ABW"
+        ],
+        "bbox": [
+          -70.11,
+          12.38,
+          -69.83,
+          12.65
+        ],
+        "gazetteer_entries": [
+          {
+            "scheme": "GEONAMES",
+            "description": "Geonames",
+            "uri": "geonames.org/3577279/aruba.html",
+            "id": "gazetteer_1"
+          }
+        ]
+      },
+      "license": "CC0-1.0",
+      "attributions": [
+        {
+          "id": "attribution_publisher",
+          "role": "publisher",
+          "entity": {
+            "name": "Name",
+            "email": "info@thewebsite.com",
+            "url": "https://datalocation.org/records/8147088"
+          }
+        },
+        {
+          "id": "attribution_creator",
+          "role": "creator",
+          "entity": {
+            "name": "Name",
+            "email": "info@thewebsite.com",
+            "url": "https://datalocation.org/records/8147088"
+          }
+        },
+        {
+          "id": "attribution_contact",
+          "role": "contact_point",
+          "entity": {
+            "name": "Name",
+            "email": "info@thewebsite.com",
+            "url": "https://datalocation.org/records/8147088"
+          }
+        },
+        {
+          "id": "attribution_funder",
+          "role": "funder",
+          "entity": {
+            "name": "Name",
+            "email": "info@thewebsite.com",
+            "url": "https://datalocation.org/records/8147088"
+          }
+        }
+      ],
+      "sources": [
+        {
+          "name": "",
+          "description": "",
+          "lineage": "",
+          "url": "",
+          "type": "dataset",
+          "component": "hazard",
+          "license": "CC0-1.0",
+          "id": "source_1"
+        },
+        {
+          "name": "",
+          "description": "",
+          "lineage": "",
+          "url": "",
+          "type": "dataset",
+          "component": "model",
+          "license": "CC0-1.0",
+          "id": "source_2"
+        },
+        {
+          "name": "",
+          "description": "",
+          "lineage": "",
+          "url": "",
+          "type": "dataset",
+          "component": "exposure",
+          "license": "Copyright",
+          "id": "source_3"
+        },
+        {
+          "name": "",
+          "description": "",
+          "lineage": "",
+          "url": "",
+          "type": "model",
+          "component": "exposure",
+          "license": "MIT",
+          "id": "source_4"
+        }
+      ],
+      "referenced_by": [
+        {
+          "author_names": [
+            "Author Name",
+            "Author Name"
+          ],
+          "name": "Title",
+          "date_published": "2024-06-11",
+          "url": "https://zenodo.org/records/11582369",
+          "doi": "https://doi.org/10.5281/zenodo.7732392",
+          "id": "reference_1"
+        }
+      ],
+      "resources": [
+        {
+          "title": "",
+          "description": "",
+          "data_format": "GeoTIFF (tif)",
+          "access_modality": "file_download",
+          "spatial_resolution": "",
+          "coordinate_system": "",
+          "access_url": "",
+          "download_url": "",
+          "temporal": {
+            "start": "",
+            "end": "",
+            "duration": "",
+            "temporal_resolution": ""
+          },
+          "id": "resource_9tME2LWG"
+        }
+      ],
+      "hazard": {
+        "event_sets": [
+          {
+            "id": "event_set_drought_occurrence",
+            "analysis_type": "probabilistic",
+            "frequency_distribution": "",
+            "seasonality": "",
+            "calculation_method": "simulated",
+            "event_count": "",
+            "occurrence_range": "",
+            "hazards": [
+              {
+                "id": "drought_hazard",
+                "disaster_identifiers": [],
+                "occurrence.deterministic.thresholds": [],
+                "type": "drought",
+                "hazard_process": "meteorological_drought",
+                "intensity_measure": "",
+                "trigger": {
+                  "type": "",
+                  "processes": ""
+                }
+              }
+            ],
+            "events": [
+              {
+                "id": "drought_occurrence_historical",
+                "calculation_method": "simulated",
+                "description": "Annual probability of drought occurrence for historical scenario across 4 time periods (2020, 2030, 2050, 2080). Includes 4 GCMs (GFDL-ESM2M, HadGEM2-ES, IPSL-CM5A-LR, MIROC5) combined with 9 hydrological models (CLM4.5, H08, JULES-W1, LPJmL, MATSIRO, MPI-HM, ORCHIDEE, PCR-GLOBWB, WaterGAP2), totaling 144 model-scenario combinations at 0.5° resolution.",
+                "hazard": {
+                  "id": "drought_hazard",
+                  "type": "drought",
+                  "hazard_process": "meteorological_drought",
+                  "intensity_measure": ""
+                },
+                "occurrence": {
+                  "probabilistic": {
+                    "return_period": "",
+                    "event_rate": "",
+                    "probability": {
+                      "value": "",
+                      "span": ""
+                    }
+                  },
+                  "empirical": {
+                    "temporal": {
+                      "start": "2020",
+                      "end": "2080",
+                      "duration": "P60Y",
+                      "temporal_resolution": ""
+                    },
+                    "return_period": ""
+                  },
+                  "deterministic": {
+                    "index_criteria": ""
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "exposure": [
+        {
+          "id": "exposure_drought_rural_population",
+          "category": "population",
+          "taxonomy": "GED4ALL",
+          "metrics": [
+            {
+              "id": "metric_drought_rural_population",
+              "dimension": "population",
+              "quantity_kind": "count",
+              "currency": ""
+            }
+          ]
+        }
+      ],
+      "vulnerability": {
+        "functions": {
+          "vulnerability": [],
+          "fragility": [],
+          "damage_to_loss": [],
+          "engineering_demand": []
+        },
+        "socio_economic": []
+      },
+      "loss": {
+        "losses": []
+      },      
+      "links": [
+        {
+          "href": "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",
+          "rel": "describedby"
+        }
+      ]
+    }
+  ]
+}

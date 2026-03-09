@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JKAN Loss Display - Mockup Comparison</title>
+  <!-- Bootstrap 3.3.6 to match JKAN production -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+  <style>
+    /* ===== Existing JKAN styles (from rdl-jkan/css/main.css) ===== */
+    .dataset-details th {
+      width: 30%;
+      white-space: normal;
+      vertical-align: top;
+    }
+    .dataset-details td {
+      width: 70%;
+      word-wrap: break-word;
+    }
+
+    /* ===== Page layout ===== */
+    body { padding: 20px 0 60px; }
+    .section-label {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 3px;
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .label-before { background: #f2dede; color: #a94442; }
+    .label-after { background: #dff0d8; color: #3c763d; }
+    .label-alt { background: #d9edf7; color: #31708f; }
+    hr.section-divider {
+      border-top: 3px solid #337ab7;
+      margin: 40px 0 30px;
+    }
+    .intro-box {
+      background: #f5f5f5;
+      border-left: 4px solid #337ab7;
+      padding: 15px 20px;
+      margin-bottom: 30px;
+    }
+    .approach-note {
+      background: #fcf8e3;
+      border: 1px solid #faebcc;
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    /* ===== Proposed: Collapsible loss groups ===== */
+    .loss-group {
+      margin-bottom: 4px;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+    }
+    .loss-group-summary {
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: 600;
+      background-color: #f9f9f9;
+      list-style: revert;
+    }
+    .loss-group-summary:hover {
+      background-color: #f0f0f0;
+    }
+    .loss-group-summary .badge {
+      margin-left: 6px;
+      font-weight: normal;
+    }
+    .loss-group-descriptions {
+      margin: 0;
+      padding: 6px 10px 6px 30px;
+      font-size: 90%;
+    }
+    .loss-group-descriptions li {
+      margin-bottom: 3px;
+    }
+
+    /* ===== Alternative B: Bootstrap accordion ===== */
+    .panel-loss .panel-heading {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    .panel-loss .panel-title {
+      font-size: 14px;
+    }
+    .panel-loss .panel-body {
+      padding: 8px 15px;
+    }
+    .panel-loss .panel-body ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 90%;
+    }
+    .panel-loss .panel-body li {
+      margin-bottom: 3px;
+    }
+
+    /* ===== Alternative C: Truncation ===== */
+    .truncated-text {
+      max-height: 120px;
+      overflow: hidden;
+      position: relative;
+    }
+    .truncated-text.expanded {
+      max-height: none;
+    }
+    .truncated-text .fade-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, white);
+    }
+    .truncated-text.expanded .fade-overlay {
+      display: none;
+    }
+    .toggle-truncation {
+      cursor: pointer;
+      color: #337ab7;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .toggle-truncation:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <h1>JKAN Loss Display <small>Mockup Comparison</small></h1>
+    <div class="intro-box">
+      <p><strong>Context:</strong> DesInventar datasets contain 50-136 individual loss records per country. The current JKAN mapper concatenates all loss descriptions into a single comma-separated string, producing an unreadable wall of text.</p>
+      <p><strong>Dataset:</strong> Albania (DesInventar) &mdash; 111 loss records across 9 hazard types, 4,659 disaster events (1973-2015).</p>
+      <p>This mockup shows the current state and three proposed alternatives. Click the collapsible sections to test interactivity.</p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 1: CURRENT STATE (BEFORE) -->
+    <!-- ============================================================ -->
+    <hr class="section-divider">
+    <span class="section-label label-before">CURRENT: Wall of Text</span>
+    <h2>RDL Loss Info</h2>
+    <p class="text-muted">This is what the Albania loss page looks like today. The Description cell contains all 111 loss entry descriptions concatenated with commas.</p>
+
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>Hazard Type</th>
+        <td>Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Process Type</th>
+        <td>Extratropical Cyclone, Extreme Cold, Extreme Heat, Fluvial Flood, Ground Motion, Landslide (General), Mudflow, Liquefaction, Meteorological Drought, Pluvial Flood, Snow Avalanche, Storm Surge, Tornado, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td style="font-size: 12px; line-height: 1.4;">
+          Observed deaths directly caused by disaster events from convective storm (HAILSTORM, THUNDERSTORM) events in Albania. DesInventar records: 54 events with data out of 217 total convective storm events (1976-2014)., Observed deaths directly caused by disaster events from earthquake (EARTHQUAKE) events in Albania. DesInventar records: 14 events with data out of 185 total earthquake events (2014-2014)., Observed deaths directly caused by disaster events from extreme temperature (COLD WAVE, FROST) events in Albania. DesInventar records: 10 events with data out of 126 total extreme temperature events (1990-2012)., Observed deaths directly caused by disaster events from extreme temperature (HEAT WAVE) events in Albania. DesInventar records: 9 events with data out of 22 total extreme temperature events (1998-2002)., Observed deaths directly caused by disaster events from flood (FLASH FLOOD, FLOOD) events in Albania. DesInventar records: 44 events with data out of 949 total flood events (2002-2015)., Observed deaths directly caused by disaster events from flood (RAINS) events in Albania. DesInventar records: 3 events with data out of 217 total flood events (2007-2013)., Observed deaths directly caused by disaster events from landslide (AVALANCHE) events in Albania. DesInventar records: 17 events with data out of 25 total landslide events (2010-2012)., Observed deaths directly caused by disaster events from landslide (LANDSLIDE) events in Albania. DesInventar records: 40 events with data out of 629 total landslide events (1995-2013)., Observed deaths directly caused by disaster events from strong wind (SNOWSTORM, STORM, WINDSTORM) events in Albania. DesInventar records: 45 events with data out of 891 total strong wind events (1973-2012)., Observed deaths directly caused by disaster events from wildfire (FIRE, FOREST FIRE) events in Albania. DesInventar records: 13 events with data out of 1,383 total wildfire events (2003-2014)., Observed educational facilities destroyed or affected from earthquake (EARTHQUAKE) events in Albania. DesInventar records: 8 events., Observed educational facilities destroyed or affected from flood (FLASH FLOOD, FLOOD) events in Albania. DesInventar records: 13 events., Observed hectares of crops/woods destroyed or affected from convective storm (HAILSTORM, THUNDERSTORM) events in Albania. DesInventar records: 79 events., Observed hectares of crops/woods destroyed or affected from drought (DROUGHT) events in Albania. DesInventar records: 1 events., Observed hectares of crops/woods destroyed or affected from extreme temperature (COLD WAVE, FROST) events in Albania. DesInventar records: 55 events., Observed hectares of crops/woods destroyed or affected from flood (FLASH FLOOD, FLOOD) events in Albania. DesInventar records: 474 events., Observed hectares of crops/woods destroyed or affected from flood (RAINS) events in Albania. DesInventar records: 49 events., Observed hectares of crops/woods destroyed or affected from landslide (LANDSLIDE) events in Albania. DesInventar records: 17 events., Observed hectares of crops/woods destroyed or affected from strong wind (SNOWSTORM, STORM, WINDSTORM) events in Albania. DesInventar records: 50 events., Observed hectares of crops/woods destroyed or affected from wildfire (FIRE, FOREST FIRE) events in Albania. DesInventar records: 716 events., Observed homes destroyed beyond habitability from convective storm events. DesInventar records: 2 events., Observed homes destroyed beyond habitability from earthquake events. DesInventar records: 66 events., Observed homes destroyed beyond habitability from flood events. DesInventar records: 139 events., Observed homes destroyed beyond habitability from landslide events. DesInventar records: 349 events., Observed homes destroyed beyond habitability from strong wind events. DesInventar records: 108 events., Observed homes destroyed beyond habitability from wildfire events. DesInventar records: 46 events., Observed homes with non-structural damage from coastal flood (SURGE) events. DesInventar records: 2 events., Observed homes with non-structural damage from convective storm events. DesInventar records: 2 events., Observed homes with non-structural damage from earthquake events. DesInventar records: 92 events., Observed homes with non-structural damage from extreme temperature events. DesInventar records: 2 events., Observed homes with non-structural damage from flood events. DesInventar records: 248 events., Observed homes with non-structural damage from landslide events. DesInventar records: 120 events., Observed homes with non-structural damage from strong wind events. DesInventar records: 86 events., Observed homes with non-structural damage from wildfire events. DesInventar records: 60 events., Observed livestock lost from convective storm events. DesInventar records: 18 events., Observed livestock lost from extreme temperature events. DesInventar records: 11 events., Observed livestock lost from flood events. DesInventar records: 99 events., Observed livestock lost from landslide events. DesInventar records: 6 events., Observed livestock lost from strong wind events. DesInventar records: 65 events., Observed livestock lost from wildfire events. DesInventar records: 11 events., Observed transport networks destroyed from earthquake events. DesInventar records: 1 event., Observed transport networks destroyed from flood events. DesInventar records: 23 events., Observed transport networks destroyed from landslide events. DesInventar records: 30 events., Observed transport networks destroyed from strong wind events. DesInventar records: 4 events., Observed persons indirectly affected from earthquake events. DesInventar records: 8 events., Observed persons indirectly affected from flood events. DesInventar records: 19 events., Observed persons indirectly affected from landslide events. DesInventar records: 5 events., Observed persons indirectly affected from strong wind events. DesInventar records: 55 events., Observed persons indirectly affected from wildfire events. DesInventar records: 4 events., Observed persons injured from convective storm events. DesInventar records: 19 events., Observed persons injured from earthquake events. DesInventar records: 18 events., ... <em>(and ~60 more descriptions)</em>
+        </td>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <td><em>(empty)</em></td>
+      </tr>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 2: PROPOSED SOLUTION A (Recommended) -->
+    <!-- ============================================================ -->
+    <hr class="section-divider">
+    <span class="section-label label-after">PROPOSED A: HTML5 Collapsible Groups (Recommended)</span>
+    <h2>RDL Loss Info</h2>
+    <div class="approach-note">
+      <strong>Approach:</strong> Uses native HTML5 <code>&lt;details&gt;/&lt;summary&gt;</code> elements. Zero JavaScript dependency. Grouped by hazard type with count badges. Click any group to expand. Works in all modern browsers, degrades gracefully (shows expanded) in older ones.
+    </div>
+
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>Hazard Type</th>
+        <td>Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Process Type</th>
+        <td>Extratropical Cyclone, Extreme Cold, Extreme Heat, Fluvial Flood, Ground Motion, Landslide (General), Mudflow, Liquefaction, Meteorological Drought, Pluvial Flood, Snow Avalanche, Storm Surge, Tornado, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td>111 loss records across 9 hazard types</td>
+      </tr>
+      <tr>
+        <th>Total Loss Records</th>
+        <td>111</td>
+      </tr>
+      <tr>
+        <th>Loss Records Detail</th>
+        <td>
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Coastal Flood
+              <span class="badge" style="background-color: #5cb85c;">2</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Homes with non-structural damage &mdash; 2 events out of 7 (1975-2012)</li>
+              <li>Persons whose goods/services suffered serious damage &mdash; 1 event</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Convective Storm
+              <span class="badge" style="background-color: #5cb85c;">8</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 54 events out of 217 (1976-2014)</li>
+              <li>Persons injured &mdash; 19 events out of 217 (1976-2014)</li>
+              <li>Homes destroyed &mdash; 2 events out of 217</li>
+              <li>Homes with non-structural damage &mdash; 2 events out of 217</li>
+              <li>Hectares of crops/woods destroyed &mdash; 79 events out of 217</li>
+              <li>Livestock lost &mdash; 18 events out of 217</li>
+              <li>Economic losses (local currency) &mdash; 20 events out of 217</li>
+              <li>Persons with serious damage to goods/services &mdash; 1 event</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Drought
+              <span class="badge" style="background-color: #5cb85c;">1</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Hectares of crops/woods destroyed &mdash; 1 event out of 1 (1993)</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Earthquake
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 14 events out of 185 (2014)</li>
+              <li>Persons injured &mdash; 18 events out of 185</li>
+              <li>Persons evacuated &mdash; 5 events out of 185</li>
+              <li>Persons with serious damage to goods/services &mdash; 26 events out of 185</li>
+              <li>Persons with serious damage (liquefaction) &mdash; 2 events out of 4</li>
+              <li>Persons indirectly affected &mdash; 8 events out of 185</li>
+              <li>Homes destroyed &mdash; 66 events out of 185</li>
+              <li>Homes with non-structural damage &mdash; 92 events out of 185</li>
+              <li>Educational facilities affected &mdash; 8 events out of 185</li>
+              <li>Health facilities affected &mdash; 5 events out of 185</li>
+              <li>Transport networks destroyed &mdash; 1 event out of 185</li>
+              <li>Hectares of crops/woods destroyed &mdash; (no data)</li>
+              <li>Economic losses (local currency) &mdash; 78 events out of 185</li>
+              <li>Livestock lost &mdash; (no data)</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Extreme Temperature
+              <span class="badge" style="background-color: #5cb85c;">8</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (cold wave, frost) &mdash; 10 events out of 126 (1990-2012)</li>
+              <li>Deaths (heat wave) &mdash; 9 events out of 22 (1998-2002)</li>
+              <li>Persons injured (cold wave, frost) &mdash; 10 events out of 126</li>
+              <li>Persons injured (heat wave) &mdash; 11 events out of 22</li>
+              <li>Homes with non-structural damage &mdash; 2 events out of 126</li>
+              <li>Hectares of crops/woods destroyed &mdash; 55 events out of 126</li>
+              <li>Livestock lost (cold wave, frost) &mdash; 10 events out of 126</li>
+              <li>Economic losses (local currency) &mdash; 5 events out of 126</li>
+            </ul>
+          </details>
+
+          <details class="loss-group" open>
+            <summary class="loss-group-summary">
+              Flood
+              <span class="badge" style="background-color: #5cb85c;">18</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (flash flood, flood) &mdash; 44 events out of 949 (2002-2015)</li>
+              <li>Deaths (rains) &mdash; 3 events out of 217 (2007-2013)</li>
+              <li>Persons injured (flash flood, flood) &mdash; 18 events out of 949</li>
+              <li>Persons injured (rains) &mdash; 2 events out of 217</li>
+              <li>Persons missing &mdash; 2 events</li>
+              <li>Persons evacuated &mdash; 78 events</li>
+              <li>Persons relocated &mdash; 4 events</li>
+              <li>Persons indirectly affected &mdash; 19 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 171 events</li>
+              <li>Homes destroyed &mdash; 139 events</li>
+              <li>Homes with non-structural damage &mdash; 248 events</li>
+              <li>Educational facilities affected &mdash; 15 events</li>
+              <li>Health facilities affected &mdash; 2 events</li>
+              <li>Transport networks destroyed &mdash; 23 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 523 events</li>
+              <li>Livestock lost &mdash; 99 events</li>
+              <li>Economic losses (USD) &mdash; 4 events</li>
+              <li>Economic losses (local currency) &mdash; 282 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Landslide
+              <span class="badge" style="background-color: #5cb85c;">16</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (avalanche) &mdash; 17 events out of 25 (2010-2012)</li>
+              <li>Deaths (landslide) &mdash; 40 events out of 629 (1995-2013)</li>
+              <li>Persons injured &mdash; 23 events</li>
+              <li>Persons missing &mdash; 2 events</li>
+              <li>Persons relocated &mdash; 5 events</li>
+              <li>Persons evacuated &mdash; 29 events</li>
+              <li>Persons indirectly affected &mdash; 5 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 250 events</li>
+              <li>Homes destroyed &mdash; 349 events</li>
+              <li>Homes with non-structural damage &mdash; 120 events</li>
+              <li>Educational facilities affected &mdash; 7 events</li>
+              <li>Transport networks destroyed &mdash; 30 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 19 events</li>
+              <li>Livestock lost &mdash; 6 events</li>
+              <li>Economic losses (USD) &mdash; 1 event</li>
+              <li>Economic losses (local currency) &mdash; 308 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Strong Wind
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 45 events out of 891 (1973-2012)</li>
+              <li>Persons injured &mdash; 26 events out of 891</li>
+              <li>Persons missing &mdash; 4 events</li>
+              <li>Persons evacuated &mdash; 16 events</li>
+              <li>Persons indirectly affected &mdash; 55 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 88 events</li>
+              <li>Homes destroyed &mdash; 108 events</li>
+              <li>Homes with non-structural damage &mdash; 86 events</li>
+              <li>Educational facilities affected &mdash; 28 events</li>
+              <li>Health facilities affected &mdash; 1 event</li>
+              <li>Transport networks destroyed &mdash; 4 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 50 events</li>
+              <li>Livestock lost &mdash; 65 events</li>
+              <li>Economic losses (local currency) &mdash; 130 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Wildfire
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 13 events out of 1,383 (2003-2014)</li>
+              <li>Persons injured &mdash; 6 events out of 1,383</li>
+              <li>Persons relocated &mdash; 5 events</li>
+              <li>Persons evacuated &mdash; 5 events</li>
+              <li>Persons indirectly affected &mdash; 4 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 37 events</li>
+              <li>Homes destroyed &mdash; 46 events</li>
+              <li>Homes with non-structural damage &mdash; 60 events</li>
+              <li>Educational facilities affected &mdash; 1 event</li>
+              <li>Health facilities affected &mdash; 1 event</li>
+              <li>Hectares of crops/woods destroyed &mdash; 716 events</li>
+              <li>Livestock lost &mdash; 11 events</li>
+              <li>Economic losses (USD) &mdash; 23 events</li>
+              <li>Economic losses (local currency) &mdash; 65 events</li>
+            </ul>
+          </details>
+        </td>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <td><em>(empty)</em></td>
+      </tr>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 3: ALTERNATIVE B - Bootstrap Accordion -->
+    <!-- ============================================================ -->
+    <hr class="section-divider">
+    <span class="section-label label-alt">ALTERNATIVE B: Bootstrap 3 Accordion Panels</span>
+    <h2>RDL Loss Info</h2>
+    <div class="approach-note">
+      <strong>Approach:</strong> Uses Bootstrap 3 <code>panel-group</code> with <code>data-toggle="collapse"</code>. Requires jQuery (already loaded in JKAN). More visually integrated with Bootstrap theme but heavier markup. Only one panel open at a time (accordion behavior).
+    </div>
+
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>Hazard Type</th>
+        <td>Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td>111 loss records across 9 hazard types</td>
+      </tr>
+      <tr>
+        <th>Total Loss Records</th>
+        <td>111</td>
+      </tr>
+      <tr>
+        <th>Loss Records Detail</th>
+        <td>
+          <div class="panel-group" id="accordionLoss" role="tablist" aria-multiselectable="true">
+
+            <div class="panel panel-default panel-loss">
+              <div class="panel-heading" role="tab" id="hAcc1" data-toggle="collapse" data-parent="#accordionLoss" data-target="#cAcc1" aria-expanded="false" aria-controls="cAcc1">
+                <h4 class="panel-title">
+                  <i class="fa fa-chevron-right"></i> Coastal Flood <span class="badge" style="background-color: #5cb85c;">2</span>
+                </h4>
+              </div>
+              <div id="cAcc1" class="panel-collapse collapse" role="tabpanel" aria-labelledby="hAcc1">
+                <div class="panel-body">
+                  <ul>
+                    <li>Homes with non-structural damage &mdash; 2 events out of 7</li>
+                    <li>Persons with serious damage &mdash; 1 event</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel panel-default panel-loss">
+              <div class="panel-heading" role="tab" id="hAcc2" data-toggle="collapse" data-parent="#accordionLoss" data-target="#cAcc2" aria-expanded="false" aria-controls="cAcc2">
+                <h4 class="panel-title">
+                  <i class="fa fa-chevron-right"></i> Convective Storm <span class="badge" style="background-color: #5cb85c;">8</span>
+                </h4>
+              </div>
+              <div id="cAcc2" class="panel-collapse collapse" role="tabpanel" aria-labelledby="hAcc2">
+                <div class="panel-body">
+                  <ul>
+                    <li>Deaths &mdash; 54 events out of 217 (1976-2014)</li>
+                    <li>Persons injured &mdash; 19 events</li>
+                    <li>Homes destroyed &mdash; 2 events</li>
+                    <li>Homes with non-structural damage &mdash; 2 events</li>
+                    <li>Hectares of crops/woods destroyed &mdash; 79 events</li>
+                    <li>Livestock lost &mdash; 18 events</li>
+                    <li>Economic losses (local currency) &mdash; 20 events</li>
+                    <li>Persons with serious damage &mdash; 1 event</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel panel-default panel-loss">
+              <div class="panel-heading" role="tab" id="hAcc3" data-toggle="collapse" data-parent="#accordionLoss" data-target="#cAcc3" aria-expanded="true" aria-controls="cAcc3">
+                <h4 class="panel-title">
+                  <i class="fa fa-chevron-down"></i> Flood <span class="badge" style="background-color: #5cb85c;">18</span>
+                </h4>
+              </div>
+              <div id="cAcc3" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="hAcc3">
+                <div class="panel-body">
+                  <ul>
+                    <li>Deaths (flash flood, flood) &mdash; 44 events out of 949 (2002-2015)</li>
+                    <li>Deaths (rains) &mdash; 3 events out of 217 (2007-2013)</li>
+                    <li>Persons injured &mdash; 20 events</li>
+                    <li>Persons missing &mdash; 2 events</li>
+                    <li>Persons evacuated &mdash; 78 events</li>
+                    <li>Persons relocated &mdash; 4 events</li>
+                    <li>Persons indirectly affected &mdash; 19 events</li>
+                    <li>Persons with serious damage &mdash; 171 events</li>
+                    <li>Homes destroyed &mdash; 139 events</li>
+                    <li>Homes with non-structural damage &mdash; 248 events</li>
+                    <li>Educational facilities affected &mdash; 15 events</li>
+                    <li>Health facilities affected &mdash; 2 events</li>
+                    <li>Transport networks destroyed &mdash; 23 events</li>
+                    <li>Hectares of crops/woods destroyed &mdash; 523 events</li>
+                    <li>Livestock lost &mdash; 99 events</li>
+                    <li>Economic losses (USD) &mdash; 4 events</li>
+                    <li>Economic losses (local currency) &mdash; 282 events</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel panel-default panel-loss">
+              <div class="panel-heading" role="tab" id="hAcc4" data-toggle="collapse" data-parent="#accordionLoss" data-target="#cAcc4" aria-expanded="false" aria-controls="cAcc4">
+                <h4 class="panel-title">
+                  <i class="fa fa-chevron-right"></i> Earthquake <span class="badge" style="background-color: #5cb85c;">14</span>
+                </h4>
+              </div>
+              <div id="cAcc4" class="panel-collapse collapse" role="tabpanel" aria-labelledby="hAcc4">
+                <div class="panel-body">
+                  <ul>
+                    <li>Deaths &mdash; 14 events out of 185</li>
+                    <li>Persons injured &mdash; 18 events</li>
+                    <li>Homes destroyed &mdash; 66 events</li>
+                    <li>Homes with non-structural damage &mdash; 92 events</li>
+                    <li>Educational facilities affected &mdash; 8 events</li>
+                    <li>Health facilities affected &mdash; 5 events</li>
+                    <li>Economic losses (local currency) &mdash; 78 events</li>
+                    <li>... and 7 more metrics</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel panel-default panel-loss">
+              <div class="panel-heading" role="tab" id="hAcc5" data-toggle="collapse" data-parent="#accordionLoss" data-target="#cAcc5" aria-expanded="false" aria-controls="cAcc5">
+                <h4 class="panel-title">
+                  <i class="fa fa-chevron-right"></i> Landslide <span class="badge" style="background-color: #5cb85c;">16</span>
+                </h4>
+              </div>
+              <div id="cAcc5" class="panel-collapse collapse" role="tabpanel" aria-labelledby="hAcc5">
+                <div class="panel-body">
+                  <ul>
+                    <li>Deaths (avalanche) &mdash; 17 events out of 25</li>
+                    <li>Deaths (landslide) &mdash; 40 events out of 629</li>
+                    <li>Homes destroyed &mdash; 349 events</li>
+                    <li>... and 13 more metrics</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-muted" style="font-size:12px; margin-top:4px;"><em>+ Strong Wind (14), Wildfire (14), Extreme Temperature (8), Drought (1) &mdash; collapsed for brevity</em></p>
+
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 4: ALTERNATIVE C - Truncation with Expand -->
+    <!-- ============================================================ -->
+    <hr class="section-divider">
+    <span class="section-label label-alt">ALTERNATIVE C: Smart Truncation with Expand</span>
+    <h2>RDL Loss Info</h2>
+    <div class="approach-note">
+      <strong>Approach:</strong> Keep the concatenated text but truncate visually with a fade overlay and "Show more" link. Simplest change (CSS + minimal JS in mapper). No structural changes to data. However, the expanded state is still a wall of text &mdash; it just starts hidden.
+    </div>
+
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>Hazard Type</th>
+        <td>Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td>
+          <div class="truncated-text" id="truncDemo">
+            Observed deaths directly caused by disaster events from convective storm (HAILSTORM, THUNDERSTORM) events in Albania. DesInventar records: 54 events with data out of 217 total convective storm events (1976-2014). Observed deaths directly caused by disaster events from earthquake (EARTHQUAKE) events in Albania. DesInventar records: 14 events with data out of 185 total earthquake events (2014-2014). Observed deaths directly caused by disaster events from extreme temperature (COLD WAVE, FROST) events in Albania. DesInventar records: 10 events with data out of 126 total extreme temperature events (1990-2012). Observed deaths directly caused by disaster events from flood (FLASH FLOOD, FLOOD) events in Albania. DesInventar records: 44 events with data out of 949 total flood events (2002-2015). Observed hectares of crops/woods destroyed or affected from convective storm events. DesInventar records: 79 events. Observed hectares of crops/woods destroyed or affected from flood events. DesInventar records: 523 events. Observed homes destroyed beyond habitability from earthquake events. DesInventar records: 66 events. Observed homes destroyed beyond habitability from flood events. DesInventar records: 139 events. Observed homes destroyed beyond habitability from landslide events. DesInventar records: 349 events. Observed homes with non-structural damage from flood events. DesInventar records: 248 events. Observed livestock lost from flood events. DesInventar records: 99 events. Observed transport networks destroyed from landslide events. DesInventar records: 30 events. Observed persons with serious damage to goods/services from flood events. DesInventar records: 171 events. Observed persons evacuated from flood events. DesInventar records: 78 events. Observed economic losses in local currency from landslide events. DesInventar records: 308 events. <em>... and ~95 more descriptions</em>
+            <div class="fade-overlay"></div>
+          </div>
+          <div class="toggle-truncation" onclick="document.getElementById('truncDemo').classList.toggle('expanded'); this.textContent = this.textContent.includes('Show') ? 'Show less' : 'Show all 111 loss descriptions...'">
+            Show all 111 loss descriptions...
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- COMPARISON TABLE -->
+    <!-- ============================================================ -->
+    <hr class="section-divider">
+    <h2>Comparison of Approaches</h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th style="width:20%">Criteria</th>
+          <th style="width:27%">A: HTML5 Details/Summary<br><small class="text-success">(Recommended)</small></th>
+          <th style="width:27%">B: Bootstrap Accordion</th>
+          <th style="width:26%">C: Smart Truncation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>JS dependency</strong></td>
+          <td><span class="text-success">None</span></td>
+          <td>jQuery + Bootstrap collapse</td>
+          <td>Minimal (toggle class)</td>
+        </tr>
+        <tr>
+          <td><strong>Grouped by hazard</strong></td>
+          <td><span class="text-success">Yes</span></td>
+          <td><span class="text-success">Yes</span></td>
+          <td><span class="text-danger">No (flat text)</span></td>
+        </tr>
+        <tr>
+          <td><strong>Multiple sections open</strong></td>
+          <td><span class="text-success">Yes (independent)</span></td>
+          <td><span class="text-warning">One at a time (accordion)</span></td>
+          <td>N/A</td>
+        </tr>
+        <tr>
+          <td><strong>Mapper changes</strong></td>
+          <td>Add <code>loss_groups</code> field</td>
+          <td>Add <code>loss_groups</code> field</td>
+          <td>None (CSS only)</td>
+        </tr>
+        <tr>
+          <td><strong>Schema changes</strong></td>
+          <td>Add 2 fields + template ref</td>
+          <td>Add 2 fields + template ref</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <td><strong>Template complexity</strong></td>
+          <td>~15 lines Liquid</td>
+          <td>~30 lines Liquid + JS init</td>
+          <td>~5 lines CSS</td>
+        </tr>
+        <tr>
+          <td><strong>Accessibility</strong></td>
+          <td><span class="text-success">Native browser support</span></td>
+          <td>Good (ARIA attributes)</td>
+          <td><span class="text-warning">Limited</span></td>
+        </tr>
+        <tr>
+          <td><strong>Graceful degradation</strong></td>
+          <td><span class="text-success">Shows expanded in old browsers</span></td>
+          <td><span class="text-danger">Hidden without JS</span></td>
+          <td><span class="text-danger">Hidden without CSS</span></td>
+        </tr>
+        <tr>
+          <td><strong>Backward compatible</strong></td>
+          <td><span class="text-success">Yes (field absent = no render)</span></td>
+          <td><span class="text-success">Yes</span></td>
+          <td><span class="text-success">Yes (CSS-only)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Footer -->
+    <hr>
+    <p class="text-muted"><small>
+      Mockup for rdl-jkan issue discussion. Data from Albania DesInventar dataset (<code>rdls_lss-albundrr_desinventar</code>).
+      Created 2026-02-28.
+    </small></p>
+  </div>
+
+  <!-- Bootstrap 3 JS for accordion demo -->
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script>
+    // Toggle chevron icons on accordion
+    $('.panel-loss .panel-heading').on('click', function() {
+      var icon = $(this).find('.fa');
+      if (icon.hasClass('fa-chevron-right')) {
+        icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+      } else {
+        icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+      }
+    });
+  </script>
+</body>
+</html>

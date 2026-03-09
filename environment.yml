@@ -1,0 +1,32 @@
+name: to-rdls
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  # --- Geospatial core (conda handles C libs) ---
+  - gdal>=3.8
+  - rasterio>=1.3
+  - fiona>=1.9
+  - geopandas>=0.14
+  - shapely>=2.0
+  - pyproj>=3.6
+  # --- Scientific / data ---
+  - pandas>=2.1
+  - numpy>=1.26
+  - openpyxl>=3.1
+  - xlrd>=2.0          # legacy .xls reading
+  - netcdf4>=1.6
+  - xarray>=2024.1
+  # --- Document reading ---
+  - pillow>=10.0
+  - pip
+  - pip:
+    - python-docx>=1.1
+    - PyMuPDF>=1.24     # fitz — PDF reading
+    # --- RDLS pipeline ---
+    - pyyaml>=6.0
+    - jsonschema>=4.20
+    - rapidfuzz>=3.5    # fuzzy codelist matching
+    # --- MCP server ---
+    - mcp>=1.2.0        # Claude Code MCP server SDK

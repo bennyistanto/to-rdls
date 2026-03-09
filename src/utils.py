@@ -9,6 +9,7 @@ import json
 import re
 import shutil
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -220,3 +221,165 @@ def clean_directory(directory: Union[str, Path], label: str = "",
         directory.mkdir(parents=True, exist_ok=True)
     else:
         raise ValueError(f"Unknown cleanup mode: {mode!r}")
+
+
+# ---------------------------------------------------------------------------
+# Nested dict/list navigation
+# ---------------------------------------------------------------------------
+
+def navigate_path(obj: Any, parts: List[str]):
+    """Navigate to the parent of a nested field by dot-path parts.
+
+    Args:
+        obj: Root dict/list structure.
+        parts: Path segments (e.g. ["exposure", "0", "metrics", "1", "currency"]).
+
+    Returns:
+        (parent, key) tuple where parent[key] is the target, or (None, None)
+        if the path is invalid.
+    """
+    current = obj
+    for part in parts[:-1]:
+        if isinstance(current, dict):
+            if part in current:
+                current = current[part]
+            else:
+                return None, None
+        elif isinstance(current, list):
+            try:
+                current = current[int(part)]
+            except (ValueError, IndexError):
+                return None, None
+        else:
+            return None, None
+    last_key = parts[-1]
+    if isinstance(current, list):
+        try:
+            last_key = int(last_key)
+        except ValueError:
+            return None, None
+    return current, last_key
+
+
+def remove_at_path(obj: Any, parts: List[str]) -> bool:
+    """Remove a field at a nested dot-path. Returns True if removed."""
+    parent, key = navigate_path(obj, parts)
+    if parent is None:
+        return False
+    if isinstance(parent, dict) and key in parent:
+        del parent[key]
+        return True
+    return False
+
+
+def set_at_path(obj: Any, parts: List[str], value: Any) -> bool:
+    """Set a value at a nested dot-path. Returns True if set."""
+    parent, key = navigate_path(obj, parts)
+    if parent is None:
+        return False
+    if isinstance(parent, dict):
+        parent[key] = value
+        return True
+    elif isinstance(parent, list) and isinstance(key, int):
+        parent[key] = value
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Temporal parsing
+# ---------------------------------------------------------------------------
+
+# Patterns for relative date expressions (from ai-config / MCP pipelines)
+_RELATIVE_PATTERNS = [
+    (re.compile(r'(\d+)\s*days?\s*ago', re.IGNORECASE), lambda m: f"P{m.group(1)}D"),
+    (re.compile(r'(\d+)\s*weeks?\s*ago', re.IGNORECASE), lambda m: f"P{int(m.group(1)) * 7}D"),
+    (re.compile(r'(\d+)\s*months?\s*ago', re.IGNORECASE), lambda m: f"P{m.group(1)}M"),
+    (re.compile(r'(\d+)\s*years?\s*ago', re.IGNORECASE), lambda m: f"P{m.group(1)}Y"),
+]
+
+
+def parse_hdx_temporal(
+    dataset_date: str,
+    update_freq: str = "",
+) -> Dict[str, Optional[str]]:
+    """Parse HDX dataset_date to RDLS temporal fields.
+
+    Handles:
+    - Absolute ranges: ``[2017-05-23T00:00:00 TO 2017-05-23T23:59:59]``
+    - Open-ended: ``[2021-12-16T00:00:00 TO *]``
+    - Relative text: ``"90 days ago"``, ``"1 month ago"`` (from MCP pipelines)
+    - Rolling-window detection: frequent updates + short date range -> duration
+
+    Args:
+        dataset_date: Raw HDX dataset_date string.
+        update_freq: HDX data_update_frequency string (e.g. "Every week").
+
+    Returns:
+        Dict with keys ``start``, ``end``, ``duration`` (ISO 8601).
+        Values are ``None`` when not applicable.
+    """
+    result: Dict[str, Optional[str]] = {"start": None, "end": None, "duration": None}
+
+    if not dataset_date or not dataset_date.strip():
+        return result
+
+    raw = dataset_date.strip()
+
+    # --- Handle relative text expressions (from MCP / ai-config) ---
+    for pattern, dur_fn in _RELATIVE_PATTERNS:
+        m = pattern.search(raw)
+        if m:
+            result["duration"] = dur_fn(m)
+            return result  # Duration only, no start/end
+
+    # --- Handle [start TO end] format ---
+    m = re.match(r"\[(\S+)\s+TO\s+(\S+)\]", raw)
+    if not m:
+        return result
+
+    raw_start, raw_end = m.group(1), m.group(2)
+
+    # Parse start
+    try:
+        start_dt = datetime.fromisoformat(raw_start)
+        result["start"] = start_dt.strftime("%Y-%m-%d")
+    except ValueError:
+        return result
+
+    # Parse end
+    if raw_end == "*":
+        # Open-ended: start only, no end/duration
+        return result
+
+    try:
+        end_dt = datetime.fromisoformat(raw_end)
+        result["end"] = end_dt.strftime("%Y-%m-%d")
+
+        # Rolling-window / live-service detection
+        delta_days = (end_dt - start_dt).days
+        freq_lower = (update_freq or "").lower()
+        is_frequent = any(kw in freq_lower for kw in ("day", "week", "every"))
+
+        if is_frequent and delta_days <= 1:
+            # Live service: frequent updates + single-day or zero-day range
+            # The dataset_date is meaningless (registration date); omit temporal
+            return {"start": None, "end": None, "duration": None}
+        elif is_frequent and 80 <= delta_days <= 100:
+            # Rolling ~90 day window
+            return {"start": None, "end": None, "duration": "P90D"}
+        elif is_frequent and 25 <= delta_days <= 35:
+            # Rolling ~1 month window
+            return {"start": None, "end": None, "duration": "P1M"}
+        else:
+            # Static range — compute duration
+            if delta_days >= 365:
+                result["duration"] = f"P{delta_days // 365}Y"
+            elif delta_days >= 30:
+                result["duration"] = f"P{delta_days // 30}M"
+            elif delta_days > 0:
+                result["duration"] = f"P{delta_days}D"
+    except ValueError:
+        pass
+
+    return result

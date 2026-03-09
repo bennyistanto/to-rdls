@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .utils import (
-    as_list, load_yaml, looks_like_url, sanitize_text,
-    slugify_token, split_semicolon_list,
+    as_list, load_yaml, looks_like_url, parse_hdx_temporal,
+    sanitize_text, slugify_token, split_semicolon_list,
 )
 from .spatial import country_name_to_iso3, infer_spatial, load_spatial_config
 
@@ -33,11 +33,16 @@ def load_format_config(yaml_path: Union[str, Path]) -> Dict[str, Any]:
             entry["format"],
             entry["modality"],
         ))
+    # Build service_formats dict: UPPER_KEY -> (format, modality)
+    svc_fmts = {}
+    for key, val in cfg.get("service_formats", {}).items():
+        svc_fmts[key.upper()] = (val["format"], val["modality"])
     return {
         "format_aliases": cfg.get("format_aliases", {}),
         "skip_formats": set(cfg.get("skip_formats", [])),
         "zip_inner_formats": cfg.get("zip_inner_formats", []),
         "service_url_patterns": service_patterns,
+        "service_formats": svc_fmts,
     }
 
 
@@ -254,10 +259,19 @@ def build_resources(
 
     Args:
         fields: Common field structure with 'resources' key.
+                Also reads 'dataset_date' and 'data_update_frequency' for
+                temporal metadata on resources.
         format_config: Format mapping config.
     """
     resources = []
     service_patterns = format_config.get("service_url_patterns", []) if format_config else []
+    service_formats = format_config.get("service_formats", {}) if format_config else {}
+
+    # Parse dataset-level temporal for resource annotation
+    temporal = parse_hdx_temporal(
+        fields.get("dataset_date", ""),
+        fields.get("data_update_frequency", ""),
+    )
 
     for r in fields.get("resources", []):
         r_id = r.get("id", str(uuid.uuid4())[:8])
@@ -266,13 +280,23 @@ def build_resources(
         r_fmt = r.get("format", "")
         r_desc = r.get("description", "")
 
-        # Check for service URL first
-        svc = detect_service_url(r_url, service_patterns) if service_patterns else None
-        if svc:
-            rdls_fmt, modality = svc
+        r_fmt_upper = (r_fmt or "").strip().upper()
+
+        # Check service formats first (GEOSERVICE, API, WEB APP)
+        if r_fmt_upper in service_formats:
+            rdls_fmt, modality = service_formats[r_fmt_upper]
+            # Refine using URL patterns (e.g., ArcGIS REST)
+            svc = detect_service_url(r_url, service_patterns) if service_patterns else None
+            if svc:
+                rdls_fmt, modality = svc
         else:
-            rdls_fmt = map_data_format(r_fmt, r_url, r_name, format_config)
-            modality = "file_download"
+            # Check for service URL patterns
+            svc = detect_service_url(r_url, service_patterns) if service_patterns else None
+            if svc:
+                rdls_fmt, modality = svc
+            else:
+                rdls_fmt = map_data_format(r_fmt, r_url, r_name, format_config)
+                modality = "file_download"
 
         if rdls_fmt is None:
             continue  # Skip non-data resources
@@ -288,9 +312,78 @@ def build_resources(
         if r_desc:
             resource["description"] = sanitize_text(r_desc)
 
+        # Add temporal metadata from dataset-level date range
+        temporal_data = {k: v for k, v in temporal.items() if v}
+        if temporal_data:
+            resource["temporal"] = temporal_data
+
         resources.append(resource)
 
     return resources
+
+
+# ---------------------------------------------------------------------------
+# Details + referenced_by
+# ---------------------------------------------------------------------------
+
+def build_details(
+    fields: Dict[str, Any],
+) -> Tuple[Optional[str], Optional[List[Dict[str, Any]]]]:
+    """Build RDLS details field and extract referenced_by from methodology URLs.
+
+    Composites: caveats, methodology/methodology_other.
+    Temporal coverage, update frequency, and last modified are excluded.
+
+    If methodology text contains URLs, they are extracted into referenced_by
+    entries and replaced with '(see referenced_by)' in the text.
+
+    Args:
+        fields: Common field structure with optional 'caveats',
+                'methodology', 'methodology_other' keys.
+
+    Returns:
+        Tuple of (details_text_or_None, referenced_by_list_or_None).
+    """
+    parts: List[str] = []
+    referenced_by: Optional[List[Dict[str, Any]]] = None
+
+    # Caveats
+    caveats = sanitize_text(fields.get("caveats", "") or "")
+    if caveats:
+        parts.append(f"Caveats: {caveats}")
+
+    # Methodology
+    methodology = sanitize_text(fields.get("methodology", "") or "")
+    methodology_other = sanitize_text(fields.get("methodology_other", "") or "")
+    meth_text = methodology_other or (
+        methodology if methodology and methodology.lower() not in ("other", "") else ""
+    )
+
+    if meth_text:
+        # Extract URLs -> referenced_by
+        urls = re.findall(r'https?://[^\s<>"\')\]]+', meth_text)
+        if urls:
+            referenced_by = []
+            for i, url in enumerate(urls):
+                clean_url = url.rstrip(".,;:")
+                meth_text = meth_text.replace(clean_url, "(see referenced_by)")
+                referenced_by.append({
+                    "id": f"reference_{i + 1}",
+                    "name": "Methodology documentation",
+                    "author_names": [],
+                    "date_published": "",
+                    "url": clean_url,
+                    "doi": "",
+                })
+        parts.append(f"Methodology: {meth_text}")
+
+    if not parts:
+        return None, None
+
+    result = ". ".join(parts)
+    if result and result[-1] not in ".!?":
+        result += "."
+    return result, referenced_by
 
 
 # ---------------------------------------------------------------------------
@@ -389,8 +482,6 @@ def build_rdls_record(
             iso3_codes=iso3_codes,
             org_name=org_name,
             org_slug=org_slug,
-            hazard_types=hazard_types or [],
-            exposure_categories=exposure_categories or [],
             config=naming_config,
             title=title,
         )
@@ -410,6 +501,13 @@ def build_rdls_record(
     notes = sanitize_text(fields.get("notes", ""))
     if notes:
         record["description"] = notes
+
+    # Details + referenced_by from caveats/methodology
+    details, referenced_by = build_details(fields)
+    if details:
+        record["details"] = details
+    if referenced_by:
+        record["referenced_by"] = referenced_by
 
     license_url = fields.get("license_url", "")
     if license_url:

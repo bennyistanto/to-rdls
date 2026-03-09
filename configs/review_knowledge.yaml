@@ -1,0 +1,578 @@
+# =============================================================================
+# Review Knowledge Base v1.0
+# =============================================================================
+# All pattern dictionaries used by src/review.py for automated data review.
+# Edit this file to add new hazard types, model software, or naming patterns
+# without touching Python code.
+#
+# YAML regex notes:
+#   - Use single-quoted strings for regex to avoid backslash escaping issues
+#   - Patterns are compiled with re.IGNORECASE at load time
+#   - Named groups (?P<name>...) are supported in naming_patterns
+# =============================================================================
+
+
+# ---------------------------------------------------------------------------
+# Section 1: HEVL Signal Patterns
+# Used by: classify_group() via _match_signals()
+# ---------------------------------------------------------------------------
+hevl_signals:
+  hazard:
+    flood:
+      patterns:
+        - 'flood'
+        - 'inundation'
+        - 'hmax'
+        - 'depth.*water'
+        - 'water.*depth'
+        - 'fluvial'
+        - 'pluvial'
+        - 'coastal.*flood'
+        - 'storm.*surge'
+        - 'riverine'
+        - 'rain(?:fall)?.*flood'
+        - 'discharge'
+      hazard_type: flood
+    earthquake:
+      patterns:
+        - 'earthquake'
+        - 'seismic'
+        - 'ground.*motion'
+        - '\bpga\b'
+        - 'spectral.*accel'
+        - '\bsa\s*\('
+        - 'gmpe'
+        - 'liquefaction'
+        - 'rupture'
+        - 'magnitude'
+      hazard_type: earthquake
+    cyclone:
+      patterns:
+        - 'cyclone'
+        - 'typhoon'
+        - 'hurricane'
+        - 'strong.*wind'
+        - 'wind.*speed'
+      hazard_type: strong_wind
+    drought:
+      patterns:
+        - 'drought'
+        - 'spi\b'
+        - 'spei\b'
+        - 'dry.*spell'
+        - 'precip.*deficit'
+      hazard_type: drought
+    landslide:
+      patterns:
+        - 'landslide'
+        - 'debris.*flow'
+        - 'slope.*stabil'
+        - 'mass.*movement'
+      hazard_type: landslide
+    tsunami:
+      patterns:
+        - 'tsunami'
+        - 'tidal.*wave'
+      hazard_type: tsunami
+    wildfire:
+      patterns:
+        - 'wildfire'
+        - 'bush.*fire'
+        - 'forest.*fire'
+        - 'fire.*spread'
+      hazard_type: wildfire
+    volcanic:
+      patterns:
+        - 'volcan'
+        - 'ash.*fall'
+        - 'lahar'
+        - 'pyroclastic'
+        - 'lava'
+      hazard_type: volcanic
+    extreme_temperature:
+      patterns:
+        - 'heat.*wave'
+        - 'cold.*wave'
+        - 'extreme.*temp'
+      hazard_type: extreme_temperature
+
+  exposure:
+    buildings:
+      patterns:
+        - 'building'
+        - 'footprint'
+        - 'structure'
+        - '\bbldid\b'
+        - 'repvalue'
+        - 'occupancy'
+        - 'storey'
+        - 'floor.*area'
+        - 'residential'
+        - 'commercial.*build'
+        - 'taxonomy'
+        - 'portfolio'
+        - '\bptf\b'
+        - 'ged4all'
+        - '\btiv\b'
+        - 'insurable.*value'
+        - 'replacement.*cost'
+        - 'modelled.*exposure'
+        - 'exposure.*model'
+      category: buildings
+    population:
+      patterns:
+        - 'population'
+        - 'census'
+        - 'household'
+        - 'individual'
+        - 'demographic'
+        - 'resident'
+        - 'inhabitant'
+        - '\bhhid\b'
+      category: population
+    infrastructure:
+      patterns:
+        - 'infrastructure'
+        - '\broad\b'
+        - 'bridge'
+        - 'power.*line'
+        - 'water.*supply'
+        - 'sewage'
+        - 'network'
+        - 'edge.*node'
+        - 'hospital'
+        - 'school'
+        - 'health.*facilit'
+      category: infrastructure
+    agriculture:
+      patterns:
+        - 'crop'
+        - 'agricultural'
+        - 'farm'
+        - 'land.*use'
+        - 'irrigation'
+        - 'livestock'
+      category: agriculture
+
+  vulnerability:
+    patterns:
+      - 'fragility'
+      - 'vulnerability'
+      - 'damage.*function'
+      - 'damage.*ratio'
+      - 'damage.*state'
+      - '\bds[1-4]\b'
+      - 'loss.*ratio'
+      - 'susceptib'
+      - 'vulnerability.*index'
+      - '\bmuds\d'
+      - '\bsigmads\d'
+      - 'intensity.*damage'
+      - 'depth.*damage'
+      - 'damage.*curve'
+
+  loss:
+    patterns:
+      - 'impact.*result'
+      - 'damage.*assess'
+      - 'economic.*loss'
+      - 'casualt'
+      - 'fatalit'
+      - 'affected.*pop'
+      - 'annual.*loss'
+      - '\baal\b'
+      - '\bpml\b'
+      - 'loss.*estimate'
+      - 'impact.*assess'
+      - 'risk.*result'
+      - 'total.*damage'
+      - 'total.*risk'
+      # Catastrophe modeling loss outputs (JBA, OasisLMF, etc.)
+      - 'aalcalc'
+      - 'eltcalc'
+      - 'pltcalc'
+      - 'leccalc'
+      - '\boep\b'
+      - '\baep\b'
+      - 'exceedance.*prob'
+      - 'event.*loss.*table'
+      - 'period.*loss'
+      - 'probabilistic.*analysis.*result'
+      - 'loss.*map'
+      - 'flood.*loss'
+
+  dem:
+    patterns:
+      - '\bdem\b'
+      - '\bdtm\b'
+      - 'elevation'
+      - 'terrain'
+      - 'nasadem'
+      - 'srtm'
+      - 'aw3d'
+      - 'alos'
+
+
+# ---------------------------------------------------------------------------
+# Section 2: File Filtering Patterns
+# Used by: _is_sidecar(), check_data_quality()
+# ---------------------------------------------------------------------------
+file_filtering:
+  # Exclusion patterns for sidecar/companion files (false positive avoidance)
+  # Used by _is_sidecar() — matched against filename (lowercased)
+  exclusion_patterns:
+    - 'data.*loss'
+    - 'profit.*loss'
+    - 'information.*loss'
+    - '__macosx'
+    - '^\._'
+    - '\.DS_Store$'
+    - '\.aux\.xml$'
+    - '\.ovr$'
+    - '\.tfw$'
+    - '\.cpg$'
+    - '\.sbn$'
+    - '\.sbx$'
+    - '\.prj$'
+    - '\.dbf$'
+    - '\.shx$'
+    - '\.gdbtable'
+    - '\.gdbtablx'
+    - '\.gdbindexes'
+    - '\.horizon$'
+    - '\.spx$'
+    - '^gdb$'
+    - '^timestamps$'
+    - '_inventory'
+    - '_rdls_review'
+
+  # Patterns for files NOT relevant for RDLS cataloguing
+  # Used by check_data_quality() — matched against full path
+  irrelevant_patterns:
+    - '__MACOSX'
+    - '\.DS_Store$'
+    - '\.aux\.xml$'
+    - '\.ovr$'
+    - '\.tfw$'
+    - '\.cpg$'
+    - '\.sbn$'
+    - '\.sbx$'
+    - '\.shp\.xml$'
+    - '\.tmp$'
+    - '\.log$'
+    - 'Thumbs\.db$'
+    - '_rdls_review[/\\]'
+    - 'inventory_\d{8}T\d{4,6}Z'
+
+
+# ---------------------------------------------------------------------------
+# Section 3: Model Software Patterns
+# Used by: classify_intermediate_files()
+#
+# To add support for a new model software:
+#   1. Add a new entry under model_software with a descriptive key
+#   2. Provide description, and any of:
+#      - model_extensions: file extensions that are model working files
+#      - directory_patterns: regex patterns for model project directories
+#      - intermediate_path_patterns: regex patterns for intermediate output paths
+#      - intermediate_filenames: specific filenames that are intermediate outputs
+# ---------------------------------------------------------------------------
+model_software:
+  fiat:
+    description: "Deltares FIAT (Flood Impact Assessment Tool)"
+    intermediate_path_patterns:
+      # Per-return-period sub-folders inside risk layers
+      - 'hmax_[^/\\]+_Zero_Final[/\\]'
+      # Per-event or per-scenario FIAT output folders
+      - '[/\\]output[/\\]'
+      # Roads/Units sub-folders with per-RP breakdowns
+      - '[/\\](?:Roads|Units)[/\\].*RP\d{3}'
+      # SFINCS model intermediate output
+      - '[/\\]sfincs_'
+    intermediate_filenames:
+      - 'monrovia.txt'
+      - 'monrovia.xls'
+      - 'risk.txt'
+      - 'risk_summary.txt'
+      - 'fiat_configuration.xls'
+      - 'fiat_configuration.xlsx'
+
+  hecras:
+    description: "HEC-RAS hydraulic model"
+    model_extensions:
+      - '.g01'
+      - '.g02'
+      - '.g03'
+      - '.g04'
+      - '.g05'
+      - '.g06'
+      - '.g07'
+      - '.g08'
+      - '.g09'
+      - '.p01'
+      - '.p02'
+      - '.p03'
+      - '.p04'
+      - '.p05'
+      - '.p06'
+      - '.p07'
+      - '.p08'
+      - '.p09'
+      - '.b01'
+      - '.b02'
+      - '.b03'
+      - '.b04'
+      - '.b05'
+      - '.o01'
+      - '.o02'
+      - '.o03'
+      - '.o04'
+      - '.o05'
+      - '.r01'
+      - '.r02'
+      - '.r03'
+      - '.r04'
+      - '.f01'
+      - '.f02'
+      - '.x01'
+      - '.x02'
+      - '.x03'
+      - '.x04'
+      - '.u01'
+      - '.u02'
+      - '.hdf'
+      - '.tmp.hdf'
+      - '.blf'
+      - '.ic'
+      - '.dss'
+      - '.rst'
+      - '.rasmap'
+      - '.rasmap.backup'
+      - '.bco01'
+      - '.bco02'
+      - '.bco03'
+      - '.bco04'
+      - '.bco05'
+      - '.prj'
+    directory_patterns:
+      - '[/\\](?:\d+CT_)?hecras[_\s]'
+
+  general:
+    description: "Generic model working file patterns"
+    intermediate_path_patterns:
+      # Backup folders
+      - '[/\\](?:Backup|backup)[/\\]'
+      # Lock / error files from SharePoint or concurrent access
+      - '\.sr\.lock'
+      - '\.lock$'
+      - '_Error\.txt$'
+      - '\.access$'
+      # Reclassified intermediates
+      - '[/\\]reclassified[/\\]'
+      # InundationMaps PNG exports (visualisation, not data)
+      - '[/\\]InundationMaps[/\\].*\.png$'
+
+  # --- NEW MODELS (users add entries here) ---
+  # mike_flood:
+  #   description: "DHI MIKE FLOOD"
+  #   model_extensions:
+  #     - '.m21'
+  #     - '.m21fm'
+  #     - '.mesh'
+  #     - '.dfs0'
+  #     - '.dfs1'
+  #     - '.dfs2'
+  #     - '.dfsu'
+  #   directory_patterns:
+  #     - '[/\\]mike.*flood'
+  #
+  # tuflow:
+  #   description: "TUFLOW hydraulic model"
+  #   model_extensions:
+  #     - '.tcf'
+  #     - '.tgc'
+  #     - '.tbc'
+  #     - '.tef'
+  #     - '.tmf'
+  #     - '.ecf'
+  #   directory_patterns:
+  #     - '[/\\]tuflow[/\\]'
+  #     - '[/\\]TUFLOW[/\\]'
+  #
+  # delft3d:
+  #   description: "Deltares Delft3D"
+  #   model_extensions:
+  #     - '.mdf'
+  #     - '.grd'
+  #     - '.dep'
+  #     - '.bnd'
+  #     - '.bct'
+  #   directory_patterns:
+  #     - '[/\\]delft3d[/\\]'
+  #
+  # lisflood:
+  #   description: "LISFLOOD-FP"
+  #   model_extensions:
+  #     - '.par'
+  #     - '.bci'
+  #     - '.bdy'
+  #     - '.start'
+  #   directory_patterns:
+  #     - '[/\\]lisflood[/\\]'
+  #
+  # openquake:
+  #   description: "GEM OpenQuake Engine"
+  #   model_extensions:
+  #     - '.ini'
+  #     - '.nrml'
+  #   intermediate_path_patterns:
+  #     - '[/\\]calc_\d+[/\\]'
+  #   directory_patterns:
+  #     - '[/\\]openquake[/\\]'
+
+  # Report/documentation folder patterns
+  report_folder_patterns:
+    - '^Final\s+Reports?[/\\]?$'
+    - '[/\\]Final\s+Reports?[/\\]'
+
+
+# ---------------------------------------------------------------------------
+# Section 4: Naming Convention Patterns
+# Used by: analyze_naming_patterns()
+#
+# Each entry has:
+#   - pattern: regex with named groups for extraction
+#   - description: human-readable explanation of the convention
+#
+# Named groups recognised: scenario, hazard, return_period, gmpe, im,
+#   asset_type, hazard_group, cc_year
+# ---------------------------------------------------------------------------
+naming_patterns:
+  patterns:
+    # hmax_[scenario]_[NN]_[hazard]_RP[period]_regrid.tif  (Monrovia flood style)
+    - pattern: 'hmax_(?P<scenario>historical|RCP\d+|SSP\d+)_(?:\d+_)?(?P<hazard>coastal|rain|discharge|pluvial|fluvial|compound)(?:_RP(?P<return_period>\d+))?'
+      description: "Monrovia flood style: hmax_[scenario]_[NN]_[hazard]_RP[period]"
+    # [Location] Sc[N] or [Location]_Sc[N] (earthquake scenarios)
+    - pattern: '[\s_]Sc(?P<scenario>\d+)[/\\]'
+      description: "Earthquake scenarios: Sc1, Sc2, etc."
+    # [GMPE folder names] (Tomorrow's Cities earthquake GMPEs)
+    - pattern: '(?P<gmpe>Abrahamson|Boore|Campbell|Chiou|Atkinson|Zhao)'
+      description: "Ground motion prediction equations"
+    # Intensity measure files: Ab_PGA.tif, Ab_SA(0.3).tif
+    - pattern: '(?P<im>PGA|SA\(\d+\.?\d*\))'
+      description: "Seismic intensity measures"
+    # fragility_[asset_type].xlsx / vulnerability_[type].xlsx
+    - pattern: '(?:fragility|vulnerability)[_-](?P<asset_type>\w+)\.'
+      description: "Fragility/vulnerability by asset type"
+    # Return period in folder/file name: RP001, RP050, RP1500 etc.
+    - pattern: 'RP(?P<return_period>\d+)'
+      description: "Return period: RP001, RP050, etc."
+    # JBA-style naming: Freetown_202304_FLRF_U_RP100_RD_1m_4326.tif
+    - pattern: '(?P<hazard>FL(?:RF|SW))_[A-Z]_RP(?P<return_period>\d+)'
+      description: "JBA-style naming"
+    # Phu Quoc style: G1_S0_05.tif, G2_S1_CC50_100.tif
+    - pattern: 'G(?P<hazard_group>[1-3])_S(?P<scenario>\d+)(?:_CC(?P<cc_year>\d+))?_(?P<return_period>\d+)(?:_damage)?\.tif'
+      description: "Phu Quoc style"
+    # Depth-damage function CSVs
+    - pattern: '(?:depth[_-]?damage|damage[_-]?function)'
+      description: "Depth-damage function CSVs"
+
+  scenario_map:
+    RCP45: "RCP 4.5"
+    RCP85: "RCP 8.5"
+    SSP126: "SSP1-2.6"
+    SSP245: "SSP2-4.5"
+    SSP585: "SSP5-8.5"
+    HISTORICAL: "Historical"
+
+  jba_hazard_map:
+    FLRF: "fluvial_flood"
+    FLSW: "pluvial_flood"
+
+  hazard_subtype_map:
+    coastal: "coastal_flood"
+    rain: "pluvial_flood"
+    discharge: "fluvial_flood"
+    pluvial: "pluvial_flood"
+    fluvial: "fluvial_flood"
+    compound: "compound_flood"
+
+
+# ---------------------------------------------------------------------------
+# Section 5: README/Text Metadata Extraction Patterns
+# Used by: extract_readme_metadata()
+# ---------------------------------------------------------------------------
+readme_patterns:
+  project_title:
+    pattern: '(?:Flood|Earthquake|Risk|Hazard|Multi.?Hazard)\s+(?:Risk\s+)?(?:Profile|Assessment|Analysis)\s+(?:for|of)\s+(.+?)(?:\s*\*|\s*$)'
+  provider:
+    pattern: '(?:Implemented|Produced|Created)\s+by[:;]?\s*(.+?)(?:\s*\*|\s*$)'
+  financer:
+    pattern: '(?:Financed|Funded|Supported)\s+by[:;]?\s*(.+?)(?:\s*\*|\s*$)'
+  project_ref:
+    pattern: '(?:Project\s+(?:Reference|Number|Code))[:;]?\s*(.+?)(?:\s*\*|\s*$)'
+  contact:
+    pattern: '(?:Contact|Email)[:;]?\s*([\w.+-]+@[\w.-]+)'
+  date_range:
+    pattern: '((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})\s*[-\u2013]\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})'
+
+
+# ---------------------------------------------------------------------------
+# Section 6: RDLS Schema Fields
+# Used by: analyze_gaps()
+# ---------------------------------------------------------------------------
+rdls_schema:
+  required:
+    - id
+    - title
+    - risk_data_type
+    - attributions
+    - spatial
+    - license
+    - resources
+  recommended:
+    - description
+    - publisher
+    - creator
+    - contact_point
+    - exposure_category
+    - hazard_type
+    - process_type
+    - analysis_type
+    - temporal
+    - version
+
+
+# ---------------------------------------------------------------------------
+# Section 7: Column-Level Detection Patterns
+# Used by: classify_group() for inspection-based evidence
+# ---------------------------------------------------------------------------
+column_detection:
+  exposure_buildings:
+    columns:
+      - 'bldid'
+      - 'repvalue'
+      - 'expstr'
+      - 'fptarea'
+    label: "building ID/value/taxonomy columns"
+  exposure_population:
+    columns:
+      - 'hhid'
+      - 'nind'
+      - 'income'
+    label: "household/individual columns"
+  vulnerability:
+    columns:
+      - 'muds1'
+      - 'sigmads'
+      - 'damage_ratio'
+      - 'hw0'
+      - 'hw1'
+    label: "fragility/damage function columns"
+  loss:
+    columns:
+      - 'casualty'
+      - 'total_damage'
+      - 'metric1'
+    ds_pattern: '\bds[1-4]\b'
+    label: "damage state/casualty/metric columns"

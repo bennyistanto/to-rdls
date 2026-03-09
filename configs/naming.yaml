@@ -2,19 +2,19 @@
 # RDLS Record Naming Convention Configuration
 # =============================================================================
 # Defines the structure of RDLS record IDs and JSON filenames:
-#   rdls_{types}-{iso3}{org}_{titleslug}_{items}.json
+#   rdls_{types}-{iso3}{org}_{titleslug}.json
 #
 # - types:     Component codes (single: hzd/exp/vln/lss, multi: h/e/v/l concat)
-# - iso3:      Lowercase ISO3 codes concatenated (3-char fixed width, sorted)
+# - iso3:      Lowercase ISO3 codes concatenated (3-char fixed width, sorted);
+#              omitted for regional/global datasets (>max_countries)
 # - org:       Org abbreviation appended after ISO3 (from lookup or auto-truncate)
-# - titleslug: Slugified dataset title (stop words + country + org removed, max 20)
-# - items:     2-char hazard/exposure item codes concatenated
+# - titleslug: Slugified dataset title (stop words + country + org removed, max 25)
 # =============================================================================
 
 # ---------------------------------------------------------------------------
 # Component type encoding
-# Single component  → 3-letter code (hzd, exp, vln, lss)
-# Multiple components → single-letter concatenation in HEVL order
+# Single component  -> 3-letter code (hzd, exp, vln, lss)
+# Multiple components -> single-letter concatenation in HEVL order
 # ---------------------------------------------------------------------------
 component_codes:
   single:
@@ -27,22 +27,20 @@ component_codes:
     exposure: e
     vulnerability: v
     loss: l
-  # Canonical order for multi-component letter concatenation
   order:
-    - hazard
-    - exposure
-    - vulnerability
-    - loss
+  - hazard
+  - exposure
+  - vulnerability
+  - loss
 
 # ---------------------------------------------------------------------------
-# Hazard type → 2-char item code
-# All codes are exactly 2 characters, concatenated without separator
+# Hazard-item codes  (2-letter, used in future per-item naming)
 # ---------------------------------------------------------------------------
 hazard_item_codes:
   flood: fl
   earthquake: eq
   tsunami: ts
-  strong_wind: tc       # tropical cyclone / strong wind
+  strong_wind: tc
   volcanic: vo
   landslide: ls
   convective_storm: cs
@@ -52,7 +50,7 @@ hazard_item_codes:
   coastal_flood: cf
 
 # ---------------------------------------------------------------------------
-# Exposure category → 2-char item code
+# Exposure-item codes  (2-letter, used in future per-item naming)
 # ---------------------------------------------------------------------------
 exposure_item_codes:
   buildings: bd
@@ -64,142 +62,340 @@ exposure_item_codes:
   development_index: dv
 
 # ---------------------------------------------------------------------------
-# Organization abbreviation lookup
-# Keys are slugified org names (lowercase, underscores).
-# Values are short names (max 15 chars, lowercase).
-#
-# Resolution order in resolve_shortname():
-#   1. Exact match on org slug
-#   2. Exact match on slugified org display name
-#   3. Fallback: auto-truncate slug to max_length
-#
-# This table is extensible — add more as needed.
+# Organisation abbreviations  (HDX org slug -> short tag for filename)
+# 265 entries grouped by category
 # ---------------------------------------------------------------------------
 org_abbreviations:
   # --- UN agencies ---
-  world_bank_group: worldbank
-  humanitarian_openstreetmap_team_hot: hotosm
-  worldpop: worldpop
-  united_nations_satellite_centre_unosat: unosat
-  unhcr_the_un_refugee_agency: unhcr
-  fews_net: fewsnet
-  world_health_organization: who
-  heigit_heidelberg_institute_for_geoinformation_technology: heigit
-  hdx: hdx
-  kontur: kontur
-  wfp_world_food_programme: wfp
   copernicus: copernicus
+  fews_net: fewsnet
   food_and_agriculture_organization_fao_of_the_united_nations: fao
+  hdx: hdx
+  hdx_humanitarian_api_data: hdxapi
+  heigit_heidelberg_institute_for_geoinformation_technology: heigit
+  humanitarian_openstreetmap_team_hot: hotosm
   internal_displacement_monitoring_centre_idmc: idmc
+  international_federation_of_red_cross_and_red_crescent_societies_ifrc: ifrc
+  international_organization_for_migration_iom: iom
+  kontur: kontur
+  undp_human_development_reports_office_hdro: undp
+  unesco: unesco
+  unfpa: unfpa
+  unhcr_the_un_refugee_agency: unhcr
   unicef_data_and_analytics_hq: unicef
   united_nations_human_settlements_programmes_data_and_analytics_section: unhabitat
-  international_organization_for_migration_iom: iom
-  unesco: unesco
-  undp_human_development_reports_office_hdro: undp
   united_nations_office_for_disaster_risk_reduction_undrr: undrr
-  international_federation_of_red_cross_and_red_crescent_societies_ifrc: ifrc
-  unfpa: unfpa
+  united_nations_satellite_centre_unosat: unosat
+  wfp_world_food_programme: wfp
+  world_bank_group: worldbank
+  world_health_organization: who
+  worldpop: worldpop
 
   # --- OCHA offices ---
+  ocha_afghanistan: ochaafg
+  ocha_burkina_faso: ochabfa
+  ocha_burundi: ochabdi
+  ocha_cameroon: ochacmr
+  ocha_central_african_republic: ochacaf
+  ocha_chad: ochatcd
+  ocha_colombia: ochacol
+  ocha_democratic_republic_of_the_congo_drc: ochacod
+  ocha_digital_services: ochadigital
+  ocha_ethiopia: ochaeth
   ocha_field_information_services_section_fiss: ochafiss
   ocha_financial_tracking_system_fts: ochafts
-  ocha_latin_america_and_the_caribbean_rolac: ocharolac
-  ocha_regional_office_for_southern_and_eastern_africa_rosea: ocharosea
+  ocha_haiti: ochahti
+  ocha_hq: ochahq
   ocha_humanitarian_programme_cycle_tools_hpc_tools: ochahpc
-  ocha_regional_office_for_asia_and_the_pacific_roap: ocharoap
-  ocha_west_and_central_africa_rowca: ocharowca
-  ocha_colombia: ochacol
-  ocha_sudan: ochasdn
-  ocha_afghanistan: ochaafg
+  ocha_indonesia_inactive: ochaidn
+  ocha_iraq_inactive: ochairq
+  ocha_latin_america_and_the_caribbean_rolac: ocharolac
+  ocha_lebanon: ochalbn
+  ocha_liberia_inactive: ochalb
+  ocha_libya_inactive: ochalby
+  ocha_mali: ochamli
+  ocha_middle_east_and_north_africa_romena: ocharomena
+  ocha_mozambique: ochamoz
+  ocha_myanmar: ochammr
+  ocha_nepal_inactive: ochanpl
+  ocha_niger: ochaner
+  ocha_nigeria: ochanga
+  ocha_occupied_palestinian_territory_opt: ochapse
+  ocha_office_of_the_pacific_islands: ochapacific
+  ocha_pakistan: ochapak
   ocha_philippines: ochaphl
+  ocha_regional_office_for_asia_and_the_pacific_roap: ocharoap
+  ocha_regional_office_for_southern_and_eastern_africa_rosea: ocharosea
+  ocha_rocca_inactive: ocharocca
+  ocha_somalia: ochasom
+  ocha_south_sudan: ochassd
+  ocha_sudan: ochasdn
+  ocha_syria: ochasyr
+  ocha_t_rkiye_inactive: ochatur
+  ocha_ukraine: ochaukr
+  ocha_venezuela: ochaven
+  ocha_west_and_central_africa_rowca: ocharowca
+  ocha_yemen: ochayem
 
   # --- Research / NGOs ---
   armed_conflict_location_event_data_project_acled: acled
-  reach_initiative: reach
-  immap_inc: immap
-  portwatch: portwatch
-  the_dhs_program: dhs
-  green_climate_fund: gcf
-  centre_for_research_on_the_epidemiology_of_disasters: cred
-  geoboundaries: geobndry
-  oxford_poverty_human_development_initiative: ophi
-  global_healthsites_mapping_project: healthsites
-  violence_impacts_early_warning_system: views
-  data_for_children_collaborative: d4cc
-  international_aid_transparency_initiative: iati
   ai_and_data_for_good_at_meta: metad4g
+  centre_for_research_on_the_epidemiology_of_disasters: cred
+  data_for_children_collaborative: d4cc
+  geoboundaries: geobndry
+  global_healthsites_mapping_project: healthsites
+  green_climate_fund: gcf
+  immap_inc: immap
+  international_aid_transparency_initiative: iati
   ourairports: ourairports
+  oxford_poverty_human_development_initiative: ophi
+  portwatch: portwatch
+  reach_initiative: reach
+  the_dhs_program: dhs
+  violence_impacts_early_warning_system: views
   who_s_on_first: whosonfirst
+
   # --- Specialized / regional ---
   wfp_advanced_disaster_analysis_mapping: wfpadam
-  igad_climate_prediction_and_applications_center_icpac: icpac
-  grid3: grid3
   3is: 3is
-  global_earthquake_model_foundation: gem
-  pacific_community: spc
-  mapaction: mapaction
-  inform: inform
-  jrc_european_commission: jrc
   gfdrr: gfdrr
+  global_earthquake_model_foundation: gem
+  grid3: grid3
   hub_latin_america: hublatam
-  opennepal_inactive: opennepal
+  igad_climate_prediction_and_applications_center_icpac: icpac
+  inform: inform
   international_rescue_committee_ethiopia: irceth
-  united_nations_peace_and_security_data_hub: unpeace
-  united_nations_economic_commission_for_africa: uneca
+  jrc_european_commission: jrc
+  mapaction: mapaction
+  opennepal_inactive: opennepal
+  pacific_community: spc
   the_philippine_space_agency: philsa
-  climada: climada
-  hdx_humanitarian_api_data: hdxhapi
+  united_nations_economic_commission_for_africa: uneca
+  united_nations_peace_and_security_data_hub: unpeace
+
+  # --- Additional NGOs / research / national ---
+  acaps: acaps
+  acci_n_contra_el_hambre_gis4tech: achgis4tech
+  action_against_hunger_acf_regional_office_for_west_and_central_africa_rowca: acfrowca
+  african_development_bank_group: afdb
+  alhasan_systems_private_limited: alhasan
+  american_red_cross_inactive: amredcross
+  assistance_coordination_unit: acu
+  atlas_ai: atlasai
+  british_red_cross_maps_team: brc
+  burkina_open_data_initiative_inactive: bodi
+  caritas_australia_inactive: caritasau
+  cccm_cluster: cccm
+  clear_global_previously_translators_without_borders: clearglobal
+  code_for_venezuela: c4ven
+  cox_s_bazar_education_sector: cxbedu
+  crosscut: crosscut
+  danish_refugee_council: drc
+  development_initiatives: devinitiativ
+  education_in_emergencies_working_group_nigeria_inactive: eieng
+  esri: esri
+  fao_swalim_inactive: faoswalim
+  fieldmaps: fieldmaps
+  fields_data: fieldsdata
+  flowminder_inactive: flowminder
+  global_shelter_cluster_inactive: gsc
+  globhe_drones: globhe
+  google_research: googleres
+  health_cluster: healthclstr
+  hera_humanitarian_emergency_response_africa: hera
+  humanitarian_outcomes: humoutcomes
+  insecurity_insight: insecinsight
+  integrated_food_security_phase_classification_ipc: ipc
+  inter_agency_coordination_platform_for_refugees_and_migrants_from_venezuela: r4v
+  inter_sector_coordination_group: iscg
+  interaction_inactive: interaction
+  itos_inactive: itos
+  johns_hopkins_school_of_public_health: jhsph
+  joint_idp_profiling_service_jips_inactive: jips
+  kenya_national_bureau_of_statistics_inactive: knbs
+  kenya_open_data_initiative_inactive: kodi
+  kenya_red_cross_society: krcs
+  map_kibera_inactive: mapkibera
+  microsoft_ai_for_good_lab: msftai
+  mobile_accord_inc_geopoll: geopoll
+  myanmar_information_management_unit_mimu: mimu
+  netherlands_red_cross_510: nlrc510
+  observatory_of_conflict_and_violence_prevention_inactive: ocvp
+  open_crisis_inactive: opencrisis
+  openafrica_inactive: openafrica
+  openstreetmap_rdc: osmrdc
+  osgeo_nepal: osgeonpl
+  palestinian_central_bureau_of_statistics: pcbs
+  qatar_computing_research_institute: qcri
+  redhum_inactive: redhum
+  regional_im_working_group_europe: rimwge
+  regional_vulnerability_assessment_analysis_programme_inactive: rvaa
+  small_arms_survey: sas
+  standby_task_force_inactive: sbtf
+  techo_colombia_inactive: techo
+  u_s_census_bureau: uscensus
+  u_s_department_of_state_humanitarian_information_unit_inactive: ushiu
+  un_in_papua_new_guinea: unpng
+  unfpa_indonesia_inactive: unfpaidn
+  unhcr_afghanistan: unhcrafg
+  unicef_eastern_and_southern_africa_regional_office_esaro_inactive: unicefesaro
+  unicef_west_and_central_africa_wcaro_inactive: unicefwcaro
+  uwezo_at_twaweza_east_africa_inactive: uwezo
+  water_point_data_exchange: wpdx
+
+  # --- Extended orgs (2+ datasets) ---
+  action_on_armed_violence: aoav
+  adf_haiti: adfhti
+  agence_fran_aise_de_developpement_afd_inactive: afd
+  agence_nationale_de_la_statistique_et_de_la_d_mographie_du_s_n_gal: ansd
+  akvo_foundation_inactive: akvo
+  bonn_international_centre_for_conflict_studies_bicc: bicc
+  care_bangladesh: carebgd
+  catholic_relief_services_waro_inactive: crswaro
+  cccm_cluster_somalia: cccmsom
+  central_african_republic_education_cluster: edclcaf
+  central_emergency_response_fund: cerf
+  cesvi_palestine: cesvipse
+  childfund_senegal_inactive: cfsen
+  civilian_impact_monitoring_project_inactive: cimp
+  climate_hazards_center: chc
+  conred_guatemala_inactive: conred
+  country_based_pooled_funds_ocha: cbpf
+  drew_university_inactive: drew
+  education_and_conflict_monitor: ecm
+  education_cluster_yemen: edclyem
+  eth_z_rich_photogrammetry_and_remote_sensing: ethzprs
+  eth_z_rich_weather_and_climate_risks: ethzurich
+  fao_reowa_subregional_team_for_resilience_west_africa_and_the_sahel_inactive: faoreowa
+  food_security_information_network: fsin
+  geothings: geothings
+  global_education_cluster: gec
+  global_health: globalhlth
+  ground_truth_solutions: gts
+  grupo_interagencial_sobre_flujos_migratorios_mixtos_inactive: gifmm
+  helpage_international_inactive: helpage
+  housing_recovery_and_reconstruction_platform_hrrp_nepal_inactive: hrrpnpl
+  infoculture: infoculture
+  institute_for_international_law_of_peace_and_armed_conflict: ifhv
+  inter_agency_common_feedback_project_nepal_inactive: iacfnpl
+  international_peace_information_service_ipis_inactive: ipis
+  international_research_center_of_big_data_for_sustainable_development_goals_cbas: cbas
+  internews_inactive: internews
+  iom_missing_migrants_project: iommmp
+  ipc_cluster_guinea_inactive: ipcgin
+  johns_hopkins_applied_physics_lab: jhuapl
+  joint_research_centre_of_the_european_commission: jrcec
+  la_ni_a_consortium_inactive: lanina
+  light_for_the_world: lftw
+  majidata_inactive: majidata
+  middle_east_education_research_training_and_support_inactive: meerts
+  minist_re_de_la_sant_et_de_l_action_sociale_inactive: minsas
+  national_digital_strategy_unit_at_the_office_of_the_president_of_mexico_inactive: ndsmex
+  nethope_inactive: nethope
+  norwegian_refugee_council: nrc
+  observatorio_latinoamericano_de_desarrollo_sostenible: olades
+  ocha_eritrea: ochaeri
+  ocha_guinea_inactive: ochagin
+  ocha_needs_assessment_and_analysis_section_naas_inactive: ochanaas
+  ocha_undp_connecting_business_initiative_cbi: ochacbi
+  oxford_policy_management_inactive: opm
+  practical_action_inactive: practact
+  private_sector_for_resilience_and_collaboration: psrc
+  protection_cluster_colombia: protcol
+  rcrc_climate_centre: rcrccc
+  redhumus_org_inactive: redhumus
+  regional_centre_for_mapping_of_development_resources_rcmrd_inactive: rcmrd
+  regional_cholera_platform_in_west_and_central_africa_inactive: rcpwca
+  reliefweb: reliefweb
+  riwi_corp_inactive: riwi
+  safeture: safeture
+  sahel_ors_inactive: sahelors
+  sawa_world: sawaworld
+  somalia_ngo_consortium_inactive: snc
+  south_syria_cross_border_operations_inactive: ssycbo
+  sudanese_american_physicians_association: sapa
+  sustainable_organic_integrated_livelihoods: soil
+  syrian_american_medical_society: sams
+  the_migrants_files_inactive: tmf
+  the_philippine_disaster_resilience_foundation: pdrf
+  the_white_helmets: whitehelmts
+  thinking_machines_data_science: tmds
+  uganda_red_cross_society_inactive: ugrc
+  ukraine_education_cluster: edclukr
+  un_in_bangladesh: unbgd
+  un_in_nepal: unnpl
+  un_in_t_rkiye: untur
+  un_smart_maps_group: unsmartmap
+  undac: undac
+  unfpa_philippines: unfpaphl
+  unicef_democratic_republic_of_congo: unicefcod
+  unicef_nigeria_inactive: unicefnga
+  unicef_south_sudan: unicefssd
+  united_nations_development_coordination_office_inactive: undco
+  united_nations_office_on_drugs_and_crime_inactive: unodc
+  united_nations_relief_and_works_agency_for_palestine_refugees_in_the_near_east: unrwa
+  universidad_de_los_andes_venezuela_inactive: uniandes
+  unmeer_inactive: unmeer
+  us_national_geospatial_intelligence_agency_inactive: nga
+  vanuatu_ndmo_cyclone_pam_inactive: vutndmo
+  wash_cluster_guinea_inactive: washgin
+  what3words_inactive: w3w
+  world_food_programme_country_office_in_lebanon_inactive: wfplbn
+  world_resources_institute_inactive: wri
+  xchange_inactive: xchange
 
 # ---------------------------------------------------------------------------
-# Shortname settings
+# Country thresholds
+# Datasets covering more than max_countries omit ISO3 from the filename
+# ---------------------------------------------------------------------------
+countries:
+  max_countries: 5
+
+# ---------------------------------------------------------------------------
+# Org short-name truncation
+# When the org slug is not in the lookup, auto-truncate to max_length chars
 # ---------------------------------------------------------------------------
 shortname:
   max_length: 15
 
 # ---------------------------------------------------------------------------
-# Component validation
-# When false: V-only, L-only, V+L are valid combinations
-# When true: V/L require H or E to be present
+# Validation toggles
+# require_he_for_vl: if true, V/L records must also have H or E to be named
 # ---------------------------------------------------------------------------
 validation:
   require_he_for_vl: false
 
 # ---------------------------------------------------------------------------
-# Collision avoidance
-# When duplicate stems are detected, append this suffix.
-# {uuid8} is replaced with first 8 chars of source dataset UUID.
+# Collision handling
+# If two records resolve to the same filename, append suffix_format
 # ---------------------------------------------------------------------------
 collision:
-  suffix_format: "__{uuid8}"
+  suffix_format: "_{uuid8}"
 
 # ---------------------------------------------------------------------------
 # Title slug settings
-# The title slug is a compact representation of the dataset title.
-# Stop words, country names (from iso3_to_name), and org names are stripped
-# before slugification. No separators — pure alphanumeric concatenation.
+# max_length : hard cap on the slug portion of the filename
+# stop_words : removed during slugification (lowercase match)
 # ---------------------------------------------------------------------------
 title_slug:
-  max_length: 20
+  max_length: 25
   stop_words:
-    - "for"
-    - "of"
-    - "the"
-    - "and"
-    - "in"
-    - "a"
-    - "an"
-    - "to"
-    - "at"
-    - "by"
-    - "on"
-    - "with"
-    - "from"
+  - for
+  - of
+  - the
+  - and
+  - in
+  - a
+  - an
+  - to
+  - at
+  - by
+  - "on"
+  - with
+  - from
 
 # ---------------------------------------------------------------------------
-# ISO3 → Country name mapping (for title slug stripping)
-# When a dataset title contains a country name that matches one of the
-# record's ISO3 codes, the name is stripped to avoid redundancy.
-# Extensible — add more entries as needed.
+# ISO3 -> lowercase country name  (used to strip country from title slug)
 # ---------------------------------------------------------------------------
 iso3_to_name:
   AFG: "afghanistan"
@@ -366,7 +562,182 @@ iso3_to_name:
   ZWE: "zimbabwe"
 
 # ---------------------------------------------------------------------------
-# ISO3 validation
-# Valid ISO3 codes are loaded from spatial.yaml (region_to_countries).
-# No duplication here — naming.py loads spatial config for validation.
+# Country name aliases for title slug stripping
+# Maps ISO3 -> list of extra name forms to strip from title slugs.
+# Only includes aliases (>=4 chars, ASCII-lowercase) that actually appear
+# in HDX RDLS candidate titles and differ from the canonical iso3_to_name.
+# Generated from country_name_to_iso3.csv + spatial.yaml + adjective forms.
 # ---------------------------------------------------------------------------
+# Country name aliases for title slug stripping
+# Maps ISO3 -> list of extra name forms to strip from title slugs.
+# Includes demonyms, adjective forms, historical names, formal names,
+# and alternative spellings. Only aliases >= 4 chars (ASCII) are applied.
+# Generated from country_name_to_iso3.csv + spatial.yaml + demonym forms.
+# ---------------------------------------------------------------------------
+country_name_aliases:
+  AFG: ["afghan", "islamic republic of afghanistan"]
+  AGO: ["angolan", "republic of angola"]
+  ALB: ["albanian", "republic of albania"]
+  ARE: ["emirati", "emirates"]
+  ARG: ["argentine", "argentine republic"]
+  ARM: ["armenian", "republic of armenia"]
+  AUS: ["australian"]
+  AUT: ["austrian", "republic of austria"]
+  AZE: ["azerbaijani", "republic of azerbaijan"]
+  BDI: ["burundian", "republic of burundi"]
+  BEL: ["belgian", "kingdom of belgium"]
+  BEN: ["beninese", "dahomey", "republic of benin"]
+  BFA: ["burkinabe", "burkina", "upper volta"]
+  BGD: ["bangladeshi"]
+  BIH: ["bosnian", "bosnia", "herzegovina"]
+  BLR: ["belarusian", "republic of belarus"]
+  BOL: ["bolivian"]
+  BRA: ["brazilian"]
+  BRN: ["brunei", "brunei darussalam"]
+  BTN: ["bhutanese", "kingdom of bhutan"]
+  BWA: ["botswanan", "republic of botswana"]
+  CAF: ["central african", "centrafricaine", "centrafrique"]
+  CAN: ["canadian"]
+  CHE: ["swiss", "swiss confederation"]
+  CHL: ["chilean", "republic of chile"]
+  CHN: ["chinese"]
+  CIV: ["ivorian", "cote d'ivoire", "ivory coast"]
+  CMR: ["cameroonian", "cameroun", "republic of cameroon"]
+  COD: ["congolese", "dr congo", "zaire", "congo"]
+  COG: ["republic of the congo"]
+  COL: ["colombian", "republic of colombia"]
+  COM: ["comorian", "union of the comoros"]
+  CPV: ["cabo verde", "cape verde"]
+  CRI: ["costa rican"]
+  CUB: ["cuban"]
+  CYP: ["cypriot", "republic of cyprus"]
+  CZE: ["czech", "czech republic"]
+  DEU: ["german"]
+  DJI: ["djiboutian", "republic of djibouti"]
+  DNK: ["danish"]
+  DOM: ["dominican"]
+  DZA: ["algerian"]
+  ECU: ["ecuadorian", "republic of ecuador"]
+  EGY: ["egyptian", "arab republic of egypt"]
+  ERI: ["eritrean"]
+  ESP: ["spanish"]
+  EST: ["estonian", "republic of estonia"]
+  ETH: ["ethiopian"]
+  FIN: ["finnish", "republic of finland"]
+  FJI: ["fijian", "republic of fiji"]
+  FRA: ["french"]
+  GAB: ["gabonese", "gabonese republic"]
+  GBR: ["british", "great britain"]
+  GEO: ["georgian"]
+  GHA: ["ghanaian", "republic of ghana"]
+  GIN: ["guinean", "republic of guinea"]
+  GMB: ["gambian", "republic of the gambia"]
+  GNB: ["guinea-bissau", "guinea bissau"]
+  GNQ: ["equatorial guinea", "republic of equatorial guinea"]
+  GRC: ["greek", "hellenic republic"]
+  GTM: ["guatemalan", "republic of guatemala"]
+  GUY: ["guyanese", "republic of guyana"]
+  HND: ["honduran", "republic of honduras"]
+  HRV: ["croatian"]
+  HTI: ["haitian", "haitien"]
+  HUN: ["hungarian"]
+  IDN: ["indonesian", "republic of indonesia"]
+  IND: ["indian", "republic of india"]
+  IRL: ["irish"]
+  IRN: ["iranian", "persia", "islamic republic of iran"]
+  IRQ: ["iraqi", "republic of iraq"]
+  ISR: ["israeli", "state of israel"]
+  ITA: ["italian"]
+  JAM: ["jamaican"]
+  JOR: ["jordanian", "hashemite kingdom of jordan"]
+  JPN: ["japanese"]
+  KAZ: ["kazakh", "republic of kazakhstan"]
+  KEN: ["kenyan", "republic of kenya"]
+  KGZ: ["kyrgyz", "kyrgyz republic"]
+  KHM: ["cambodian", "kampuchea", "kingdom of cambodia"]
+  KOR: ["south korea", "south korean", "republic of korea"]
+  LAO: ["laotian", "lao pdr"]
+  LBN: ["lebanese", "lebanese republic"]
+  LBR: ["liberian", "republic of liberia"]
+  LBY: ["libyan"]
+  LKA: ["lankan", "ceylon"]
+  LSO: ["basotho", "kingdom of lesotho"]
+  LTU: ["lithuanian", "republic of lithuania"]
+  LVA: ["latvian", "republic of latvia"]
+  MAR: ["moroccan", "kingdom of morocco"]
+  MDA: ["moldovan", "republic of moldova"]
+  MDG: ["malagasy", "republic of madagascar"]
+  MDV: ["maldivian", "republic of maldives"]
+  MEX: ["mexican", "united mexican states"]
+  MKD: ["macedonian", "republic of north macedonia"]
+  MLI: ["malian", "republic of mali"]
+  MMR: ["burmese", "burma", "republic of myanmar"]
+  MNE: ["montenegrin"]
+  MNG: ["mongolian"]
+  MOZ: ["mozambican", "mocambique", "republic of mozambique"]
+  MRT: ["mauritanian", "islamic republic of mauritania"]
+  MUS: ["mauritian", "republic of mauritius"]
+  MWI: ["malawian", "republic of malawi"]
+  MYS: ["malaysian"]
+  NAM: ["namibian", "republic of namibia"]
+  NER: ["nigerien", "republic of the niger"]
+  NGA: ["nigerian", "federal republic of nigeria"]
+  NIC: ["nicaraguan", "republic of nicaragua"]
+  NLD: ["dutch", "kingdom of the netherlands"]
+  NOR: ["norwegian", "kingdom of norway"]
+  NPL: ["nepalese", "nepali"]
+  NZL: ["new zealander"]
+  PAK: ["pakistani", "islamic republic of pakistan"]
+  PAN: ["panamanian", "republic of panama"]
+  PER: ["peruvian", "republic of peru"]
+  PHL: ["philippine", "filipino", "republic of the philippines"]
+  PNG: ["independent state of papua new guinea"]
+  POL: ["polish", "republic of poland"]
+  PRK: ["north korea", "north korean"]
+  PRT: ["portuguese"]
+  PRY: ["paraguayan", "republic of paraguay"]
+  PSE: ["palestinian", "gaza", "west bank", "occupied palestinian territory", "state of palestine"]
+  QAT: ["qatari", "state of qatar"]
+  ROU: ["romanian"]
+  RUS: ["russian"]
+  RWA: ["rwandan", "rwandese republic"]
+  SAU: ["saudi", "kingdom of saudi arabia"]
+  SDN: ["sudanese", "republic of the sudan"]
+  SEN: ["senegalese", "republic of senegal"]
+  SGP: ["singaporean", "republic of singapore"]
+  SLB: ["solomon islander"]
+  SLE: ["sierra leonean"]
+  SLV: ["salvadoran", "republic of el salvador"]
+  SOM: ["somali", "federal republic of somalia"]
+  SRB: ["serbian", "republic of serbia"]
+  SSD: ["south sudanese", "republic of south sudan"]
+  SUR: ["surinamese", "republic of suriname"]
+  SVK: ["slovak", "slovak republic"]
+  SVN: ["slovenian", "republic of slovenia"]
+  SWE: ["swedish", "kingdom of sweden"]
+  SWZ: ["swazi", "swaziland", "kingdom of eswatini"]
+  SYR: ["syrian", "syrian arab republic"]
+  TCD: ["chadian", "tchad", "republic of chad"]
+  TGO: ["togolese", "togolese republic"]
+  THA: ["thai", "kingdom of thailand"]
+  TJK: ["tajik", "republic of tajikistan"]
+  TKM: ["turkmen"]
+  TLS: ["timorese", "timor-leste", "east timor"]
+  TON: ["tongan", "kingdom of tonga"]
+  TTO: ["trinidadian", "tobagonian", "republic of trinidad and tobago"]
+  TUN: ["tunisian", "republic of tunisia"]
+  TUR: ["turkish", "turkey"]
+  TWN: ["taiwanese", "formosa"]
+  TZA: ["tanzanian", "united republic of tanzania"]
+  UGA: ["ugandan", "republic of uganda"]
+  UKR: ["ukrainian"]
+  URY: ["uruguayan", "eastern republic of uruguay"]
+  USA: ["american", "united states of america"]
+  UZB: ["uzbek", "republic of uzbekistan"]
+  VEN: ["venezuelan"]
+  VNM: ["vietnamese", "viet nam"]
+  VUT: ["republic of vanuatu"]
+  YEM: ["yemeni", "republic of yemen"]
+  ZAF: ["south african", "republic of south africa"]
+  ZMB: ["zambian", "republic of zambia"]
+  ZWE: ["zimbabwean", "rhodesia", "republic of zimbabwe"]

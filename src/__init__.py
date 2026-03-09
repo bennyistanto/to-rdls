@@ -22,6 +22,7 @@ Usage from notebooks or scripts:
     from src.integrate import integrate_record
     from src.validate_qa import validate_and_score, distribute_records
     from src.sources.hdx import HDXClient, extract_hdx_fields
+    from src.inventory import inventory_folder, InventoryConfig
 """
 
 # Convenience imports for common functions
@@ -94,4 +95,22 @@ from .validate_qa import (
     validate_and_score,
     distribute_records,
     create_validation_report,
+)
+from .inventory import (
+    InventoryConfig,
+    inventory_folder,
+    scan_target,
+    render_and_write,
+)
+from .review import (
+    review_folder,
+    ReviewResult,
+    FileGroup,
+    FileInspection,
+    GapAnalysis,
+)
+from .zipaccess import (
+    open_zip_member,
+    parse_zip_spec,
+    resolve_and_open,
 )

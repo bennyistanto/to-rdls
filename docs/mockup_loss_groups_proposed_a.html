@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JKAN Loss Display - Proposed: HTML5 Collapsible Groups</title>
+  <!-- Bootstrap 3.3.6 to match JKAN production -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <style>
+    /* ===== Existing JKAN styles (from rdl-jkan/css/main.css) ===== */
+    .dataset-details th {
+      width: 30%;
+      white-space: normal;
+      vertical-align: top;
+    }
+    .dataset-details td {
+      width: 70%;
+      word-wrap: break-word;
+    }
+
+    /* ===== Proposed: Collapsible loss groups ===== */
+    .loss-group {
+      margin-bottom: 4px;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+    }
+    .loss-group-summary {
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: 600;
+      background-color: #f9f9f9;
+      list-style: revert;
+    }
+    .loss-group-summary:hover {
+      background-color: #f0f0f0;
+    }
+    .loss-group-summary .badge {
+      margin-left: 6px;
+      font-weight: normal;
+    }
+    .loss-group-descriptions {
+      margin: 0;
+      padding: 6px 10px 6px 30px;
+      font-size: 90%;
+    }
+    .loss-group-descriptions li {
+      margin-bottom: 3px;
+    }
+
+    body { padding: 20px 0 60px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <span>DesInventar Disaster Loss and Damage Dataset for Albania</span>
+    </h1>
+    <p>National disaster loss inventory for Albania from the DesInventar Sendai Framework Monitor database, compiled by General Directorate of Civil Emergencies and published by the United Nations Office for Disaster Risk Reduction (UNDRR). Contains 4,659 event-level loss records covering 1973-2015, with observed impacts from Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire events.</p>
+
+    <h2>Resources</h2>
+    <ul>
+      <li>
+        <a href="https://data.humdata.org/dataset/01c902dd-fec3-499b-a6c0-d092c18bc73e/download_metadata?format=json">HDX dataset metadata (JSON)</a>
+        <span class="label label-default">JSON (json)</span>
+      </li>
+      <li>
+        <a href="https://data.humdata.org/dataset/01c902dd-fec3-499b-a6c0-d092c18bc73e/resource/6850c4bf-cceb-4975-8716-8a5108ad82c3/download/albania.zip">Disaster data for Albania</a>
+        <span class="label label-default">Shapefile (shp)</span>
+      </li>
+      <li>
+        <a href="https://data.humdata.org/dataset/01c902dd-fec3-499b-a6c0-d092c18bc73e/resource/0d9d729f-658c-4e7d-bbf7-f2558e8a9715/download/di_report-albania.xls">Disaster Tabular data for Albania</a>
+        <span class="label label-default">Excel (xlsx)</span>
+      </li>
+    </ul>
+
+    <h2>RDL Loss Info</h2>
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>Hazard Type</th>
+        <td>Coastal Flood, Convective Storm, Drought, Earthquake, Extreme Temperature, Flood, Landslide, Strong Wind, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Process Type</th>
+        <td>Extratropical Cyclone, Extreme Cold, Extreme Heat, Fluvial Flood, Ground Motion, Landslide (General), Mudflow, Liquefaction, Meteorological Drought, Pluvial Flood, Snow Avalanche, Storm Surge, Tornado, Wildfire</td>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <td>111 loss records across 9 hazard types</td>
+      </tr>
+      <tr>
+        <th>Total Loss Records</th>
+        <td>111</td>
+      </tr>
+      <tr>
+        <th>Loss Records Detail</th>
+        <td>
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Coastal Flood
+              <span class="badge" style="background-color: #5cb85c;">2</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Homes with non-structural damage &mdash; 2 events out of 7 (1975-2012)</li>
+              <li>Persons whose goods/services suffered serious damage &mdash; 1 event</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Convective Storm
+              <span class="badge" style="background-color: #5cb85c;">8</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 54 events out of 217 (1976-2014)</li>
+              <li>Persons injured &mdash; 19 events out of 217 (1976-2014)</li>
+              <li>Homes destroyed &mdash; 2 events out of 217</li>
+              <li>Homes with non-structural damage &mdash; 2 events out of 217</li>
+              <li>Hectares of crops/woods destroyed &mdash; 79 events out of 217</li>
+              <li>Livestock lost &mdash; 18 events out of 217</li>
+              <li>Economic losses (local currency) &mdash; 20 events out of 217</li>
+              <li>Persons with serious damage to goods/services &mdash; 1 event</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Drought
+              <span class="badge" style="background-color: #5cb85c;">1</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Hectares of crops/woods destroyed &mdash; 1 event out of 1 (1993)</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Earthquake
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 14 events out of 185 (2014)</li>
+              <li>Persons injured &mdash; 18 events out of 185</li>
+              <li>Persons evacuated &mdash; 5 events out of 185</li>
+              <li>Persons with serious damage to goods/services &mdash; 26 events out of 185</li>
+              <li>Persons with serious damage (liquefaction) &mdash; 2 events out of 4</li>
+              <li>Persons indirectly affected &mdash; 8 events out of 185</li>
+              <li>Homes destroyed &mdash; 66 events out of 185</li>
+              <li>Homes with non-structural damage &mdash; 92 events out of 185</li>
+              <li>Educational facilities affected &mdash; 8 events out of 185</li>
+              <li>Health facilities affected &mdash; 5 events out of 185</li>
+              <li>Transport networks destroyed &mdash; 1 event out of 185</li>
+              <li>Economic losses (local currency) &mdash; 78 events out of 185</li>
+              <li>Hectares of crops/woods destroyed &mdash; (no data)</li>
+              <li>Livestock lost &mdash; (no data)</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Extreme Temperature
+              <span class="badge" style="background-color: #5cb85c;">8</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (cold wave, frost) &mdash; 10 events out of 126 (1990-2012)</li>
+              <li>Deaths (heat wave) &mdash; 9 events out of 22 (1998-2002)</li>
+              <li>Persons injured (cold wave, frost) &mdash; 10 events out of 126</li>
+              <li>Persons injured (heat wave) &mdash; 11 events out of 22</li>
+              <li>Homes with non-structural damage &mdash; 2 events out of 126</li>
+              <li>Hectares of crops/woods destroyed &mdash; 55 events out of 126</li>
+              <li>Livestock lost (cold wave, frost) &mdash; 10 events out of 126</li>
+              <li>Economic losses (local currency) &mdash; 5 events out of 126</li>
+            </ul>
+          </details>
+
+          <details class="loss-group" open>
+            <summary class="loss-group-summary">
+              Flood
+              <span class="badge" style="background-color: #5cb85c;">18</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (flash flood, flood) &mdash; 44 events out of 949 (2002-2015)</li>
+              <li>Deaths (rains) &mdash; 3 events out of 217 (2007-2013)</li>
+              <li>Persons injured (flash flood, flood) &mdash; 18 events out of 949</li>
+              <li>Persons injured (rains) &mdash; 2 events out of 217</li>
+              <li>Persons missing &mdash; 2 events</li>
+              <li>Persons evacuated &mdash; 78 events</li>
+              <li>Persons relocated &mdash; 4 events</li>
+              <li>Persons indirectly affected &mdash; 19 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 171 events</li>
+              <li>Homes destroyed &mdash; 139 events</li>
+              <li>Homes with non-structural damage &mdash; 248 events</li>
+              <li>Educational facilities affected &mdash; 15 events</li>
+              <li>Health facilities affected &mdash; 2 events</li>
+              <li>Transport networks destroyed &mdash; 23 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 523 events</li>
+              <li>Livestock lost &mdash; 99 events</li>
+              <li>Economic losses (USD) &mdash; 4 events</li>
+              <li>Economic losses (local currency) &mdash; 282 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Landslide
+              <span class="badge" style="background-color: #5cb85c;">16</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths (avalanche) &mdash; 17 events out of 25 (2010-2012)</li>
+              <li>Deaths (landslide) &mdash; 40 events out of 629 (1995-2013)</li>
+              <li>Persons injured &mdash; 23 events</li>
+              <li>Persons missing &mdash; 2 events</li>
+              <li>Persons relocated &mdash; 5 events</li>
+              <li>Persons evacuated &mdash; 29 events</li>
+              <li>Persons indirectly affected &mdash; 5 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 250 events</li>
+              <li>Homes destroyed &mdash; 349 events</li>
+              <li>Homes with non-structural damage &mdash; 120 events</li>
+              <li>Educational facilities affected &mdash; 7 events</li>
+              <li>Transport networks destroyed &mdash; 30 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 19 events</li>
+              <li>Livestock lost &mdash; 6 events</li>
+              <li>Economic losses (USD) &mdash; 1 event</li>
+              <li>Economic losses (local currency) &mdash; 308 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Strong Wind
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 45 events out of 891 (1973-2012)</li>
+              <li>Persons injured &mdash; 26 events out of 891</li>
+              <li>Persons missing &mdash; 4 events</li>
+              <li>Persons evacuated &mdash; 16 events</li>
+              <li>Persons indirectly affected &mdash; 55 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 88 events</li>
+              <li>Homes destroyed &mdash; 108 events</li>
+              <li>Homes with non-structural damage &mdash; 86 events</li>
+              <li>Educational facilities affected &mdash; 28 events</li>
+              <li>Health facilities affected &mdash; 1 event</li>
+              <li>Transport networks destroyed &mdash; 4 events</li>
+              <li>Hectares of crops/woods destroyed &mdash; 50 events</li>
+              <li>Livestock lost &mdash; 65 events</li>
+              <li>Economic losses (local currency) &mdash; 130 events</li>
+            </ul>
+          </details>
+
+          <details class="loss-group">
+            <summary class="loss-group-summary">
+              Wildfire
+              <span class="badge" style="background-color: #5cb85c;">14</span>
+            </summary>
+            <ul class="loss-group-descriptions">
+              <li>Deaths &mdash; 13 events out of 1,383 (2003-2014)</li>
+              <li>Persons injured &mdash; 6 events out of 1,383</li>
+              <li>Persons relocated &mdash; 5 events</li>
+              <li>Persons evacuated &mdash; 5 events</li>
+              <li>Persons indirectly affected &mdash; 4 events</li>
+              <li>Persons with serious damage to goods/services &mdash; 37 events</li>
+              <li>Homes destroyed &mdash; 46 events</li>
+              <li>Homes with non-structural damage &mdash; 60 events</li>
+              <li>Educational facilities affected &mdash; 1 event</li>
+              <li>Health facilities affected &mdash; 1 event</li>
+              <li>Hectares of crops/woods destroyed &mdash; 716 events</li>
+              <li>Livestock lost &mdash; 11 events</li>
+              <li>Economic losses (USD) &mdash; 23 events</li>
+              <li>Economic losses (local currency) &mdash; 65 events</li>
+            </ul>
+          </details>
+        </td>
+      </tr>
+      <tr>
+        <th>Category</th>
+        <td><em>(empty)</em></td>
+      </tr>
+      <tr>
+        <th>Impact Type</th>
+        <td><em>(empty)</em></td>
+      </tr>
+      <tr>
+        <th>Impact Metric</th>
+        <td><em>(empty)</em></td>
+      </tr>
+      <tr>
+        <th>Type</th>
+        <td><em>(empty)</em></td>
+      </tr>
+    </table>
+
+    <h2>Additional Info</h2>
+    <table class="table table-striped dataset-details">
+      <tr>
+        <th>ID of dataset</th>
+        <td>rdls_lss-albundrr_desinventar</td>
+      </tr>
+      <tr>
+        <th>Dataset version</th>
+        <td>1</td>
+      </tr>
+      <tr>
+        <th>Data purpose</th>
+        <td>To document historical disaster losses in Albania from the DesInventar national disaster loss inventory, supporting disaster risk reduction monitoring under the Sendai Framework.</td>
+      </tr>
+      <tr>
+        <th>Project</th>
+        <td><a href="https://www.desinventar.net/">DesInventar Sendai - Disaster Information Management System</a></td>
+      </tr>
+      <tr>
+        <th>Additional details</th>
+        <td>Event-level disaster loss records from the DesInventar database for Albania, maintained by General Directorate of Civil Emergencies. Covers 4,659 observed disaster events from 1973-2015. Data collected through direct observational reporting and includes human impacts (deaths, injuries, missing, affected, evacuated, relocated), physical impacts (houses destroyed/damaged, education centres, hospitals, roads), economic losses (local currency and USD), and agricultural impacts (crop damage in hectares, livestock losses). Methodology: Direct Observational Data / Anecdotal Data.</td>
+      </tr>
+      <tr>
+        <th>Publisher</th>
+        <td><a href="https://www.undrr.org/">United Nations Office for Disaster Risk Reduction (UNDRR)</a></td>
+      </tr>
+      <tr>
+        <th>Creator</th>
+        <td><a href="https://www.desinventar.net/">United Nations Office for Disaster Risk Reduction (UNDRR)</a></td>
+      </tr>
+      <tr>
+        <th>Spatial coverage</th>
+        <td>ALB</td>
+      </tr>
+      <tr>
+        <th>Contact Point</th>
+        <td><a href="http://www.mbrojtjacivile.al/">General Directorate of Civil Emergencies</a></td>
+      </tr>
+      <tr>
+        <th>License</th>
+        <td><a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a></td>
+      </tr>
+    </table>
+
+    <hr>
+    <p class="text-muted"><small>
+      Proposed display for rdl-jkan. Uses HTML5 <code>&lt;details&gt;/&lt;summary&gt;</code> &mdash; zero JS dependency, native accessibility. Data from Albania DesInventar dataset (<code>rdls_lss-albundrr_desinventar</code>, 111 loss records, 9 hazard types).
+    </small></p>
+  </div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# to-rdls: RDLS Metadata Transformation Toolkit
+# to-rdls: RDLS v0.3 Metadata Transformation Toolkit
 
 Transform metadata from various sources (HDX, GeoNode, etc.) into
 [Risk Data Library Standard (RDLS)](https://docs.riskdatalibrary.org/) v0.3 JSON records.

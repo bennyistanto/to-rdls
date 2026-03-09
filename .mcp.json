@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "to-rdls": {
+      "type": "stdio",
+      "command": "C:\\Users\\benny\\miniforge3\\Scripts\\conda.exe",
+      "args": [
+        "run",
+        "--no-banner",
+        "-n",
+        "to-rdls",
+        "python",
+        "C:\\Users\\benny\\OneDrive\\Documents\\Github\\to-rdls\\mcp_server.py"
+      ]
+    }
+  }
+}

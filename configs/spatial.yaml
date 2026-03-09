@@ -75,6 +75,37 @@ country_name_fixes:
   "laos": LAO
   "vietnam": VNM
 
+  # NISMOD ICRA split/non-standard territory names
+  "antigua": ATG
+  "barbuda": ATG
+  "the bahamas": BHS
+  "saint barthelemy": BLM
+  "bonaire": BES
+  "saint-eustatius": BES
+  "saba": BES
+  "canary islands": ESP
+  "galapagos islands": ECU
+  "falkland islands": FLK
+  "corsica": FRA
+  "fiji (east)": FJI
+  "fiji (west)": FJI
+  "chagos archipelago": IOT
+  "kiribati (east)": KIR
+  "kiribati (west)": KIR
+  "svalbard": SJM
+  "new zealand (islands)": NZL
+  "azores": PRT
+  "pitcairn islands": PCN
+  "spratly islands": VNM
+  "madeira": PRT
+  "reunion": REU
+  "somaliland": SOM
+  "sao tome and principe": STP
+  "são tomé and principe": STP
+  "são tomé and príncipe": STP
+  "turkey": TUR
+  "north pacific islands (usa)": UMI
+
 # ---------------------------------------------------------------------------
 # Non-country group names (skip without warning)
 # ---------------------------------------------------------------------------
@@ -180,6 +211,24 @@ region_to_countries:
     - SLE
     - TGO
 
+  north africa:
+    - DZA
+    - EGY
+    - LBY
+    - MAR
+    - SDN
+    - TUN
+
+  central africa:
+    - CMR
+    - CAF
+    - TCD
+    - COG
+    - COD
+    - GNQ
+    - GAB
+    - STP
+
   southern africa:
     - BWA
     - SWZ
@@ -189,6 +238,23 @@ region_to_countries:
     - ZAF
     - ZMB
     - ZWE
+
+  horn of africa:
+    - DJI
+    - ERI
+    - ETH
+    - SOM
+
+  sahel:
+    - BFA
+    - TCD
+    - MLI
+    - MRT
+    - NER
+    - SEN
+    - GMB
+    - NGA
+    - CMR
 
   asia:
     - AFG
@@ -266,6 +332,14 @@ region_to_countries:
     - TKM
     - UZB
 
+  east asia:
+    - CHN
+    - JPN
+    - MNG
+    - PRK
+    - KOR
+    - TWN
+
   europe:
     - ALB
     - AND
@@ -311,6 +385,59 @@ region_to_countries:
     - CHE
     - UKR
     - GBR
+    - VAT
+
+  eastern europe:
+    - BLR
+    - BGR
+    - CZE
+    - HUN
+    - MDA
+    - POL
+    - ROU
+    - RUS
+    - SVK
+    - UKR
+
+  western europe:
+    - AUT
+    - BEL
+    - FRA
+    - DEU
+    - LIE
+    - LUX
+    - MCO
+    - NLD
+    - CHE
+
+  northern europe:
+    - DNK
+    - EST
+    - FIN
+    - ISL
+    - IRL
+    - LVA
+    - LTU
+    - NOR
+    - SWE
+    - GBR
+
+  southern europe:
+    - ALB
+    - AND
+    - BIH
+    - HRV
+    - CYP
+    - GRC
+    - ITA
+    - MKD
+    - MLT
+    - MNE
+    - PRT
+    - SMR
+    - SRB
+    - SVN
+    - ESP
     - VAT
 
   middle east:
@@ -366,6 +493,25 @@ region_to_countries:
     - TTO
     - URY
     - USA
+    - VEN
+
+  north america:
+    - CAN
+    - MEX
+    - USA
+
+  south america:
+    - ARG
+    - BOL
+    - BRA
+    - CHL
+    - COL
+    - ECU
+    - GUY
+    - PRY
+    - PER
+    - SUR
+    - URY
     - VEN
 
   latin america:

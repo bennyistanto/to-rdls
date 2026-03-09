@@ -1,0 +1,295 @@
+# DesInventar Event Type → RDLS v0.3 Hazard Mapping
+# Used by rdls_desinventar_01_generate_records.py
+#
+# References:
+#   - RDLS hazard_type codelist: coastal_flood, convective_storm, drought,
+#     extreme_temperature, flood, wildfire, strong_wind, earthquake, landslide,
+#     tsunami, volcanic
+#   - RDLS process_type codelist: see schema rdls_schema_v0.3.json
+#   - DesInventar data dictionary: datadictionary.docx
+
+# ──────────────────────────────────────────────────────────────────────
+# Event type → RDLS hazard_type + process_type
+# null = not mappable to RDLS natural hazard codelist (skipped)
+# ──────────────────────────────────────────────────────────────────────
+event_type_mapping:
+  # HIGH confidence — clear 1:1 mapping
+  FLOOD:           { hazard_type: flood, process_type: fluvial_flood }
+  FLASH FLOOD:     { hazard_type: flood, process_type: fluvial_flood }
+  LANDSLIDE:       { hazard_type: landslide, process_type: landslide_general }
+  EARTHQUAKE:      { hazard_type: earthquake, process_type: ground_motion }
+  DROUGHT:         { hazard_type: drought, process_type: meteorological_drought }
+  FOREST FIRE:     { hazard_type: wildfire, process_type: wildfire }
+  AVALANCHE:       { hazard_type: landslide, process_type: snow_avalanche }
+  SURGE:           { hazard_type: coastal_flood, process_type: storm_surge }
+  HEAT WAVE:       { hazard_type: extreme_temperature, process_type: extreme_heat }
+  COLD WAVE:       { hazard_type: extreme_temperature, process_type: extreme_cold }
+  TSUNAMI:         { hazard_type: tsunami, process_type: tsunami }
+
+  # MEDIUM confidence — reasonable mapping with some ambiguity
+  RAINS:           { hazard_type: flood, process_type: pluvial_flood }
+  STORM:           { hazard_type: strong_wind, process_type: extratropical_cyclone }
+  WINDSTORM:       { hazard_type: strong_wind, process_type: extratropical_cyclone }
+  SNOWSTORM:       { hazard_type: strong_wind, process_type: extratropical_cyclone }
+  HAILSTORM:       { hazard_type: convective_storm, process_type: tornado }
+  THUNDERSTORM:    { hazard_type: convective_storm, process_type: tornado }
+  FROST:           { hazard_type: extreme_temperature, process_type: extreme_cold }
+  FIRE:            { hazard_type: wildfire, process_type: wildfire }
+  LIQUEFACTION:    { hazard_type: earthquake, process_type: liquefaction }
+  SEDIMENTATION:   { hazard_type: landslide, process_type: landslide_mudflow }
+  CYCLONE:         { hazard_type: strong_wind, process_type: tropical_cyclone }
+  TYPHOON:         { hazard_type: strong_wind, process_type: tropical_cyclone }
+  HURRICANE:       { hazard_type: strong_wind, process_type: tropical_cyclone }
+  VOLCANIC ERUPTION: { hazard_type: volcanic, process_type: ashfall }
+  VOLCANIC ACTIVITY: { hazard_type: volcanic, process_type: ashfall }
+  MUDSLIDE:        { hazard_type: landslide, process_type: landslide_mudflow }
+  ROCKSLIDE:       { hazard_type: landslide, process_type: landslide_rockslide }
+  COASTAL FLOOD:   { hazard_type: coastal_flood, process_type: coastal_flood }
+  TIDAL WAVE:      { hazard_type: coastal_flood, process_type: storm_surge }
+
+  # NOT mappable to RDLS natural hazards (skipped)
+  EPIDEMIC:        null
+  PLAGUE:          null
+  ACCIDENT:        null
+  CONTAMINATION:   null
+  STRUCTURE:       null
+  EXPLOSION:       null
+  LEAK:            null
+  FOG:             null
+  OTHER:           null
+  PANIC:           null
+  POLLUTION:       null
+  BIOLOGICAL:      null
+  FAMINE:          null
+
+# ──────────────────────────────────────────────────────────────────────
+# DesInventar loss columns → RDLS loss entry fields
+# Each column from di_report-*.xls maps to impact_metric + asset fields
+# ──────────────────────────────────────────────────────────────────────
+loss_column_mapping:
+  Deaths:
+    impact_metric: casualty_count
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "deaths directly caused by disaster events"
+
+  Injured:
+    impact_metric: casualty_count
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons injured or made sick directly by disaster events"
+
+  Missing:
+    impact_metric: casualty_count
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons missing or unaccounted for after disaster events"
+
+  Affected:
+    impact_metric: exposure_to_hazard
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons indirectly affected (disruption to services, commerce, work)"
+
+  Victims:
+    impact_metric: exposure_to_hazard
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons whose goods/services suffered serious damage"
+
+  Evacuated:
+    impact_metric: displaced_count
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons temporarily evacuated from homes or workplaces"
+
+  Relocated:
+    impact_metric: displaced_count
+    asset_category: population
+    asset_dimension: population
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "persons permanently relocated from homes"
+
+  Houses Destroyed:
+    impact_metric: asset_loss
+    asset_category: buildings
+    asset_dimension: structure
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "homes destroyed beyond habitability"
+
+  Houses Damaged:
+    impact_metric: damage_ratio
+    asset_category: buildings
+    asset_dimension: structure
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "homes with non-structural damage, still habitable"
+
+  Losses $USD:
+    impact_metric: economic_loss_value
+    asset_category: buildings
+    asset_dimension: content
+    quantity_kind: currency
+    loss_type: ground_up
+    currency: USD
+    description_suffix: "total economic losses in US Dollars"
+
+  Losses $Local:
+    impact_metric: economic_loss_value
+    asset_category: buildings
+    asset_dimension: content
+    quantity_kind: currency
+    loss_type: ground_up
+    description_suffix: "total economic losses in local currency"
+
+  Damages in crops Ha.:
+    impact_metric: asset_loss
+    asset_category: agriculture
+    asset_dimension: product
+    quantity_kind: area
+    loss_type: ground_up
+    description_suffix: "hectares of crops/woods destroyed or affected"
+
+  Lost Cattle:
+    impact_metric: asset_loss
+    asset_category: agriculture
+    asset_dimension: product
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "livestock lost"
+
+  Education centers:
+    impact_metric: asset_loss
+    asset_category: infrastructure
+    asset_dimension: structure
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "educational facilities destroyed or affected"
+
+  Hospitals:
+    impact_metric: asset_loss
+    asset_category: infrastructure
+    asset_dimension: structure
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "health facilities destroyed or affected"
+
+  Damages in roads Mts:
+    impact_metric: asset_loss
+    asset_category: infrastructure
+    asset_dimension: structure
+    quantity_kind: count
+    loss_type: ground_up
+    description_suffix: "metres of transport networks destroyed"
+
+# ──────────────────────────────────────────────────────────────────────
+# Country ISO3 → local currency (ISO 4217)
+# Used for "Losses $Local" column
+# ──────────────────────────────────────────────────────────────────────
+country_currencies:
+  ALB: ALL    # Albanian Lek
+  KHM: KHR   # Cambodian Riel
+  COL: COP   # Colombian Peso
+  CRI: CRC   # Costa Rican Colón
+  ETH: ETB   # Ethiopian Birr
+  IDN: IDR   # Indonesian Rupiah
+  KEN: KES   # Kenyan Shilling
+  MDG: MGA   # Malagasy Ariary
+  MLI: XOF   # West African CFA Franc
+  NER: XOF   # West African CFA Franc
+  SEN: XOF   # West African CFA Franc
+  LKA: LKR   # Sri Lankan Rupee
+  TGO: XOF   # West African CFA Franc
+
+# ──────────────────────────────────────────────────────────────────────
+# The 16 DesInventar HDX datasets
+# dataset_id → { iso3, country_name, contact_point }
+# ──────────────────────────────────────────────────────────────────────
+datasets:
+  # Series A: "Disaster Loss Data for [Country]" (2013 vintage)
+  19ed73b5-9f91-4568-a0f3-48b7fa8c1796:
+    iso3: MLI
+    country_name: Mali
+    contact_point: "Direction Nationale de la Protection Civile"
+  3497f102-c9b0-4959-bc74-d98985e302fc:
+    iso3: ETH
+    country_name: Ethiopia
+    contact_point: "Disaster Risk Management and Food Security Sector"
+  463af9ac-a311-4d10-9ab9-cdb0ef4ed22a:
+    iso3: TGO
+    country_name: Togo
+    contact_point: "Comite National de Secours"
+  6abc5323-7218-4592-9ab3-70c7e659f366:
+    iso3: IDN
+    country_name: Indonesia
+    contact_point: "Badan Nasional Penanggulangan Bencana (BNPB)"
+  b2bac671-00d7-4303-8cbe-046c90b159ff:
+    iso3: MDG
+    country_name: Madagascar
+    contact_point: "Cellule de Prevention et Gestion des Urgences (CPGU)"
+    series: "a"
+  d16485d0-2011-4f5d-bb12-9e92feb8f853:
+    iso3: NER
+    country_name: Niger
+    contact_point: "Systeme d'Alerte Precoce (SAP)"
+    series: "a"
+  dc29e362-55fc-458f-af09-477d3f0e2bcb:
+    iso3: SEN
+    country_name: Senegal
+    contact_point: "Direction de la Protection Civile (DPC)"
+    series: "a"
+
+  # Series B: "Disaster loss and damage dataset for [Country]" (2015-2016)
+  01c902dd-fec3-499b-a6c0-d092c18bc73e:
+    iso3: ALB
+    country_name: Albania
+    contact_point: "General Directorate of Civil Emergencies"
+  08c9ca36-8b95-4361-abf1-ce21bfc49184:
+    iso3: LKA
+    country_name: Sri Lanka
+    contact_point: "Disaster Management Centre (DMC)"
+  0fccd714-7418-4ce5-9632-bbe125681738:
+    iso3: KHM
+    country_name: Cambodia
+    contact_point: "National Committee for Disaster Management (NCDM)"
+  34f077f2-7270-45db-8f95-da5e4bfd5c9a:
+    iso3: SEN
+    country_name: Senegal
+    contact_point: "Direction de la Protection Civile (DPC)"
+    series: "b"
+  60bb0852-2e19-4150-a142-34f7fc1e2fc0:
+    iso3: NER
+    country_name: Niger
+    contact_point: "Systeme d'Alerte Precoce (SAP)"
+    series: "b"
+  7debae59-b034-4e9a-9fb1-4f270e57435d:
+    iso3: KEN
+    country_name: Kenya
+    contact_point: "National Disaster Operations Centre (NDOC)"
+  7e62f19b-805c-44cb-8030-bd14275bd7b2:
+    iso3: MDG
+    country_name: Madagascar
+    contact_point: "Cellule de Prevention et Gestion des Urgences (CPGU)"
+    series: "b"
+  84aa5ccd-46eb-4bde-b39a-f9cb1a159fc3:
+    iso3: CRI
+    country_name: Costa Rica
+    contact_point: "Comision Nacional de Prevencion de Riesgos y Atencion de Emergencias (CNE)"
+  baeedcfd-14c7-4028-8eb0-e1192e82dc79:
+    iso3: COL
+    country_name: Colombia
+    contact_point: "Corporacion OSSO / La Red"
