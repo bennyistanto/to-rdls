@@ -1,5 +1,5 @@
 """
-rdls_hdx_07_llm_review.py — LLM-Assisted HEVL Review & Final Distribution
+rdls_hdx_llm_review.py — LLM-Assisted HEVL Review & Final Distribution
 ===========================================================================
 
 Pipeline step that follows the regex-based HEVL review (hdx_review.py).
@@ -22,7 +22,7 @@ Prerequisites:
 Usage:
     cd C:\\Users\\benny\\OneDrive\\Documents\\Github\\to-rdls
     set ANTHROPIC_API_KEY=sk-ant-...
-    python notebooks/rdls_hdx_07_llm_review.py
+    python notebooks/rdls_hdx_llm_review.py
 
 Inputs:
     - output/hdx/revised/          (12,594 RDLS JSON from regex review)

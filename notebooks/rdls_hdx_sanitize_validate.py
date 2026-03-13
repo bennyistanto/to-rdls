@@ -1,18 +1,28 @@
 r"""
-fix_llm_ids.py -- Rebuild LLM review output from source + report
-================================================================
+rdls_hdx_sanitize_validate.py
+=================================
+Post-LLM-review pipeline: rebuild, sanitize, and validate RDLS records.
 
 Rebuilds output/llm/revised/ from:
-- output/hdx/revised/ (original input records, 12,594 files)
+- output/hdx/revised/ (source records, 12,594 files)
 - output/llm/reports/review_report.csv (LLM decisions: rename, changes, not-RDLS)
-- output/llm_review/cache/ (cached LLM responses, for changed records)
+- output/llm/reports/llm_classifications.jsonl (REMOVE operations for changed records)
 
-This avoids re-running the $22 LLM pipeline. Fully offline, ~60s.
+Schema-driven sanitization:
+- Strips empty optional fields (author_names, doi, etc.)
+- Removes structurally invalid HEVL blocks (empty arrays, missing required sub-fields)
+- Filters invalid country codes against schema codelist
+- Reconciles risk_data_type with actual blocks present
+- Reorders fields to match schema property order
+- Rebuilds IDs/filenames to match updated risk_data_type
+
+Fully offline, no API calls. ~2 min runtime.
 
 Usage:
     cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
+    conda activate to-rdls
     set PYTHONPATH=C:\Users\benny\OneDrive\Documents\Github\to-rdls
-    python notebooks\fix_llm_ids.py
+    python notebooks\rdls_hdx_sanitize_validate.py
 """
 
 import copy
