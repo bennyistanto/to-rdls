@@ -544,35 +544,263 @@ rdls_schema:
 
 
 # ---------------------------------------------------------------------------
-# Section 7: Column-Level Detection Patterns
-# Used by: classify_group() for inspection-based evidence
+# Section 7: Column-Level Detection Patterns (v2)
+#
+# Used by: classify_group() via _match_column_signals()
+#
+# Each group has:
+#   component    - H, E, V, or L
+#   weight       - high (3), medium (2), low (1)
+#   label        - human-readable evidence string
+#   patterns     - list of regex patterns matched against individual column names
+#   sub_category - (optional) exposure_category or hazard_type
 # ---------------------------------------------------------------------------
 column_detection:
+
+  # -- LOSS ----------------------------------------------------------------
+
+  loss_damage_assessment:
+    component: L
+    weight: high
+    label: "post-event damage assessment columns"
+    patterns:
+      - 'damage[d_\s]*(status|level|grade|class|type|extent|scale)'
+      - 'damage[d_\s]*(severe|moderate|minor|heavy|partial|total|complete)'
+      - '(building|house|structure|facility)[_\s]*damage[d]?'
+      - '(operational|functional)[_\s]*status'
+      - 'status[_\s]*(post|after)[_\s]*(earthquake|flood|disaster|storm|cyclone)'
+      - '\b(open|closed)\b.*\b(open|closed)\b'
+      - '(power|water|sanitation)[_\s]*(functioning|functional|available|operational)'
+      - '(service|staff)[_\s]*(present|available|functional)'
+      - 'accommodation[_\s]*damage'
+      - 'repairs?\b'
+
+  loss_mortality:
+    component: L
+    weight: high
+    label: "mortality and casualty columns"
+    patterns:
+      - '\b(deaths?|killed|fatality|fatalities|deceased|dead)\b'
+      - '\b(casualty|casualties)\b'
+      - '\b(injur(?:ed|y|ies)|wounded|hospitalized)\b'
+      - '\b(missing|unaccounted)\b'
+      - '\b(drowning|drowned)\b'
+      - '\bmortality\b'
+
+  loss_displacement:
+    component: L
+    weight: high
+    label: "displacement and affected population columns"
+    patterns:
+      - '\b(displaced|displacement|evacuated|evacuation)\b'
+      - '(affected|impacted)[_\s]*(pop|people|person|household|communit)'
+      - 'total[_\s]*affected'
+      - 'people[_\s]*affected'
+      - '\b(idp|internally[_\s]*displaced)\b'
+      - '\b(refugee|asylum)\b'
+      - '\b(homeless|shelter|unsheltered)\b'
+      - '\b(in[_\s]*need)\b'
+      - 'total[_\s]*(targeted|reached)'
+      - 'school[_\s]*(dropout|closure)'
+
+  loss_economic:
+    component: L
+    weight: high
+    label: "economic loss and damage cost columns"
+    patterns:
+      - 'economic[_\s]*loss'
+      - '(financial|monetary)[_\s]*loss'
+      - 'damage[_\s]*(cost|value|amount|estimate)'
+      - '(repair|replacement|reconstruction)[_\s]*cost'
+      - 'insured[_\s]*loss'
+      - 'insurance[_\s]*claim'
+      - 'loss[_\s]*(value|amount|estimate)'
+      - '\b(aal|average[_\s]*annual[_\s]*loss)\b'
+      - '\b(pml|probable[_\s]*max[_\s]*loss)\b'
+      - 'total[_\s]*(loss|damage|cost)'
+
+  loss_agricultural:
+    component: L
+    weight: high
+    label: "agricultural loss columns"
+    patterns:
+      - 'crop[_\s]*(loss|damage|failure|destroyed|affected)'
+      - 'livestock[_\s]*(loss|death|mortality|killed|affected)'
+      - 'harvest[_\s]*(loss|failure)'
+      - 'food[_\s]*insecurity'
+      - 'food[_\s]*(stock|reserve|shortage)'
+      - '\b(sam|mam|gam)\b'
+      - '\bmalnutrition\b'
+      - '\b(plw|pregnant.*lactating)\b'
+
+  loss_infrastructure:
+    component: L
+    weight: high
+    label: "infrastructure damage columns"
+    patterns:
+      - '(road|bridge|school|hospital|facility)[_\s]*(damage|destroyed|collapsed|closed|blocked)'
+      - '(road|bridge)[_\s]*(impassable|washed)'
+      - 'water[_\s]*(insecurity|shortage|contaminated)'
+      - 'health[_\s]*facility[_\s]*(damage|closed|destroyed)'
+
+  loss_disease:
+    component: L
+    weight: medium
+    label: "disease outbreak and health impact columns"
+    patterns:
+      - '\b(cholera|awd|malaria|dengue|measles)\b'
+      - 'disease[_\s]*(case|outbreak|incidence|prevalence)'
+      - '\bmorbidity\b'
+      - 'clinical[_\s]*staff'
+      - 'medical[_\s]*waste'
+      - 'infection[_\s]*control'
+
+  loss_catmodel:
+    component: L
+    weight: high
+    label: "catastrophe model output columns"
+    patterns:
+      - '\bds[1-4]\b'
+      - '\b(total_damage|total_loss)\b'
+      - '\bmetric[1-9]\b'
+      - '\b(loss_ratio|damage_ratio|mean_damage)\b'
+      - '\b(aalcalc|eltcalc|pltcalc|leccalc)\b'
+      - '\b(oep|aep)\b'
+      - 'exceedance[_\s]*prob'
+      - 'event[_\s]*loss[_\s]*table'
+      - 'annual[_\s]*loss'
+
+  # -- EXPOSURE ------------------------------------------------------------
+
   exposure_buildings:
-    columns:
-      - 'bldid'
-      - 'repvalue'
-      - 'expstr'
-      - 'fptarea'
-    label: "building ID/value/taxonomy columns"
+    component: E
+    sub_category: buildings
+    weight: high
+    label: "building exposure columns"
+    patterns:
+      - '\b(bldid|building[_\s]*id|structure[_\s]*id)\b'
+      - '\b(repvalue|replacement[_\s]*(value|cost))\b'
+      - '\b(expstr|exposure[_\s]*string|taxonomy[_\s]*string)\b'
+      - '\b(fptarea|footprint[_\s]*area|floor[_\s]*area|built[_\s]*area)\b'
+      - '\b(storey|stories|num[_\s]*floors|height[_\s]*m)\b'
+      - 'construction[_\s]*(type|material|class|year)'
+      - '\b(occupancy|occupancy[_\s]*(type|class))\b'
+      - '(roof|wall|foundation)[_\s]*(type|material)'
+      - '\b(tiv|total[_\s]*insured[_\s]*value)\b'
+      - '\b(gem[_\s]*taxonomy|ged4all)\b'
+
   exposure_population:
-    columns:
-      - 'hhid'
-      - 'nind'
-      - 'income'
-    label: "household/individual columns"
-  vulnerability:
-    columns:
-      - 'muds1'
-      - 'sigmads'
-      - 'damage_ratio'
-      - 'hw0'
-      - 'hw1'
-    label: "fragility/damage function columns"
-  loss:
-    columns:
-      - 'casualty'
-      - 'total_damage'
-      - 'metric1'
-    ds_pattern: '\bds[1-4]\b'
-    label: "damage state/casualty/metric columns"
+    component: E
+    sub_category: population
+    weight: high
+    label: "population and household exposure columns"
+    patterns:
+      - '\b(hhid|household[_\s]*id)\b'
+      - '\b(nind|num[_\s]*individual|household[_\s]*size)\b'
+      - '\b(income|income[_\s]*(level|group|class))\b'
+      - '\b(population|pop[_\s]*(count|density|total))\b'
+      - '\bcatchment[_\s]*population\b'
+      - '\b(census|demographic)\b'
+      - '\b(age[_\s]*group|gender|sex)\b'
+      - '\b(disability|elderly)\b'
+
+  exposure_infrastructure:
+    component: E
+    sub_category: infrastructure
+    weight: medium
+    label: "infrastructure asset columns"
+    patterns:
+      - 'facility[_\s]*(name|type|id|code)'
+      - '(hospital|clinic|school|health[_\s]*facilit)[_\s]*(name|type|id)'
+      - '(road|bridge)[_\s]*(type|class|name|id|length)'
+      - '\b(bed[_\s]*(count|capacity)|enrollment)\b'
+      - 'network[_\s]*(type|id)|line[_\s]*(type|voltage)'
+      - '\b(capacity|throughput)\b'
+      - '\bcontact[_\s]*person\b'
+
+  exposure_agriculture:
+    component: E
+    sub_category: agriculture
+    weight: medium
+    label: "agricultural asset columns"
+    patterns:
+      - 'crop[_\s]*(type|name|area|yield)'
+      - 'land[_\s]*(use|cover|class)'
+      - '\b(hectare|acreage|cultivated[_\s]*area)\b'
+      - 'livestock[_\s]*(type|count|head)'
+      - 'irrigation[_\s]*(type|status|area)'
+      - '\bfarmland\b'
+
+  # -- HAZARD --------------------------------------------------------------
+
+  hazard_intensity:
+    component: H
+    weight: high
+    label: "hazard intensity measure columns"
+    patterns:
+      - '(water|flood|inundation)[_\s]*depth'
+      - '\b(hmax|depth[_\s]*max|max[_\s]*depth)\b'
+      - '\b(velocity|flow[_\s]*velocity|current[_\s]*speed)\b'
+      - '\b(pga|pgv)\b'
+      - '\bsa[_\s]*\('
+      - 'spectral[_\s]*accel'
+      - '(wind|gust)[_\s]*speed'
+      - '(wave|surge)[_\s]*height'
+      - '\b(intensity|mmi|mercalli)\b'
+      - '\b(magnitude|richter)\b'
+      - '\b(precipitation|rainfall)[_\s]*(mm|amount|intensity)'
+      - '\b(discharge|runoff)\b'
+
+  hazard_probability:
+    component: H
+    weight: high
+    label: "hazard probability and return period columns"
+    patterns:
+      - 'return[_\s]*period'
+      - 'recurrence[_\s]*interval'
+      - 'annual[_\s]*(probability|exceedance)'
+      - '\brp[_\s]*\d+'
+      - 'exceedance[_\s]*probability'
+      - '\b(recurrence)\b'
+      - '(hazard|event|flood|earthquake)[_\s]*(frequency)'
+      - '(frequency)[_\s]*(analysis|curve|distribution)'
+
+  hazard_classification:
+    component: H
+    weight: medium
+    label: "hazard type classification columns"
+    patterns:
+      - 'hazard[_\s]*(type|class|category|code)'
+      - 'event[_\s]*(type|name|date|id)'
+      - 'disaster[_\s]*(type|name|subtype)'
+      - '(flood|seismic|landslide)[_\s]*(zone|class|type|area)'
+      - 'susceptibility[_\s]*(class|level|index)'
+
+  # -- VULNERABILITY -------------------------------------------------------
+
+  vulnerability_fragility:
+    component: V
+    weight: high
+    label: "fragility and damage function columns"
+    patterns:
+      - '\bmuds\d'
+      - '\bsigmads\d?'
+      - '\b(hw\d|water[_\s]*height[_\s]*\d)\b'
+      - '\b(damage[_\s]*ratio|loss[_\s]*ratio|mean[_\s]*damage)\b'
+      - '\b(fragility|vulnerability[_\s]*(function|curve))\b'
+      - '(intensity[_\s]*measure|im[_\s]*type|im[_\s]*level)'
+      - '\b(limit[_\s]*state|performance[_\s]*level)\b'
+      - '(depth|intensity)[_\s]*(damage|loss)'
+
+  vulnerability_capacity:
+    component: V
+    weight: medium
+    label: "coping capacity and socioeconomic vulnerability columns"
+    patterns:
+      - 'coping[_\s]*(capacity|strategy|mechanism)'
+      - 'adaptive[_\s]*capacity'
+      - 'resilience[_\s]*(score|index)'
+      - 'vulnerability[_\s]*(score|index|rank|class)'
+      - 'social[_\s]*vulnerability'
+      - '\bsvi\b'
+      - '\b(preparedness|awareness[_\s]*level)\b'

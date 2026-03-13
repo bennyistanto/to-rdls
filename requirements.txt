@@ -1,0 +1,18 @@
+# to-rdls pipeline dependencies
+# Install: pip install -r requirements.txt
+
+# --- Core (used by all modules) ---
+PyYAML>=6.0
+requests>=2.28
+
+# --- Schema validation (src/validate_qa.py, src/schema.py) ---
+jsonschema>=4.20
+
+# --- LLM classification (src/llm_review.py) ---
+anthropic>=0.40
+
+# --- Notebook scripts (DesInventar, NISMOD) ---
+pandas>=2.0
+openpyxl>=3.1        # Excel read/write
+xlrd>=2.0            # Legacy .xls read
+geopandas>=0.14      # Geospatial data (optional, for notebooks)

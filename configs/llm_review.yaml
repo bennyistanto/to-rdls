@@ -1,0 +1,43 @@
+# LLM-Assisted HEVL Review Configuration
+# Used by: python -m src.llm_review
+version: "1.0"
+
+# Phase 1: Signal triage thresholds
+triage:
+  confident_score_min: 5          # min max-component score to skip LLM
+  max_components_for_confident: 2  # >2 active components = borderline
+  validation_sample_pct: 0.05     # 5% of confident sent to LLM for cross-check
+
+# Phase 2: CKAN column enrichment
+ckan:
+  base_url: "https://data.humdata.org/api/3/action"
+  delay_seconds: 0.5              # 0.5s without API key, 0.1s with key
+  timeout_seconds: 15
+  cache_dir: "output/column_cache"
+  max_resources_per_dataset: 10
+
+# Phase 3: LLM classification
+llm:
+  model: "claude-haiku-4-5-20251001"
+  temperature: 0.0                # deterministic
+  max_tokens: 400
+  max_concurrent: 2
+  max_retries: 3
+  timeout_seconds: 30
+  cache_dir: "output/llm_review/cache"
+  # Cost guardrails
+  max_cost_usd: 15.0
+  cost_per_mtok_input: 1.00       # Haiku 4.5 pricing ($/MTok)
+  cost_per_mtok_output: 5.00
+
+# Phase 4: Merge strategy
+merge:
+  llm_overrides_signals: true     # when LLM and signals disagree, LLM wins
+  disagreement_confidence_min: 0.7  # LLM must be >0.7 to override signals
+
+# Prompt settings
+prompt:
+  description_max_chars: 500
+  methodology_max_chars: 300
+  max_resources_shown: 20
+  max_columns_shown: 50

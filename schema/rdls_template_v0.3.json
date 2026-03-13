@@ -132,8 +132,8 @@
         {
           "title": "",
           "description": "",
-          "data_format": "GeoTIFF (tif)",
-          "access_modality": "file_download",
+          "data_format": "",
+          "access_modality": "",
           "spatial_resolution": "",
           "coordinate_system": "",
           "access_url": "",
@@ -144,26 +144,26 @@
             "duration": "",
             "temporal_resolution": ""
           },
-          "id": "resource_9tME2LWG"
+          "id": ""
         }
       ],
       "hazard": {
         "event_sets": [
           {
-            "id": "event_set_drought_occurrence",
-            "analysis_type": "probabilistic",
+            "id": "",
+            "analysis_type": "",
             "frequency_distribution": "",
             "seasonality": "",
-            "calculation_method": "simulated",
+            "calculation_method": "",
             "event_count": "",
             "occurrence_range": "",
             "hazards": [
               {
-                "id": "drought_hazard",
+                "id": "",
                 "disaster_identifiers": [],
                 "occurrence.deterministic.thresholds": [],
-                "type": "drought",
-                "hazard_process": "meteorological_drought",
+                "type": "",
+                "hazard_process": "",
                 "intensity_measure": "",
                 "trigger": {
                   "type": "",
@@ -173,13 +173,13 @@
             ],
             "events": [
               {
-                "id": "drought_occurrence_historical",
-                "calculation_method": "simulated",
-                "description": "Annual probability of drought occurrence for historical scenario across 4 time periods (2020, 2030, 2050, 2080). Includes 4 GCMs (GFDL-ESM2M, HadGEM2-ES, IPSL-CM5A-LR, MIROC5) combined with 9 hydrological models (CLM4.5, H08, JULES-W1, LPJmL, MATSIRO, MPI-HM, ORCHIDEE, PCR-GLOBWB, WaterGAP2), totaling 144 model-scenario combinations at 0.5° resolution.",
+                "id": "",
+                "calculation_method": "",
+                "description": "",
                 "hazard": {
-                  "id": "drought_hazard",
-                  "type": "drought",
-                  "hazard_process": "meteorological_drought",
+                  "id": "",
+                  "type": "",
+                  "hazard_process": "",
                   "intensity_measure": ""
                 },
                 "occurrence": {
@@ -193,9 +193,9 @@
                   },
                   "empirical": {
                     "temporal": {
-                      "start": "2020",
-                      "end": "2080",
-                      "duration": "P60Y",
+                      "start": "",
+                      "end": "",
+                      "duration": "",
                       "temporal_resolution": ""
                     },
                     "return_period": ""
@@ -211,14 +211,14 @@
       },
       "exposure": [
         {
-          "id": "exposure_drought_rural_population",
-          "category": "population",
-          "taxonomy": "GED4ALL",
+          "id": "",
+          "category": "",
+          "taxonomy": "",
           "metrics": [
             {
-              "id": "metric_drought_rural_population",
-              "dimension": "population",
-              "quantity_kind": "count",
+              "id": "",
+              "dimension": "",
+              "quantity_kind": "",
               "currency": ""
             }
           ]
@@ -226,16 +226,141 @@
       ],
       "vulnerability": {
         "functions": {
-          "vulnerability": [],
-          "fragility": [],
-          "damage_to_loss": [],
-          "engineering_demand": []
+          "vulnerability": [
+            {
+              "approach": "",
+              "relationship": "",
+              "hazard_primary": "",
+              "hazard_secondary": "",
+              "hazard_process_primary": "",
+              "hazard_process_secondary": "",
+              "hazard_analysis_type": "",
+              "intensity_measure": "",
+              "category": "",
+              "impact_type": "",
+              "impact_modelling": "",
+              "impact_metric": "",
+              "quantity_kind": "",
+              "taxonomy": "",
+              "analysis_details": "",
+              "id": ""
+            }
+          ],
+          "fragility": [
+            {
+              "damage_states_names": [
+                ""
+              ],
+              "approach": "",
+              "relationship": "",
+              "damage_scale_name": "",
+              "hazard_primary": "",
+              "hazard_secondary": "",
+              "hazard_process_primary": "",
+              "hazard_process_secondary": "",
+              "hazard_analysis_type": "",
+              "intensity_measure": "",
+              "category": "",
+              "impact_type": "",
+              "impact_modelling": "",
+              "impact_metric": "",
+              "quantity_kind": "",
+              "taxonomy": "",
+              "analysis_details": "",
+              "id": ""
+            }
+          ],
+          "damage_to_loss": [
+            {
+              "damage_states_names": [
+                ""
+              ],
+              "approach": "",
+              "relationship": "",
+              "damage_scale_name": "",
+              "hazard_primary": "",
+              "hazard_secondary": "",
+              "hazard_process_primary": "",
+              "hazard_process_secondary": "",
+              "hazard_analysis_type": "",
+              "intensity_measure": "",
+              "category": "",
+              "impact_type": "",
+              "impact_modelling": "",
+              "impact_metric": "",
+              "quantity_kind": "",
+              "taxonomy": "",
+              "analysis_details": "",
+              "id": ""
+            }
+          ],
+          "engineering_demand": [
+            {
+              "damage_states_names": [
+                ""
+              ],
+              "parameter": "",
+              "approach": "",
+              "relationship": "",
+              "damage_scale_name": "",
+              "hazard_primary": "",
+              "hazard_secondary": "",
+              "hazard_process_primary": "",
+              "hazard_process_secondary": "",
+              "hazard_analysis_type": "",
+              "intensity_measure": "",
+              "category": "",
+              "impact_type": "",
+              "impact_modelling": "",
+              "impact_metric": "",
+              "quantity_kind": "",
+              "taxonomy": "",
+              "analysis_details": "",
+              "id": ""
+            }
+          ]
         },
-        "socio_economic": []
+        "socio_economic": [
+          {
+            "scheme": "",
+            "indicator_name": "",
+            "indicator_code": "",
+            "description": "",
+            "threshold": "",
+            "reference_year": null,
+            "uri": "",
+            "analysis_details": "",
+            "id": ""
+          }
+        ]
       },
       "loss": {
-        "losses": []
-      },      
+        "losses": [
+          {
+            "hazard_type": "",
+            "hazard_process": "",
+            "asset_category": "",
+            "asset_dimension": "",
+            "impact_and_losses": {
+              "impact_type": "",
+              "impact_modelling": "",
+              "impact_metric": "",
+              "quantity_kind": "",
+              "currency": "",
+              "loss_type": "",
+              "loss_approach": "",
+              "loss_frequency_type": ""
+            },
+            "lineage": {
+              "hazard_dataset": "",
+              "exposure_dataset": "",
+              "vulnerability_dataset": ""
+            },
+            "description": "",
+            "id": ""
+          }
+        ]
+      },
       "links": [
         {
           "href": "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",

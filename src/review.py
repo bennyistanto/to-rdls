@@ -124,6 +124,14 @@ def _compile_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(info, dict) and "pattern" in info:
             info["compiled"] = re.compile(info["pattern"], re.I)
 
+    # --- column_detection: compile patterns ---
+    cd = compiled.get("column_detection", {})
+    for group_name, group_info in cd.items():
+        if isinstance(group_info, dict) and "patterns" in group_info:
+            group_info["patterns_compiled"] = [
+                re.compile(p, re.I) for p in group_info["patterns"]
+            ]
+
     return compiled
 
 
@@ -204,6 +212,12 @@ _README_PATTERNS = {
 # RDLS schema fields
 RDLS_REQUIRED = _cfg_init["rdls_schema"]["required"]
 RDLS_RECOMMENDED = _cfg_init["rdls_schema"]["recommended"]
+
+# Column-level detection (v2, compiled patterns)
+COLUMN_DETECTION = _cfg_init.get("column_detection", {})
+
+# Weight mapping for column signals
+_WEIGHT_MAP = {"high": 3, "medium": 2, "low": 1}
 
 del _cfg_init  # cleanup init-only reference
 
@@ -330,6 +344,8 @@ class FileGroup:
     confidence: str = "low"  # high, medium, low
     evidence: List[str] = field(default_factory=list)
     inspections: List[FileInspection] = field(default_factory=list)
+    conflicts: List[str] = field(default_factory=list)
+    column_evidence: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -1102,6 +1118,119 @@ def _match_signals(text: str, patterns: List[str]) -> List[str]:
     return matches
 
 
+def _extract_columns_from_inspection(insp: FileInspection) -> List[str]:
+    """Extract column/field names from any inspection result.
+
+    Works for CSV, XLSX, Vector (SHP/GeoJSON/GPKG), NetCDF, JSON.
+    Returns lowercased column names for pattern matching.
+    """
+    columns: List[str] = []
+    fmt = (insp.format or "").lower()
+    data = insp.inspection or {}
+
+    if fmt == "csv":
+        raw = data.get("columns", [])
+        if isinstance(raw, list):
+            columns.extend(raw)
+        elif isinstance(raw, dict):
+            columns.extend(raw.keys())
+
+    elif fmt == "xlsx":
+        sheets = data.get("sheets", {})
+        if isinstance(sheets, dict):
+            for sheet_info in sheets.values():
+                if isinstance(sheet_info, dict):
+                    cols = sheet_info.get("columns", [])
+                    if isinstance(cols, list):
+                        columns.extend(cols)
+                    elif isinstance(cols, dict):
+                        columns.extend(cols.keys())
+
+    elif fmt in ("shapefile", "geojson", "geopackage", "fgdb", "vector"):
+        raw = data.get("columns", [])
+        if isinstance(raw, list):
+            columns.extend(raw)
+        # Also try col_details keys
+        col_details = data.get("col_details", {})
+        if isinstance(col_details, dict):
+            columns.extend(col_details.keys())
+
+    elif fmt == "netcdf":
+        variables = data.get("variables", [])
+        if isinstance(variables, list):
+            columns.extend(variables)
+
+    elif fmt == "json":
+        fields = data.get("fields", [])
+        if isinstance(fields, list):
+            columns.extend(fields)
+        # Also try top-level keys
+        keys = data.get("keys", [])
+        if isinstance(keys, list):
+            columns.extend(keys)
+
+    # Normalize: lowercase, replace spaces with underscores, deduplicate
+    normalized = []
+    seen = set()
+    for c in columns:
+        if not isinstance(c, str):
+            continue
+        low = c.lower().strip()
+        if low and low not in seen:
+            normalized.append(low)
+            seen.add(low)
+    return normalized
+
+
+_COMP_LABEL = {"H": "Hazard", "E": "Exposure", "V": "Vulnerability", "L": "Loss"}
+
+
+def _match_column_signals(
+    columns: List[str],
+    column_detection: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Match column names against YAML column_detection patterns.
+
+    Returns list of dicts with signal details, sorted by weight descending.
+    """
+    results: List[Dict[str, Any]] = []
+
+    for group_name, group_info in column_detection.items():
+        if not isinstance(group_info, dict):
+            continue
+
+        compiled = group_info.get("patterns_compiled", [])
+        if not compiled:
+            continue
+
+        component = group_info.get("component", "")
+        weight_str = group_info.get("weight", "low")
+        weight = _WEIGHT_MAP.get(weight_str, 1)
+        label = group_info.get("label", group_name)
+        sub_category = group_info.get("sub_category")
+
+        matched_cols = []
+        for col in columns:
+            for pat in compiled:
+                if pat.search(col):
+                    matched_cols.append(col)
+                    break  # one match per column is enough
+
+        if matched_cols:
+            results.append({
+                "group": group_name,
+                "component": component,
+                "sub_category": sub_category,
+                "weight": weight,
+                "label": label,
+                "matched_columns": matched_cols,
+            })
+
+    # Sort by weight descending
+    results.sort(key=lambda x: -x["weight"])
+    return results
+
+
 def _maybe_split_group(
     group: FileGroup,
     rows: List[Dict],
@@ -1220,39 +1349,47 @@ def classify_group(group: FileGroup) -> FileGroup:
             hazard_types.add("dem_dtm")
         evidence.append(f"DEM/DTM detected: {dem_matches[:2]} (supporting hazard input)")
 
-    # Also check inspections for richer evidence
+    # -- Column-level detection (v2, YAML-driven) --------------------------
+    # Snapshot filename-only HEVL for conflict detection
+    filename_hevl = set(hevl)
+
+    # Extract columns from all inspections (CSV, XLSX, SHP, GeoJSON, etc.)
+    all_columns: List[str] = []
     for insp in group.inspections:
-        insp_text = json.dumps(insp.inspection, default=str).lower()
+        all_columns.extend(_extract_columns_from_inspection(insp))
+    all_columns = list(set(all_columns))  # deduplicate
 
-        # Column-level exposure detection
-        if any(c in insp_text for c in ["bldid", "repvalue", "expstr", "fptarea"]):
-            hevl.add("E")
-            exposure_categories.add("buildings")
-            if "building columns" not in str(evidence):
-                evidence.append("Exposure(buildings): building ID/value/taxonomy columns detected")
+    # Match against YAML column_detection patterns
+    col_signals = _match_column_signals(all_columns, COLUMN_DETECTION)
 
-        if any(c in insp_text for c in ["hhid", "nind", "income"]):
-            hevl.add("E")
-            exposure_categories.add("population")
-            if "household columns" not in str(evidence):
-                evidence.append("Exposure(population): household/individual columns detected")
+    column_evidence: List[str] = []
+    conflicts: List[str] = []
+    col_total_weight = 0
 
-        # Vulnerability from column names
-        if any(c in insp_text for c in ["muds1", "sigmads", "damage_ratio", "hw0", "hw1"]):
-            hevl.add("V")
-            if "fragility columns" not in str(evidence):
-                evidence.append("Vulnerability: fragility/damage function columns detected")
+    for sig in col_signals:
+        comp = sig["component"]
+        hevl.add(comp)
+        col_total_weight += sig["weight"]
+        col_label = _COMP_LABEL.get(comp, comp)
+        col_ev = f"{col_label}({sig['label']}): columns {sig['matched_columns'][:3]}"
+        column_evidence.append(col_ev)
+        evidence.append(col_ev)
+        if sig.get("sub_category") and comp == "E":
+            exposure_categories.add(sig["sub_category"])
+        if sig.get("sub_category") and comp == "H":
+            hazard_types.add(sig["sub_category"])
 
-        # Loss from column names (use regex for "ds" to avoid false positives
-        # like "Netherlands", "fields", etc.)
-        loss_col_hit = any(c in insp_text for c in ["casualty", "total_damage", "metric1"])
-        if not loss_col_hit:
-            # Check for damage-state patterns: ds1, ds2, ds3, ds4 (not bare "ds")
-            loss_col_hit = bool(re.search(r"\bds[1-4]\b", insp_text))
-        if loss_col_hit:
-            hevl.add("L")
-            if "impact columns" not in str(evidence):
-                evidence.append("Loss: damage state/casualty/metric columns detected")
+    # Detect conflicts (filename signals vs column signals)
+    column_hevl = {s["component"] for s in col_signals}
+    if column_hevl:
+        for comp in filename_hevl - column_hevl:
+            conflicts.append(
+                f"{_COMP_LABEL.get(comp, comp)} in filename/path but no supporting columns"
+            )
+        for comp in column_hevl - filename_hevl:
+            conflicts.append(
+                f"{_COMP_LABEL.get(comp, comp)} found in columns but not in filename/path"
+            )
 
     # Naming pattern analysis (extract scenarios, return periods, hazard subtypes)
     naming = analyze_naming_patterns(group.files)
@@ -1286,8 +1423,21 @@ def classify_group(group: FileGroup) -> FileGroup:
             hevl.discard("L")
             evidence = [e for e in evidence if not e.startswith("Loss:")]
 
-    # Confidence scoring
-    if len(evidence) >= 3:
+    # Confidence scoring — column evidence strengthens classification
+    has_column_evidence = bool(col_signals)
+    has_filename_evidence = bool(filename_hevl)
+    has_conflicts = bool(conflicts)
+
+    if col_total_weight >= 6:
+        # Strong column evidence alone → high confidence
+        confidence = "high"
+    elif has_column_evidence and has_filename_evidence and not has_conflicts:
+        # Both sources agree → high confidence
+        confidence = "high"
+    elif has_conflicts:
+        # Disagreement between filename and columns → medium (flag for review)
+        confidence = "medium"
+    elif len(evidence) >= 3:
         confidence = "high"
     elif len(evidence) >= 1:
         confidence = "medium"
@@ -1299,6 +1449,8 @@ def classify_group(group: FileGroup) -> FileGroup:
     group.exposure_categories = sorted(exposure_categories)
     group.confidence = confidence
     group.evidence = evidence
+    group.conflicts = conflicts
+    group.column_evidence = column_evidence
 
     return group
 
@@ -1646,6 +1798,30 @@ def render_review_markdown(review: ReviewResult) -> str:
                 lines.append(f"- **Vulnerability asset types**: {', '.join(naming['asset_types'])}")
             lines.append(f"- _Matched {naming['matched_count']}/{naming['total_count']} files_")
             lines.append("")
+
+    # Column evidence & conflicts (per group)
+    has_col_evidence = any(g.column_evidence for g in review.file_groups)
+    has_conflicts = any(g.conflicts for g in review.file_groups)
+    if has_col_evidence or has_conflicts:
+        lines.append("## Column-Level Classification Evidence")
+        lines.append("")
+        for g in review.file_groups:
+            if not g.column_evidence and not g.conflicts:
+                continue
+            lines.append(f"### {g.name}")
+            lines.append("")
+            if g.column_evidence:
+                lines.append("**Column signals detected:**")
+                lines.append("")
+                for ce in g.column_evidence:
+                    lines.append(f"- {ce}")
+                lines.append("")
+            if g.conflicts:
+                lines.append("> **Conflicts** (filename vs column evidence):")
+                lines.append(">")
+                for c in g.conflicts:
+                    lines.append(f"> - {c}")
+                lines.append("")
 
     # Intermediate files (excluded)
     if review.intermediate_files.get("total_excluded", 0) > 0:
