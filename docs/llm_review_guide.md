@@ -1,4 +1,4 @@
-# LLM-Assisted HEVL Review Pipeline — Operations Guide
+# LLM-Assisted HEVL Review Pipeline - Operations Guide
 
 > Last updated: 2026-03-13 (post sanitize + validate)
 
@@ -133,7 +133,7 @@ cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
 echo ANTHROPIC_API_KEY=sk-ant-api03-YOUR-KEY-HERE > .env
 ```
 
-The `.env` file is already in `.gitignore` — your key won't be committed.
+The `.env` file is already in `.gitignore` - your key won't be committed.
 
 **Method C: CLI argument (per-command):**
 
@@ -323,7 +323,7 @@ output/llm/
 ├── not_rdls/                        # Non-disaster records (3,772)
 ├── dist/                            # Final validated distribution
 │   ├── high/                        # Schema-valid (6,132)
-│   └── invalid/                     # Schema errors (2,690 — all occurrence:{})
+│   └── invalid/                     # Schema errors (2,690 - all occurrence:{})
 ├── reports/
 │   ├── review_summary.md            # Start here: aggregate stats
 │   ├── triage_summary.csv           # Bucket assignment per record

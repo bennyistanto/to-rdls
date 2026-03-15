@@ -1,8 +1,8 @@
-# DELTA vs RDLS v0.3 — System-Level Comparison
+# DELTA vs RDLS v0.3 - System-Level Comparison
 
 ## Context
 
-This is a research comparison between two disaster risk data standards. **DELTA Resilience** (UNDRR/UNDP/WMO) is an operational system for tracking hazardous events, losses and damages. **RDLS v0.3** (GFDRR) is a metadata standard for cataloging risk datasets. Understanding their differences and overlaps is key for interoperability — especially since our DesInventar pipeline already produces RDLS records, and DELTA is the successor to DesInventar.
+This is a research comparison between two disaster risk data standards. **DELTA Resilience** (UNDRR/UNDP/WMO) is an operational system for tracking hazardous events, losses and damages. **RDLS v0.3** (GFDRR) is a metadata standard for cataloging risk datasets. Understanding their differences and overlaps is key for interoperability - especially since our DesInventar pipeline already produces RDLS records, and DELTA is the successor to DesInventar.
 
 ---
 
@@ -18,7 +18,7 @@ This is a research comparison between two disaster risk data standards. **DELTA 
 | **Tech stack** | TypeScript/Remix, Drizzle ORM, Node.js, PostgreSQL 16 | Schema-only (JSON), implementation-agnostic |
 | **License** | Apache 2.0 (open-source software) | Open standard (schema definition) |
 
-**Key insight**: DELTA stores the actual disaster data; RDLS describes datasets that contain such data. They operate at different levels of abstraction — DELTA is the database, RDLS is the catalog card.
+**Key insight**: DELTA stores the actual disaster data; RDLS describes datasets that contain such data. They operate at different levels of abstraction - DELTA is the database, RDLS is the catalog card.
 
 ---
 
@@ -90,13 +90,13 @@ This is where the schemas differ most significantly.
 
 ### DELTA: Granular, Disaggregated, Record-Level
 
-**Human Effects** — tracked per disaster record through disaggregation table (`humanDsgTable`):
+**Human Effects** - tracked per disaster record through disaggregation table (`humanDsgTable`):
 - Disaggregation dimensions: sex, age, disability, globalPovertyLine, nationalPovertyLine
 - Plus custom disaggregation stored as JSON
 - Metric tables: `deathsTable`, `injuredTable`, `missingTable`, `affectedTable` (direct + indirect), `displacedTable`
 - Displaced has enums: assisted/not_assisted, pre-emptive/reactive, duration (short/medium_short/medium_long/long/permanent)
 
-**Sector Effects** — per sector, per asset, per disaster record:
+**Sector Effects** - per sector, per asset, per disaster record:
 - `damagesTable`: partially damaged (pd*) and totally destroyed (td*) subcategories
   - Each with: damage amount, repair/replacement cost (unit + total), recovery cost, disruption (duration + people affected)
   - Repair and replacement costs in local currency
@@ -116,7 +116,7 @@ This is where the schemas differ most significantly.
 
 ### RDLS: Metadata-Level Aggregation
 
-**Loss component** — describes the dataset, not individual records:
+**Loss component** - describes the dataset, not individual records:
 - `losses[]`: array of loss objects, each with:
   - hazard_type, hazard_process (what hazard caused the loss)
   - asset_category: exposure_category enum (agriculture, buildings, infrastructure, population, natural_environment, economic_indicator, development_index)
@@ -133,7 +133,7 @@ This is where the schemas differ most significantly.
   - lineage: links to hazard/exposure/vulnerability datasets
   - description: free text
 
-### Comparison Table — Loss Data
+### Comparison Table - Loss Data
 
 | Aspect | DELTA | RDLS v0.3 |
 |--------|-------|-----------|
@@ -156,7 +156,7 @@ This is where the schemas differ most significantly.
 ### DELTA Approach
 - Exposure and vulnerability are **context info** (ingested from external sources, not core data collection)
 - The data model diagram shows "Reference/pre-disaster conditions", "Vulnerability", "Exposure - key statistics" as context data feeding into analysis
-- No dedicated exposure/vulnerability tables in the database schema — these are external inputs
+- No dedicated exposure/vulnerability tables in the database schema - these are external inputs
 
 ### RDLS Approach
 - **Exposure**: First-class component with categories, taxonomy, metrics (dimension, quantity_kind)
@@ -271,20 +271,20 @@ Since DesInventar is DELTA's predecessor and our pipeline already transforms Des
 
 3. **Hazard classification mapping**: Need a HIP→RDLS hazard_type mapping table (HIP codes like MH0004 → RDLS codes like "coastal_flood")
 
-4. **Cascading events**: DELTA's event chain model has no RDLS equivalent — would need to flatten or reference multiple hazard_types
+4. **Cascading events**: DELTA's event chain model has no RDLS equivalent - would need to flatten or reference multiple hazard_types
 
-5. **The RDLS `vulnerability` and `exposure` components remain unique** — DELTA doesn't replace these, it complements them with observed impact data
+5. **The RDLS `vulnerability` and `exposure` components remain unique** - DELTA doesn't replace these, it complements them with observed impact data
 
 ---
 
 ## Sources
 
 - [DELTA Resilience - UNDRR](https://www.undrr.org/building-risk-knowledge/disaster-losses-and-damages-tracking-system-delta-resilience)
-- [DELTA GitHub Repository](https://github.com/unisdr/delta) — schema in `app/drizzle/schema/` (40 tables)
-- [DELTA User Guide PDF](../references/delta/DELTA-resilience-user-guide.pdf) — local reference
-- [DELTA ER Diagram](../references/delta/DELTA_ER_DIAGRAM-1.pdf) — local reference
-- [DELTA Data Model Diagram](../references/delta/DELTA-Data-model-updated.png) — local reference
-- [WMO-CHE](https://community.wmo.int/en/activity-areas/drr/che) — hazard classification standard
-- RDLS v0.3 Schema — `hdx_dataset_metadata_dump/rdls/schema/rdls_schema_v0.3.json`
+- [DELTA GitHub Repository](https://github.com/unisdr/delta) - schema in `app/drizzle/schema/` (40 tables)
+- [DELTA User Guide PDF](../references/delta/DELTA-resilience-user-guide.pdf) - local reference
+- [DELTA ER Diagram](../references/delta/DELTA_ER_DIAGRAM-1.pdf) - local reference
+- [DELTA Data Model Diagram](../references/delta/DELTA-Data-model-updated.png) - local reference
+- [WMO-CHE](https://community.wmo.int/en/activity-areas/drr/che) - hazard classification standard
+- RDLS v0.3 Schema - `hdx_dataset_metadata_dump/rdls/schema/rdls_schema_v0.3.json`
 - [UN Stats DELTA Presentation](https://unstats.un.org/sdgs/files/meetings/iaeg-sdgs-meeting-16/5c_DELTA-Resilience.pdf)
 - [CEPAL DELTA Presentation](https://www.cepal.org/sites/default/files/events/files/s_3_delta_resilience_undrr.pdf)

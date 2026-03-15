@@ -68,8 +68,8 @@ class ColumnCache:
     """Disk-backed cache for column headers, keyed by resource ID.
 
     Cache files:
-        {cache_dir}/{resource_id}.json   — column info (list of ColumnInfo dicts)
-        {cache_dir}/{resource_id}.none   — sentinel: resource has no columns
+        {cache_dir}/{resource_id}.json   - column info (list of ColumnInfo dicts)
+        {cache_dir}/{resource_id}.none   - sentinel: resource has no columns
     """
 
     def __init__(self, cache_dir: Path):
@@ -346,7 +346,7 @@ def _should_fetch_resource(resource: Dict[str, Any]) -> bool:
     # Direct format match
     if fmt in _FETCHABLE_FORMATS:
         return True
-    # Check URL type — skip API resources
+    # Check URL type - skip API resources
     url_type = (resource.get("url_type", "") or "").lower()
     if url_type == "api":
         return False
@@ -532,7 +532,7 @@ def load_columns_for_uuid(
 ) -> List[ColumnInfo]:
     """Load cached column info for all resources in a dataset.
 
-    Does NOT make API calls — only reads from cache.
+    Does NOT make API calls - only reads from cache.
     Use enrich_dataset() or enrich_batch() to populate the cache first.
     """
     all_infos: List[ColumnInfo] = []

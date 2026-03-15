@@ -1,5 +1,5 @@
 """
-rdls_hdx_llm_review.py — LLM-Assisted HEVL Review & Final Distribution
+rdls_hdx_llm_review.py - LLM-Assisted HEVL Review & Final Distribution
 ===========================================================================
 
 Pipeline step that follows the regex-based HEVL review (hdx_review.py).
@@ -10,7 +10,7 @@ Full pipeline context:
     NB 01-02: Crawl HDX metadata + OSM exclusion
     NB 03-05: Classify to RDLS components, review & override
     NB 06:    Translate to RDLS JSON (general metadata)
-    NB 07:    *** THIS SCRIPT — LLM review + validation + distribution ***
+    NB 07:    *** THIS SCRIPT - LLM review + validation + distribution ***
     NB 08-13: HEVL signal analysis & extraction (original notebooks)
 
 Prerequisites:
@@ -89,13 +89,13 @@ print(f"Output:     {OUTPUT_DIR}")
 # # Step 1: Run LLM Review Pipeline (4 phases)
 #
 # This calls `src.llm_review.run_llm_review()` which orchestrates:
-# - **Phase 1**: Signal triage — regex-based HEVL assessment, buckets records
+# - **Phase 1**: Signal triage - regex-based HEVL assessment, buckets records
 #   into Confident (skip LLM), Borderline, No-signal, and Validation sample.
 #   Cached after first run (~3s on subsequent runs vs ~190s fresh).
-# - **Phase 2**: Column enrichment — loads cached CKAN column headers.
-# - **Phase 3**: LLM classification — sends borderline/no-signal records to
+# - **Phase 2**: Column enrichment - loads cached CKAN column headers.
+# - **Phase 3**: LLM classification - sends borderline/no-signal records to
 #   Claude Haiku for component validation. Cached per prompt hash.
-# - **Phase 4**: Merge — applies LLM decisions, writes revised JSONs.
+# - **Phase 4**: Merge - applies LLM decisions, writes revised JSONs.
 
 # %%
 from src.llm_review import run_llm_review, load_review_config
@@ -189,15 +189,15 @@ print(f"Not-RDLS:  {not_rdls_count} in not_rdls/")
 #
 # Validates each remaining record against the RDLS v0.3 JSON Schema
 # and distributes into tiered folders:
-# - `dist/high/` — schema-valid records (ready for publication)
-# - `dist/invalid/` — records with schema errors (need fixes)
+# - `dist/high/` - schema-valid records (ready for publication)
+# - `dist/invalid/` - records with schema errors (need fixes)
 #
 # Common validation errors (known issues):
-# - `referenced_by.author_names: minItems` — empty citation arrays
-# - `referenced_by.doi: minLength` — empty DOI strings
-# - `loss.impact_and_losses: required` — missing sub-field in loss blocks
-# - `hazard.occurrence: minProperties` — empty occurrence:{} (schema gap)
-# - `risk_data_type: minItems` — empty after LLM stripped all components
+# - `referenced_by.author_names: minItems` - empty citation arrays
+# - `referenced_by.doi: minLength` - empty DOI strings
+# - `loss.impact_and_losses: required` - missing sub-field in loss blocks
+# - `hazard.occurrence: minProperties` - empty occurrence:{} (schema gap)
+# - `risk_data_type: minItems` - empty after LLM stripped all components
 
 # %%
 from src.utils import load_json, write_json
@@ -329,9 +329,9 @@ print("=" * 60)
 # ## Caching
 # - **Phase 1 cache**: `.phase1_cache_*.pkl` in output/llm/ (~370MB).
 #   Delete to force re-triage. Auto-invalidates on different dist_dir.
-# - **LLM response cache**: output/llm/cache/ — keyed by prompt hash.
+# - **LLM response cache**: output/llm/cache/ - keyed by prompt hash.
 #   Re-runs with same records cost $0. Delete to force re-classification.
-# - **Column cache**: output/column_cache/ — keyed by resource ID.
+# - **Column cache**: output/column_cache/ - keyed by resource ID.
 #   Persistent across all runs. Only populated via `python -m src.ckan_columns`.
 #
 # ## Cost Breakdown (March 2026 run)
@@ -344,9 +344,9 @@ print("=" * 60)
 # - Total wall time: ~22 min (with caching: ~3s Phase 1 + ~22 min Phase 3)
 #
 # ## Known Schema Issues
-# - `occurrence: {}` fails `minProperties: 1` — schema team aware, fix pending
-# - `referenced_by.author_names/doi` — empty arrays/strings from HDX metadata
-# - `risk_data_type: minItems` — records where LLM stripped all components
+# - `occurrence: {}` fails `minProperties: 1` - schema team aware, fix pending
+# - `referenced_by.author_names/doi` - empty arrays/strings from HDX metadata
+# - `risk_data_type: minItems` - records where LLM stripped all components
 #   but the record wasn't flagged as not-RDLS (edge case)
 #
 # ## Re-running

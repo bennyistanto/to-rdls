@@ -70,7 +70,7 @@ def determine_risk_data_types(
 
 
 # ---------------------------------------------------------------------------
-# Filename prefix (DEPRECATED — kept for backward compatibility)
+# Filename prefix (DEPRECATED - kept for backward compatibility)
 # ---------------------------------------------------------------------------
 
 def determine_filename_prefix(
@@ -264,7 +264,7 @@ def merge_hevl_into_record(
     Args:
         base_record: Base RDLS record from translate.build_rdls_record().
         hevl_blocks: Dict with optional keys 'hazard', 'exposure',
-                     'vulnerability', 'loss' — each containing the
+                     'vulnerability', 'loss' - each containing the
                      corresponding RDLS JSON block.
 
     Returns:

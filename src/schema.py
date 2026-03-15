@@ -1,11 +1,11 @@
 """
 RDLS schema operations: load schema, extract codelists, validate records.
 
-Includes SchemaContext — a class that bundles all schema-derived lookup
+Includes SchemaContext - a class that bundles all schema-derived lookup
 structures (enum values, field aliases, required fields, allowed properties)
 built once from the JSON schema.
 
-Source-independent — works with any RDLS v0.3 JSON schema.
+Source-independent - works with any RDLS v0.3 JSON schema.
 """
 
 import json
@@ -91,7 +91,7 @@ def validate_record(
         try:
             from jsonschema import Draft7Validator as ValidatorClass
         except ImportError:
-            return (True, ["jsonschema not installed — validation skipped"])
+            return (True, ["jsonschema not installed - validation skipped"])
 
     # Wrap record in the root datasets array for schema validation
     wrapped = {"datasets": [record]}
@@ -142,7 +142,7 @@ def check_required_fields(record: Dict[str, Any]) -> List[str]:
 
 
 # ---------------------------------------------------------------------------
-# SchemaContext — bundles all schema-derived lookup structures
+# SchemaContext - bundles all schema-derived lookup structures
 # ---------------------------------------------------------------------------
 
 class SchemaContext:
@@ -298,7 +298,7 @@ class SchemaContext:
     ) -> Optional[str]:
         """Find the closest valid codelist value for a given field.
 
-        Strategy (field-scoped only — never searches across unrelated enums):
+        Strategy (field-scoped only - never searches across unrelated enums):
           1. Resolve field_name via field_aliases
           2. Case-insensitive exact match
           3. Substring match (exactly ONE match only)

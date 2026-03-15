@@ -123,9 +123,9 @@ python -m src path/to/data/folder
 ```
 
 Options:
-- `--formats json,md,csv` — Output formats to generate
-- `--hash` — Include SHA256 checksums
-- `--no-zip` — Skip ZIP inspection
+- `--formats json,md,csv` - Output formats to generate
+- `--hash` - Include SHA256 checksums
+- `--no-zip` - Skip ZIP inspection
 
 ### Metadata Validator (Notebook)
 

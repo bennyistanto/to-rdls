@@ -85,9 +85,9 @@ Both notebook scripts need re-execution to regenerate output files with the corr
 
 UNDRR's DELTA system is an operational disaster tracking database with 40+ tables covering disaggregated human effects, damages, losses, and disruption. Detailed comparison work has been completed:
 
-- [System-level comparison](delta_vs_rdls_system_comparison.md) — Architectural differences between DELTA (operational database) and RDLS (metadata catalog)
-- [Schema-level comparison](delta_vs_rdls_schema_comparison.md) — Field-by-field mapping (106 fields assessed: 10% good fit, 35% need adjustment, 55% no equivalent)
-- [Issue #19 revision notes](github_issue_19_revision.md) — Specific corrections for GFDRR/rdl-datapipeline mapping proposal
+- [System-level comparison](delta_vs_rdls_system_comparison.md) - Architectural differences between DELTA (operational database) and RDLS (metadata catalog)
+- [Schema-level comparison](delta_vs_rdls_schema_comparison.md) - Field-by-field mapping (106 fields assessed: 10% good fit, 35% need adjustment, 55% no equivalent)
+- [Issue #19 revision notes](github_issue_19_revision.md) - Specific corrections for GFDRR/rdl-datapipeline mapping proposal
 
 **Status:** Waiting for example DELTA data export. When available, the team will develop `src/sources/delta.py` adapter and a notebook script for DELTA-to-RDLS transformation.
 
@@ -98,19 +98,19 @@ UNDRR's DELTA system is an operational disaster tracking database with 40+ table
 ### Near-Term
 
 1. **Port notebooks 01-05** to modular `src/` code, completing the HDX pipeline migration
-2. **Resolve `occurrence: {}` schema constraint** — either relax `minProperties` in the RDLS schema or make `occurrence` optional. This unblocks ~4,493 records.
+2. **Resolve `occurrence: {}` schema constraint** - either relax `minProperties` in the RDLS schema or make `occurrence` optional. This unblocks ~4,493 records.
 3. **Re-run DesInventar and NISMOD scripts** with corrected naming convention
-4. **Fix `schema.py` double-wrapping bug** — `validate_record()` wraps records in `{"datasets": [...]}` when they're already wrapped
+4. **Fix `schema.py` double-wrapping bug** - `validate_record()` wraps records in `{"datasets": [...]}` when they're already wrapped
 
 ### Medium-Term
 
-5. **GeoNode adapter implementation** — Follow the `sources/hdx.py` pattern
-6. **Automated test suite** — Unit tests for classify, translate, extract, integrate, validate modules
-7. **DELTA adapter** — When example data becomes available
-8. **Data inventory workflow validation** — Test the MCP + LLM metadata writing approach end-to-end
+5. **GeoNode adapter implementation** - Follow the `sources/hdx.py` pattern
+6. **Automated test suite** - Unit tests for classify, translate, extract, integrate, validate modules
+7. **DELTA adapter** - When example data becomes available
+8. **Data inventory workflow validation** - Test the MCP + LLM metadata writing approach end-to-end
 
 ### Long-Term
 
-9. **Dedicated repository** — Move to-rdls to its own standalone repository
-10. **JKAN catalog enhancements** — Collapsible loss record display for datasets with many entries (see [jkan_issue_loss_display.md](jkan_issue_loss_display.md))
-11. **Column enrichment for non-HDX sources** — Extend the LLM review column enrichment strategy beyond CKAN API
+9. **Dedicated repository** - Move to-rdls to its own standalone repository
+10. **JKAN catalog enhancements** - Collapsible loss record display for datasets with many entries (see [jkan_issue_loss_display.md](jkan_issue_loss_display.md))
+11. **Column enrichment for non-HDX sources** - Extend the LLM review column enrichment strategy beyond CKAN API

@@ -219,7 +219,7 @@ hevl_signals:
 # ---------------------------------------------------------------------------
 file_filtering:
   # Exclusion patterns for sidecar/companion files (false positive avoidance)
-  # Used by _is_sidecar() — matched against filename (lowercased)
+  # Used by _is_sidecar() - matched against filename (lowercased)
   exclusion_patterns:
     - 'data.*loss'
     - 'profit.*loss'
@@ -247,7 +247,7 @@ file_filtering:
     - '_rdls_review'
 
   # Patterns for files NOT relevant for RDLS cataloguing
-  # Used by check_data_quality() — matched against full path
+  # Used by check_data_quality() - matched against full path
   irrelevant_patterns:
     - '__MACOSX'
     - '\.DS_Store$'

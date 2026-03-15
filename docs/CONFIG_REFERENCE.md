@@ -57,12 +57,12 @@ exposure_category:
 ```
 
 **Key sections:**
-- `hazard_type` — 11 hazard types with regex patterns
-- `process_type` — 30+ process types mapped to hazard parents
-- `exposure_category` — 7 categories (buildings, population, infrastructure, etc.)
-- `exposure_dimension` / `exposure_quantity_kind` — Metric patterns
-- `vulnerability_function` / `loss_signal` — V and L extraction patterns
-- `exclusion_patterns` — Negative patterns that reduce classification scores
+- `hazard_type` - 11 hazard types with regex patterns
+- `process_type` - 30+ process types mapped to hazard parents
+- `exposure_category` - 7 categories (buildings, population, infrastructure, etc.)
+- `exposure_dimension` / `exposure_quantity_kind` - Metric patterns
+- `vulnerability_function` / `loss_signal` - V and L extraction patterns
+- `exclusion_patterns` - Negative patterns that reduce classification scores
 
 **How to add a new pattern:** Add a regex entry under the appropriate codelist value. Patterns are case-insensitive. Use `\b` word boundaries to avoid false matches.
 
@@ -299,23 +299,23 @@ prompt:
 Maps source data format names to RDLS `data_format` values.
 
 **Key sections:**
-- `format_aliases` — Source format string to RDLS format (e.g., `"GEOTIFF"` to `"geotiff"`, `"Shapefile"` to `"shapefile"`)
-- `skip_formats` — Formats to exclude from resources (e.g., preview images, web apps)
-- `service_url_patterns` — Regex patterns to detect WMS/WFS/OGC services and assign format + access modality
-- `service_formats` — Direct service format mapping (e.g., `WMS` to `(wms, ogc_api)`)
-- `zip_inner_formats` — Formats expected inside ZIP archives
+- `format_aliases` - Source format string to RDLS format (e.g., `"GEOTIFF"` to `"geotiff"`, `"Shapefile"` to `"shapefile"`)
+- `skip_formats` - Formats to exclude from resources (e.g., preview images, web apps)
+- `service_url_patterns` - Regex patterns to detect WMS/WFS/OGC services and assign format + access modality
+- `service_formats` - Direct service format mapping (e.g., `WMS` to `(wms, ogc_api)`)
+- `zip_inner_formats` - Formats expected inside ZIP archives
 
 ### `license_mapping.yaml`
 
 Maps source license strings to RDLS license codes using two tiers:
-1. **Pattern matching** — Regex patterns tried in order
-2. **Dictionary fallback** — Exact string lookup
+1. **Pattern matching** - Regex patterns tried in order
+2. **Dictionary fallback** - Exact string lookup
 
 ### `spatial.yaml`
 
-- `region_to_countries` — Maps region names (e.g., "East Africa") to lists of ISO3 codes
-- `country_name_fixes` — Maps non-standard country names to correct ISO3 codes (e.g., "Viet Nam" to "VNM")
-- `non_country_groups` — Group names that are not countries (e.g., "World", "Global")
+- `region_to_countries` - Maps region names (e.g., "East Africa") to lists of ISO3 codes
+- `country_name_fixes` - Maps non-standard country names to correct ISO3 codes (e.g., "Viet Nam" to "VNM")
+- `non_country_groups` - Group names that are not countries (e.g., "World", "Global")
 
 ---
 

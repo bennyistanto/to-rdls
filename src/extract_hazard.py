@@ -10,7 +10,7 @@ Uses a 2-tier cascade:
   Tier 2 (notes, methodology): can only CORROBORATE Tier 1 findings,
     or serve as fallback if Tier 1 found nothing at all.
 
-Source-independent — works on any metadata with standard text fields.
+Source-independent - works on any metadata with standard text fields.
 """
 
 import re

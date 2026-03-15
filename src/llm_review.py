@@ -274,7 +274,7 @@ def build_classification_prompt(
         "(e.g., ShakeMap, PAGER, flood depth grids, SPI/PDSI drought indices, "
         "wind speed maps, event catalogs with physical parameters, hazard scenarios). "
         "A dataset that merely REFERENCES a hazard event (e.g., 'Earthquake Damage Assessment') "
-        "does NOT contain hazard data — the earthquake is the CONTEXT, not the content."
+        "does NOT contain hazard data - the earthquake is the CONTEXT, not the content."
     )
     parts.append(
         "- **exposure**: The dataset CONTAINS spatial inventories of assets or populations at risk "
@@ -635,11 +635,11 @@ def _rebuild_id_for_new_rdt(
     """
     parsed = parse_rdls_id(old_id, naming_config)
     if "raw" in parsed:
-        # Parse failed — return as-is
+        # Parse failed - return as-is
         return old_id
 
     if not new_rdt:
-        # No components — keep old type prefix to avoid 'unk'
+        # No components - keep old type prefix to avoid 'unk'
         return old_id
 
     new_types = encode_component_types(new_rdt, naming_config)
@@ -986,7 +986,7 @@ def run_llm_review(
     for rdls_id, reviewable in records.items():
         assessment = assessments.get(rdls_id)
         if not assessment:
-            # No assessment — rebuild ID from current rdt, then copy
+            # No assessment - rebuild ID from current rdt, then copy
             record = reviewable.record
             new_id = _rebuild_id_for_new_rdt(
                 rdls_id, record.get("risk_data_type", []), naming_config,
@@ -1279,7 +1279,7 @@ def main():
     )
     parser.add_argument(
         "--dry-run", action="store_true",
-        help="Phase 1 triage only — no LLM calls, no writes",
+        help="Phase 1 triage only - no LLM calls, no writes",
     )
     parser.add_argument(
         "--max-records", type=int, default=None,

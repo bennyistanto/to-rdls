@@ -196,7 +196,7 @@ def list_zip_members(
     zpath: Path, *, zip_max: int, verbose: bool = False
 ) -> List[Dict]:
     """
-    List (a capped number of) file entries inside a .zip archive — no extraction.
+    List (a capped number of) file entries inside a .zip archive - no extraction.
     """
     out: List[Dict] = []
     try:

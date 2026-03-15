@@ -1,4 +1,4 @@
-# review.py — Automated data review for RDLS metadata preparation
+# review.py - Automated data review for RDLS metadata preparation
 # ----------------------------------------------------------------
 # Takes an inventory JSON (from inventory.py) and produces:
 # 1. File inspection results (geospatial headers, tabular schemas, doc text)
@@ -259,7 +259,7 @@ def classify_intermediate_files(
             continue
 
         # Check HEC-RAS model file extensions
-        # (but NOT .prj inside a shapefile group — check for accompanying .shp)
+        # (but NOT .prj inside a shapefile group - check for accompanying .shp)
         if ext in HECRAS_MODEL_EXTENSIONS:
             # .prj could be a shapefile projection; only classify as model if
             # it's in a Model/ folder or there's no .shp sibling
@@ -861,7 +861,7 @@ def build_zip_tree(rows: List[Dict]) -> Dict[str, Any]:
         # Navigate/create the tree path
         for i, part in enumerate(parts):
             if i == len(parts) - 1:
-                # leaf file — count it at current node
+                # leaf file - count it at current node
                 node["files"] += 1
                 node["size"] += row.get("size_bytes", 0)
             else:
@@ -989,7 +989,7 @@ def extract_readme_metadata(inspections: List["FileInspection"]) -> Dict[str, st
 
 
 # ---------------------------------------------------------------------------
-# Naming pattern analysis — extract scenarios, return periods, hazard subtypes
+# Naming pattern analysis - extract scenarios, return periods, hazard subtypes
 # ---------------------------------------------------------------------------
 
 def analyze_naming_patterns(filenames: List[str]) -> Dict[str, Any]:
@@ -1339,7 +1339,7 @@ def classify_group(group: FileGroup) -> FileGroup:
         hevl.add("L")
         evidence.append(f"Loss: matched {l_matches[:3]}")
 
-    # Check DEM (supporting data — classify as hazard input, not loss)
+    # Check DEM (supporting data - classify as hazard input, not loss)
     dem_matches = _match_signals(text_blob, DEM_SIGNALS)
     is_dem_group = False
     if dem_matches:
@@ -1423,7 +1423,7 @@ def classify_group(group: FileGroup) -> FileGroup:
             hevl.discard("L")
             evidence = [e for e in evidence if not e.startswith("Loss:")]
 
-    # Confidence scoring — column evidence strengthens classification
+    # Confidence scoring - column evidence strengthens classification
     has_column_evidence = bool(col_signals)
     has_filename_evidence = bool(filename_hevl)
     has_conflicts = bool(conflicts)
@@ -1717,7 +1717,7 @@ def render_review_markdown(review: ReviewResult) -> str:
                         if len(vals) > 15:
                             val_str += ", ..."
                         detail_lines.append(
-                            f"  - `{col_name}`: {info['unique_count']} unique — {val_str}"
+                            f"  - `{col_name}`: {info['unique_count']} unique - {val_str}"
                         )
                     elif "min" in info and "max" in info:
                         detail_lines.append(

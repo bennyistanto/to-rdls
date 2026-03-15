@@ -2,7 +2,7 @@
 # RDLS Default Mappings & Logic Rules
 # =============================================================================
 # Default values inferred when the source metadata doesn't provide specifics.
-# These are RDLS logic rules — independent of any data source.
+# These are RDLS logic rules - independent of any data source.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -431,7 +431,7 @@ component_order:
 
 # Filename prefix / ID generation now handled by configs/naming.yaml
 # and src/naming.py (encode_component_types, build_rdls_id, etc.)
-# Old prefix_priority and prefix_map removed — see naming.yaml for
+# Old prefix_priority and prefix_map removed - see naming.yaml for
 # component_codes.single and component_codes.letter mappings.
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-00b_generate_geonames_lookup.py — Generate GeoNames country ID lookup.
+00b_generate_geonames_lookup.py - Generate GeoNames country ID lookup.
 
 Downloads the GeoNames countryInfo.txt dump and extracts
 ISO3 → {geoname_id, name} for every country/territory.
@@ -34,7 +34,7 @@ def main():
     resp.raise_for_status()
     text = resp.text
 
-    # Parse TSV — skip comment lines starting with #
+    # Parse TSV - skip comment lines starting with #
     # Columns (from header): ISO, ISO3, ISO-Numeric, fips, Country, Capital,
     #   Area, Population, Continent, tld, CurrencyCode, CurrencyName, Phone,
     #   Postal Code Format, Postal Code Regex, Languages, geonameId, ...

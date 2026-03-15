@@ -487,7 +487,7 @@ def parse_rdls_id(
         if valid and pos == len(iso3_candidate) and iso3_list:
             org_part = org_candidate
         else:
-            # No valid ISO3 prefix — entire string is org
+            # No valid ISO3 prefix - entire string is org
             iso3_list = []
             org_part = geo_org_str
 

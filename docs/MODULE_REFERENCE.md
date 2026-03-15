@@ -6,7 +6,7 @@ This document describes each Python module in `src/`, grouped by pipeline phase.
 
 ## Utilities
 
-### `utils.py` — Text processing, file I/O, temporal parsing
+### `utils.py` - Text processing, file I/O, temporal parsing
 
 General-purpose utilities used across all modules. No dependencies on other `src/` modules.
 
@@ -33,7 +33,7 @@ General-purpose utilities used across all modules. No dependencies on other `src
 
 ## Schema and Spatial
 
-### `schema.py` — RDLS schema loading, validation, codelist operations
+### `schema.py` - RDLS schema loading, validation, codelist operations
 
 Loads the RDLS v0.3 JSON Schema, extracts codelists, validates records, and provides `SchemaContext` for fast lookup and auto-fix.
 
@@ -58,7 +58,7 @@ Loads the RDLS v0.3 JSON Schema, extracts codelists, validates records, and prov
 
 ---
 
-### `spatial.py` — Country/region resolution and spatial block inference
+### `spatial.py` - Country/region resolution and spatial block inference
 
 Converts country names to ISO3 codes, expands regions to country lists, and builds RDLS spatial blocks.
 
@@ -77,7 +77,7 @@ Converts country names to ISO3 codes, expands regions to country lists, and buil
 
 ## Classification
 
-### `classify.py` — Dataset classification for RDLS components
+### `classify.py` - Dataset classification for RDLS components
 
 Scores datasets against tag weights, keyword patterns, and organization hints to determine which HEVL components are relevant.
 
@@ -103,7 +103,7 @@ Scores datasets against tag weights, keyword patterns, and organization hints to
 
 ## Translation
 
-### `translate.py` — RDLS record builder
+### `translate.py` - RDLS record builder
 
 Translates source metadata into base RDLS v0.3 records. Handles format mapping, license mapping, attribution building, resource assembly, and temporal annotation.
 
@@ -125,7 +125,7 @@ Translates source metadata into base RDLS v0.3 records. Handles format mapping, 
 
 ## Extraction
 
-### `extract_hazard.py` — Hazard block extraction (2-tier cascade)
+### `extract_hazard.py` - Hazard block extraction (2-tier cascade)
 
 Extracts hazard types, process types, analysis types, return periods, and intensity measures from metadata using pattern matching against the Signal Dictionary.
 
@@ -147,7 +147,7 @@ Extracts hazard types, process types, analysis types, return periods, and intens
 
 ---
 
-### `extract_exposure.py` — Exposure block extraction (3-tier cascade)
+### `extract_exposure.py` - Exposure block extraction (3-tier cascade)
 
 Extracts exposure categories, metric dimensions, quantity kinds, taxonomy hints, and currency from metadata.
 
@@ -170,7 +170,7 @@ Extracts exposure categories, metric dimensions, quantity kinds, taxonomy hints,
 
 ---
 
-### `extract_vulnloss.py` — Vulnerability and Loss extraction
+### `extract_vulnloss.py` - Vulnerability and Loss extraction
 
 Extracts vulnerability functions (fragility, engineering demand, etc.) and loss entries (8 signal types).
 
@@ -199,7 +199,7 @@ Extracts vulnerability functions (fragility, engineering demand, etc.) and loss 
 
 ## Integration
 
-### `integrate.py` — HEVL merge and risk_data_type reconciliation
+### `integrate.py` - HEVL merge and risk_data_type reconciliation
 
 Merges hazard, exposure, vulnerability, and loss blocks into base RDLS records. Reconciles `risk_data_type` arrays and validates component combinations.
 
@@ -219,7 +219,7 @@ Merges hazard, exposure, vulnerability, and loss blocks into base RDLS records. 
 
 ## Naming
 
-### `naming.py` — RDLS ID and filename generation
+### `naming.py` - RDLS ID and filename generation
 
 Builds structured record IDs in the format `rdls_{types}-{iso3}{org}_{titleslug}`. Handles component encoding, collision detection, and ID parsing for rebuild after reclassification.
 
@@ -243,7 +243,7 @@ Builds structured record IDs in the format `rdls_{types}-{iso3}{org}_{titleslug}
 
 ## Validation
 
-### `validate_qa.py` — Schema validation, auto-fix, confidence scoring, distribution
+### `validate_qa.py` - Schema validation, auto-fix, confidence scoring, distribution
 
 Validates records against the RDLS v0.3 JSON Schema, applies a 5-pass auto-fix engine, computes confidence scores, and distributes records to quality tiers.
 
@@ -266,7 +266,7 @@ Validates records against the RDLS v0.3 JSON Schema, applies a 5-pass auto-fix e
 
 ## Inventory and Review
 
-### `inventory.py` — Folder/ZIP inventory generator
+### `inventory.py` - Folder/ZIP inventory generator
 
 Generates structured inventories of data delivery folders or ZIP files. Standard library only (no external dependencies). Also runnable as CLI via `python -m src`.
 
@@ -290,7 +290,7 @@ Generates structured inventories of data delivery folders or ZIP files. Standard
 
 ---
 
-### `review.py` — File inspection, HEVL classification, gap analysis
+### `review.py` - File inspection, HEVL classification, gap analysis
 
 Full automated data review: inspects geospatial/tabular/document files, classifies into HEVL components, analyzes gaps against RDLS schema, and suggests dataset structure.
 
@@ -318,7 +318,7 @@ Full automated data review: inspects geospatial/tabular/document files, classifi
 
 ---
 
-### `zipaccess.py` — ZIP member extraction
+### `zipaccess.py` - ZIP member extraction
 
 Extract individual ZIP members to temporary files for inspection without extracting the whole archive. Supports nested ZIPs (ZIP-in-ZIP).
 
@@ -336,7 +336,7 @@ Extract individual ZIP members to temporary files for inspection without extract
 
 ## LLM Pipeline
 
-### `hdx_review.py` — Second-pass HEVL review
+### `hdx_review.py` - Second-pass HEVL review
 
 Re-analyzes RDLS JSON files from the HDX crawler using improved signal matching (column detection, resource names) and cross-references with original HDX metadata. Phase 1 of the LLM pipeline uses this for signal triage.
 
@@ -361,7 +361,7 @@ Re-analyzes RDLS JSON files from the HDX crawler using improved signal matching 
 
 ---
 
-### `ckan_columns.py` — CKAN column header fetcher with cache
+### `ckan_columns.py` - CKAN column header fetcher with cache
 
 Fetches actual column headers from HDX resources via CKAN `resource_show` API. Parses `fs_check_info` and `shape_info` fields. Caches results to disk for reuse.
 
@@ -384,7 +384,7 @@ Fetches actual column headers from HDX resources via CKAN `resource_show` API. P
 
 ---
 
-### `llm_review.py` — 4-phase LLM classification pipeline
+### `llm_review.py` - 4-phase LLM classification pipeline
 
 Full LLM-assisted HEVL classification: Phase 1 (signal triage), Phase 2 (column enrichment), Phase 3 (LLM classification via Claude Haiku), Phase 4 (validation + merge + ID rebuild).
 
@@ -412,7 +412,7 @@ Full LLM-assisted HEVL classification: Phase 1 (signal triage), Phase 2 (column 
 
 ## Source Adapters
 
-### `sources/hdx.py` — HDX CKAN API client
+### `sources/hdx.py` - HDX CKAN API client
 
 HDX-specific crawling, metadata normalization, field extraction, and OSM policy detection.
 
@@ -435,7 +435,7 @@ HDX-specific crawling, metadata normalization, field extraction, and OSM policy 
 
 ---
 
-### `sources/geonode.py` — GeoNode adapter (stub)
+### `sources/geonode.py` - GeoNode adapter (stub)
 
 Placeholder for future GeoNode support. Interface defined but not implemented. Follow the `sources/hdx.py` pattern to implement.
 
@@ -445,10 +445,10 @@ Placeholder for future GeoNode support. Interface defined but not implemented. F
 
 ## Entry Points
 
-### `__init__.py` — Convenience imports
+### `__init__.py` - Convenience imports
 
 Re-exports ~60 public functions and classes from all submodules for easier `from src import X` usage.
 
-### `__main__.py` — CLI entry point
+### `__main__.py` - CLI entry point
 
 Runs the inventory module as a CLI tool: `python -m src path/to/folder`.

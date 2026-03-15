@@ -1,5 +1,5 @@
 """
-02_generate_icra_records.py — Generate NISMOD ICRA RDLS records from template.
+02_generate_icra_records.py - Generate NISMOD ICRA RDLS records from template.
 
 Uses the Aruba ICRA template (rdls_he-abwnismod_sdk_icra.json) as a golden
 reference and generates one RDLS JSON file per country/territory listed in
@@ -44,7 +44,7 @@ from src.spatial import country_name_to_iso3, load_spatial_config
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Template (golden reference — manually created for Aruba)
+# Template (golden reference - manually created for Aruba)
 TEMPLATE_PATH = (
     PROJECT_ROOT
     / "hdx_dataset_metadata_dump"
@@ -112,8 +112,8 @@ def fetch_zenodo_metadata(zenodo_url: str) -> dict:
         zenodo_url: e.g. "https://zenodo.org/records/10796759"
     Returns:
         Dict with keys:
-            file_code: str or None — e.g. "ACA" (from first .zip file key)
-            version: str or None — e.g. "0.2.1" (from metadata.version)
+            file_code: str or None - e.g. "ACA" (from first .zip file key)
+            version: str or None - e.g. "0.2.1" (from metadata.version)
     """
     result = {"file_code": None, "version": None}
     try:
@@ -183,10 +183,10 @@ def generate_icra_record(
     # 2. Title
     ds["title"] = title
 
-    # 3. Description — replace country name
+    # 3. Description - replace country name
     ds["description"] = ds["description"].replace(TEMPLATE_COUNTRY, country_name)
 
-    # 4. Version — update if provided
+    # 4. Version - update if provided
     if version:
         ds["version"] = version
 
@@ -211,18 +211,18 @@ def generate_icra_record(
     else:
         ds["spatial"].pop("gazetteer_entries", None)
 
-    # 6. Attributions — update publisher URL
+    # 6. Attributions - update publisher URL
     for attr in ds.get("attributions", []):
         if attr.get("role") == "publisher":
             attr["entity"]["url"] = url
 
-    # 7. Resources — update access_url, download_url, descriptions
+    # 7. Resources - update access_url, download_url, descriptions
     for res in ds.get("resources", []):
         # access_url -> Zenodo record URL
         res["access_url"] = url
         # download_url -> {url}/files/{FILE_CODE}.zip
         res["download_url"] = f"{url}/files/{fc}.zip"
-        # Description — replace template file code in filename patterns
+        # Description - replace template file code in filename patterns
         desc = res.get("description", "")
         desc = desc.replace(f"__{TEMPLATE_ISO3}", f"__{fc}")
         desc = desc.replace(f"{TEMPLATE_ISO3}.zip", f"{fc}.zip")
@@ -232,7 +232,7 @@ def generate_icra_record(
         desc = desc.replace(f"{TEMPLATE_ISO3}.osm.pbf", f"{fc}.osm.pbf")
         res["description"] = desc
 
-    # 8. Referenced_by — update only if template has entries (respect empty arrays)
+    # 8. Referenced_by - update only if template has entries (respect empty arrays)
     for ref in ds.get("referenced_by", []):
         ref["name"] = title
         ref["url"] = url

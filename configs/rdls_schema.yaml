@@ -2,7 +2,7 @@
 # RDLS v0.3 Schema Codelists & Structural Requirements
 # =============================================================================
 # Source: rdls_schema_v0.3.json
-# These are the RDLS-specific values — independent of any data source.
+# These are the RDLS-specific values - independent of any data source.
 # Closed codelists must be matched exactly; open codelists are extensible.
 # =============================================================================
 
@@ -32,7 +32,7 @@ required_resource_fields:
   - data_format
 
 # ---------------------------------------------------------------------------
-# CLOSED CODELISTS (strict — must match exactly)
+# CLOSED CODELISTS (strict - must match exactly)
 # ---------------------------------------------------------------------------
 codelists:
 
@@ -827,7 +827,7 @@ codelists:
     - ZWR
 
 # ---------------------------------------------------------------------------
-# OPEN CODELISTS (extensible — suggestions from schema)
+# OPEN CODELISTS (extensible - suggestions from schema)
 # ---------------------------------------------------------------------------
 open_codelists:
 

@@ -1,5 +1,5 @@
 """
-00a_generate_country_bbox.py — Generate country bounding boxes from Natural Earth.
+00a_generate_country_bbox.py - Generate country bounding boxes from Natural Earth.
 
 Downloads Natural Earth 10m admin-0 map-units shapefile and extracts
 ISO3 → [min_lon, min_lat, max_lon, max_lat] for every country/territory.
@@ -36,7 +36,7 @@ def main():
     gdf = gpd.read_file(NE_URL)
     print(f"  Loaded {len(gdf)} features, columns: {sorted(gdf.columns.tolist())}")
 
-    # Resolve ISO3 codes — ADM0_A3 is most reliable for territories
+    # Resolve ISO3 codes - ADM0_A3 is most reliable for territories
     # Fall back to ISO_A3 if ADM0_A3 is -99
     bbox_map = {}
     skipped = []
@@ -75,7 +75,7 @@ def main():
         iso3 = ne_iso3_overrides.get(iso3, iso3)
 
         # Also store under ISO_A3 if different from ADM0_A3
-        # (e.g., Svalbard: ADM0_A3=NOR but ISO_A3=SJM — we want both)
+        # (e.g., Svalbard: ADM0_A3=NOR but ISO_A3=SJM - we want both)
         alt_iso3 = str(row.get("ISO_A3_EH", "")).strip()
         if alt_iso3 and alt_iso3 != "-99" and len(alt_iso3) == 3:
             alt_iso3 = ne_iso3_overrides.get(alt_iso3, alt_iso3).upper()

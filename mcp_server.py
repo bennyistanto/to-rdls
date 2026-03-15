@@ -46,7 +46,7 @@ def inventory_folder(
 
     Args:
         path: Folder or ZIP file path to inventory
-        formats: Output formats to write (json, md, csv) — only json returned to caller
+        formats: Output formats to write (json, md, csv) - only json returned to caller
         include_hash: Compute SHA256 checksums for each file (slower)
         inspect_zips: Peek inside ZIP files without extracting
     """

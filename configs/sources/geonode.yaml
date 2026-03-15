@@ -19,7 +19,7 @@ api:
   rate_limit: 5.0
 
 # ---------------------------------------------------------------------------
-# GeoNode field paths — where to find metadata in GeoNode API JSON
+# GeoNode field paths - where to find metadata in GeoNode API JSON
 # ---------------------------------------------------------------------------
 field_paths:
   id: "pk"
@@ -56,4 +56,4 @@ format_overrides: {}
 # 2. Implement normalize_geonode_record() to match the common record format
 # 3. Implement extract_geonode_fields() using the field_paths above
 # 4. The rest of the pipeline (classification, translation, HEVL extraction,
-#    validation) works identically — no changes needed.
+#    validation) works identically - no changes needed.

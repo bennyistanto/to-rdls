@@ -31,7 +31,7 @@ bot_check_patterns:
   - "javascript is disabled"
 
 # ---------------------------------------------------------------------------
-# HDX field paths — where to find metadata in CKAN/HDX JSON
+# HDX field paths - where to find metadata in CKAN/HDX JSON
 # This allows different sources to map their fields to a common structure.
 # ---------------------------------------------------------------------------
 field_paths:
@@ -160,5 +160,5 @@ hazard_keywords:
   mudslide: landslide
   avalanche: landslide
 
-# Hazard filename aliases (REMOVED — item codes now in configs/naming.yaml)
+# Hazard filename aliases (REMOVED - item codes now in configs/naming.yaml)
 # hazard_item_codes maps hazard_type → 2-char code (e.g. strong_wind → tc)

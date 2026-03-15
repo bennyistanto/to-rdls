@@ -31,3 +31,6 @@ Thumbs.db
 # Environment
 .env
 *.log
+
+# Issue
+github_issue_*.md

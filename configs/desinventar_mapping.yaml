@@ -13,7 +13,7 @@
 # null = not mappable to RDLS natural hazard codelist (skipped)
 # ──────────────────────────────────────────────────────────────────────
 event_type_mapping:
-  # HIGH confidence — clear 1:1 mapping
+  # HIGH confidence - clear 1:1 mapping
   FLOOD:           { hazard_type: flood, process_type: fluvial_flood }
   FLASH FLOOD:     { hazard_type: flood, process_type: fluvial_flood }
   LANDSLIDE:       { hazard_type: landslide, process_type: landslide_general }
@@ -26,7 +26,7 @@ event_type_mapping:
   COLD WAVE:       { hazard_type: extreme_temperature, process_type: extreme_cold }
   TSUNAMI:         { hazard_type: tsunami, process_type: tsunami }
 
-  # MEDIUM confidence — reasonable mapping with some ambiguity
+  # MEDIUM confidence - reasonable mapping with some ambiguity
   RAINS:           { hazard_type: flood, process_type: pluvial_flood }
   STORM:           { hazard_type: strong_wind, process_type: extratropical_cyclone }
   WINDSTORM:       { hazard_type: strong_wind, process_type: extratropical_cyclone }

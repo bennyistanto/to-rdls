@@ -166,7 +166,7 @@ TAXONOMY_PATTERNS = {
     "PAGER":    [r"\b(pager|usgs.?pager)\b"],
     "CDC-SVI":  [r"\b(cdc[\-\s]?svi|social.?vulnerability.?index)\b"],
     "INFORM":   [r"\binform\s+(?:risk|index|severity)\b"],
-    "Custom":   [],  # Fallback — matches nothing; assigned when no other scheme matches
+    "Custom":   [],  # Fallback - matches nothing; assigned when no other scheme matches
 }
 
 
@@ -261,7 +261,7 @@ class ExposureExtractor:
         then validates each (dimension, quantity_kind) pair against the
         valid_triplets config. Falls back to default if nothing detected.
 
-        A single category can produce multiple metrics — e.g., an
+        A single category can produce multiple metrics - e.g., an
         infrastructure dataset mentioning road length AND service disruption
         yields both (structure, length) and (disruption, time).
         """
@@ -298,7 +298,7 @@ class ExposureExtractor:
                         # If we also detected the quantity_kind, use it; otherwise
                         # trust the triplet's default quantity_kind for that dimension
                         if detected_qks and t_qk not in detected_qks:
-                            # Detected a different quantity_kind — check if the
+                            # Detected a different quantity_kind - check if the
                             # detected one is also valid for this dim+category
                             alt_match = [
                                 tr for tr in cat_triplets
@@ -380,7 +380,7 @@ class ExposureExtractor:
         # Tier 3 can only boost existing (or fallback if nothing found).
         final = dict(tier1)
 
-        # Tier 2 — add new categories or corroborate existing
+        # Tier 2 - add new categories or corroborate existing
         for cat, match in tier2.items():
             if cat in final:
                 # Corroborate: boost confidence
@@ -393,10 +393,10 @@ class ExposureExtractor:
                     pattern=existing.pattern,
                 )
             else:
-                # New category from resource tier — allow it
+                # New category from resource tier - allow it
                 final[cat] = match
 
-        # Tier 3 — corroborate only (or fallback when nothing found)
+        # Tier 3 - corroborate only (or fallback when nothing found)
         if final:
             for cat, match in tier3.items():
                 if cat in final:

@@ -18,7 +18,7 @@ from .utils import normalize_text
 
 
 # ---------------------------------------------------------------------------
-# Data classes — Vulnerability
+# Data classes - Vulnerability
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -62,7 +62,7 @@ class VulnerabilityExtraction:
 
 
 # ---------------------------------------------------------------------------
-# Data classes — Loss
+# Data classes - Loss
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -99,7 +99,7 @@ class LossExtraction:
 
 
 # ---------------------------------------------------------------------------
-# Pattern dictionaries — Vulnerability
+# Pattern dictionaries - Vulnerability
 # ---------------------------------------------------------------------------
 
 FUNCTION_TYPE_PATTERNS = {
@@ -181,7 +181,7 @@ IMPACT_MODELLING_PATTERNS = {
 
 
 # ---------------------------------------------------------------------------
-# Pattern dictionaries — Loss
+# Pattern dictionaries - Loss
 # ---------------------------------------------------------------------------
 
 LOSS_SIGNAL_PATTERNS = {
@@ -404,7 +404,7 @@ class VulnerabilityExtractor:
         """Validate and correct impact_metric, quantity_kind, impact_type
         using constraint tables.
 
-        Returns (impact_metric, quantity_kind, impact_type) — corrected if needed.
+        Returns (impact_metric, quantity_kind, impact_type) - corrected if needed.
         """
         ft_constraints = self.defaults.get("function_type_constraints", {})
         im_constraints = self.defaults.get("impact_metric_constraints", {})
@@ -583,7 +583,7 @@ class VulnerabilityExtractor:
         if not socio_economic:
             for gp in self.generic_socio_patterns:
                 if gp.search(text):
-                    # Generic match — add a generic indicator at lower confidence
+                    # Generic match - add a generic indicator at lower confidence
                     socio_economic.append(SocioEconomicExtraction(
                         indicator_name="Socio-economic vulnerability",
                         indicator_code="SOCIO_VULN",

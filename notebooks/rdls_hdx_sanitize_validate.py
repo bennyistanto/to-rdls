@@ -161,7 +161,7 @@ def rebuild_id(old_id, new_code):
 # Schema-driven sanitizer
 # ================================================================
 # Principles:
-#   1. Never fabricate data — only strip/remove
+#   1. Never fabricate data - only strip/remove
 #   2. Follow schema hierarchy: root → HEVL blocks → sub-structures
 #   3. Optional arrays with minItems: remove if empty (can't satisfy)
 #   4. Required arrays with minItems: remove parent if can't satisfy
@@ -261,7 +261,7 @@ def _clean_resources(rec):
     if cleaned:
         rec["resources"] = cleaned
     else:
-        # Can't fabricate resources — flag for not_rdls
+        # Can't fabricate resources - flag for not_rdls
         rec["resources"] = []
         _sanitize_stats["empty_resources"] += 1
 
@@ -269,7 +269,7 @@ def _clean_resources(rec):
 def _clean_hazard(rec):
     """hazard.event_sets[]: minItems=1 (required when hazard present).
     Event_set requires: id, hazards (minItems=1), analysis_type.
-    Event_set.events[] is OPTIONAL — remove if empty.
+    Event_set.events[] is OPTIONAL - remove if empty.
     Event requires: id, calculation_method, hazard, occurrence (minProperties=1).
     Hazard requires: id, type, hazard_process.
     NOTE: occurrence:{} is kept as-is (team will revise schema)."""
@@ -305,7 +305,7 @@ def _clean_hazard(rec):
                 es["hazards"] = valid_hazards
             else:
                 _sanitize_stats["es_dropped_no_hazards"] += 1
-                continue  # Drop this event_set — can't satisfy required hazards
+                continue  # Drop this event_set - can't satisfy required hazards
 
         # --- Clean events array (optional, minItems=1 if present) ---
         events = es.get("events")
@@ -416,7 +416,7 @@ def _clean_vuln_function(func_entry):
         "hazard_secondary", "hazard_process_primary", "hazard_process_secondary",
         "taxonomy", "analysis_details", "damage_scale_name", "parameter",
     ])
-    # damage_states_names: array minItems=1 — remove if empty
+    # damage_states_names: array minItems=1 - remove if empty
     dsn = func_entry.get("damage_states_names")
     if isinstance(dsn, list) and len(dsn) == 0:
         func_entry.pop("damage_states_names", None)
@@ -427,7 +427,7 @@ def _clean_vuln_function(func_entry):
 
 
 def _clean_vulnerability(rec):
-    """vulnerability: anyOf(functions, socio_economic) — at least one required.
+    """vulnerability: anyOf(functions, socio_economic) - at least one required.
     functions: object minProperties=1, contains vulnerability/fragility/
                damage_to_loss/engineering_demand arrays (each minItems=1).
     socio_economic[]: minItems=1.
@@ -564,7 +564,7 @@ def _clean_spatial(rec, valid_country_codes=None):
                 _sanitize_stats["country_codes_removed"] += len(removed)
             spatial["countries"] = filtered
         else:
-            # All country codes invalid — remove the array
+            # All country codes invalid - remove the array
             spatial.pop("countries", None)
             _sanitize_stats["countries_arr_removed"] += 1
 
@@ -643,7 +643,7 @@ def sanitize_record(rec):
     """Schema-driven sanitization of RDLS record.
 
     Walks each section following the schema hierarchy.
-    Never fabricates data — only strips empty optionals and
+    Never fabricates data - only strips empty optionals and
     removes structurally invalid blocks."""
 
     # 1. Clean all optional array/object sections

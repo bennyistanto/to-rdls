@@ -372,7 +372,7 @@ def parse_hdx_temporal(
             # Rolling ~1 month window
             return {"start": None, "end": None, "duration": "P1M"}
         else:
-            # Static range — compute duration
+            # Static range - compute duration
             if delta_days >= 365:
                 result["duration"] = f"P{delta_days // 365}Y"
             elif delta_days >= 30:

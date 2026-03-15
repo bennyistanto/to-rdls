@@ -198,7 +198,7 @@ exposure_category:
       - '\b(built[\s._-]?up|builtup)\b'
     confidence: high
 
-  # Definition: Lifelines infrastructure — transport, communications, energy, water
+  # Definition: Lifelines infrastructure - transport, communications, energy, water
   infrastructure:
     patterns:
       # Transport
@@ -256,7 +256,7 @@ exposure_category:
       - '\b(species[\s._-]?(?:richness|diversity|distribution))\b'
       - '\b(ecological|environmental[\s._-]?(?:degradation|conservation|restoration))\b'
     confidence: medium
-    notes: "Bare 'environment' excluded — too ambiguous"
+    notes: "Bare 'environment' excluded - too ambiguous"
 
   # Definition: Macroeconomic metrics (GDP, trade, fiscal performance)
   economic_indicator:

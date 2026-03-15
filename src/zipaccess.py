@@ -36,7 +36,7 @@ def parse_zip_spec(fpath: str) -> Tuple[Path, str]:
 def open_zip_member(zip_path: Path, member_name: str) -> Iterator[Path]:
     """Extract a single member from a ZIP to a temp file and yield its path.
 
-    Only the requested member is read — the rest of the archive is untouched,
+    Only the requested member is read - the rest of the archive is untouched,
     which is critical for multi-GB ZIPs.  The temp file is deleted on exit.
 
     Parameters
@@ -109,7 +109,7 @@ def _find_zip(name: str, base: Path) -> Path:
                 if candidate.exists():
                     return candidate
 
-    # Give up — return the direct path and let the caller handle FileNotFoundError
+    # Give up - return the direct path and let the caller handle FileNotFoundError
     return direct
 
 

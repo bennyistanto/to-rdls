@@ -216,21 +216,21 @@ def _extract_resource_texts(
     resource_full_texts: List[str] = []   # For resource signal matching (Layer B)
 
     for res in hdx_meta.get("resources", []):
-        # Resource name/title — used for both Layer B and C
+        # Resource name/title - used for both Layer B and C
         rname = res.get("name", "") or res.get("title", "")
         if rname:
             rname_lower = rname.lower()
             resource_short_names.append(rname_lower)
             resource_full_texts.append(rname_lower)
 
-        # Resource description — ONLY for Layer B (signal matching), NOT for
+        # Resource description - ONLY for Layer B (signal matching), NOT for
         # column-proxy. Descriptions are long text that would cause false
         # positives if matched against column-name patterns.
         rdesc = res.get("description", "")
         if rdesc:
             resource_full_texts.append(rdesc.lower())
 
-        # Extract filename from download URL — used for both Layer B and C
+        # Extract filename from download URL - used for both Layer B and C
         url = res.get("download_url", "") or res.get("url", "")
         if url:
             parsed = urlparse(url)
@@ -552,7 +552,7 @@ def revise_record(
             if comp_name in record:
                 del record[comp_name]
 
-    # Update risk_data_type — only include components that have actual blocks.
+    # Update risk_data_type - only include components that have actual blocks.
     # Start from original rdt (preserves what the 1st-iteration pipeline set),
     # then add only those components whose blocks were successfully created.
     final_rdt = set(reviewable.current_rdt)
