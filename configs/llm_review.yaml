@@ -21,12 +21,12 @@ llm:
   model: "claude-haiku-4-5-20251001"
   temperature: 0.0                # deterministic
   max_tokens: 400
-  max_concurrent: 2
+  max_concurrent: 10
   max_retries: 3
   timeout_seconds: 30
   cache_dir: "output/llm_review/cache"
   # Cost guardrails
-  max_cost_usd: 15.0
+  max_cost_usd: 25.0
   cost_per_mtok_input: 1.00       # Haiku 4.5 pricing ($/MTok)
   cost_per_mtok_output: 5.00
 

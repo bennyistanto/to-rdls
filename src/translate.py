@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .utils import (
     as_list, load_yaml, looks_like_url, parse_hdx_temporal,
-    sanitize_text, slugify_token, split_semicolon_list,
+    sanitize_text, slugify_token, split_semicolon_list, sort_rdt_hevl,
 )
 from .spatial import country_name_to_iso3, infer_spatial, load_spatial_config
 
@@ -435,7 +435,7 @@ def build_rdls_record(
         "loss_impact": "loss",
         "loss": "loss",
     }
-    risk_data_type = sorted(set(
+    risk_data_type = sort_rdt_hevl(set(
         component_map.get(c, c) for c in components
         if component_map.get(c, c) in {"hazard", "exposure", "vulnerability", "loss"}
     ))

@@ -32,7 +32,7 @@ from urllib.parse import unquote, urlparse
 # Ensure src/ is importable when run as module
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from .utils import load_json, write_json, normalize_text
+from .utils import load_json, write_json, normalize_text, sort_rdt_hevl
 from .review import (
     _match_signals,
     _match_column_signals,
@@ -372,7 +372,7 @@ def assess_hevl(
                 # Has block content but no signals -- keep but flag
                 assessed_components.add(comp)
 
-    assessed_rdt = sorted([_COMP_TO_RDT[c] for c in assessed_components])
+    assessed_rdt = sort_rdt_hevl([_COMP_TO_RDT[c] for c in assessed_components])
 
     # --- Detect discrepancies ---
     changes: List[str] = []
@@ -552,20 +552,11 @@ def revise_record(
             if comp_name in record:
                 del record[comp_name]
 
-    # Update risk_data_type - only include components that have actual blocks.
-    # Start from original rdt (preserves what the 1st-iteration pipeline set),
-    # then add only those components whose blocks were successfully created.
-    final_rdt = set(reviewable.current_rdt)
-    for comp in ("hazard", "exposure", "vulnerability", "loss"):
-        if comp in record and bool(record[comp]) and comp not in final_rdt:
-            final_rdt.add(comp)
-    # Handle removals: drop component only if block is actually gone
-    for change in assessment.changes:
-        if change.startswith("REMOVE "):
-            comp_name = change.split(" ")[1]
-            if comp_name not in record or not record.get(comp_name):
-                final_rdt.discard(comp_name)
-    record["risk_data_type"] = sorted(final_rdt)
+    # Update risk_data_type based on the assessed components.
+    # The assessment (from LLM or signals) is the authority on which
+    # components are present — use assessed_rdt directly.
+    final_rdt = set(assessment.assessed_rdt) if assessment.assessed_rdt else set(reviewable.current_rdt)
+    record["risk_data_type"] = sort_rdt_hevl(final_rdt)
 
     return record
 

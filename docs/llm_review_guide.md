@@ -433,4 +433,10 @@ HDX crawl (26,246)
        output/llm/dist/invalid/ (2,690 occurrence:{} only, 30.5%)
 ```
 
-**Note:** Once the team revises the `occurrence` schema (remove minProperties:1), all 2,690 invalid records should become valid, bringing the total to ~8,822 valid (99.8%).
+**Note:** Once the team revises the `occurrence` schema (remove minProperties:1), many invalid records should become valid.
+
+---
+
+## See Also
+
+- **[LLM Review Output Guide](llm_review_output.md)** — Detailed results, not-RDLS categorization, how to interpret reports, ID renaming logic

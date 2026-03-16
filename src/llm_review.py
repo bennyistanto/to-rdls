@@ -27,7 +27,8 @@ import random
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
+# ThreadPoolExecutor removed: sequential processing with rate pacing is more
+# reliable for rate-limited APIs (avoids thundering-herd retry loops).
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -48,7 +49,7 @@ from .naming import (
     load_naming_config,
     parse_rdls_id,
 )
-from .utils import load_json, load_yaml, write_json
+from .utils import load_json, load_yaml, write_json, sort_rdt_hevl, reorder_record_keys
 
 
 # ---------------------------------------------------------------------------
@@ -209,9 +210,14 @@ def triage_records(
         scores = asmt.component_scores
         max_score = max(scores.values()) if scores else 0
         active_components = sum(1 for s in scores.values() if s > 0)
+        json_components = len(asmt.current_rdt)
 
         if max_score == 0:
             bucket.no_signal.append(rdls_id)
+        elif json_components > active_components:
+            # Problem 7: JSON has more HEVL types than signals support
+            # → force LLM review to catch over-classification
+            bucket.borderline.append(rdls_id)
         elif (
             max_score >= config.confident_score_min
             and active_components <= config.max_components_for_confident
@@ -420,68 +426,108 @@ def _is_connection_error(err: Exception) -> bool:
     return any(k in err_str for k in ("connection", "timeout", "reset", "broken pipe"))
 
 
+def _is_spending_limit(err: Exception) -> bool:
+    """Check if error is a non-retryable spending/usage limit (HTTP 400)."""
+    err_str = str(err)
+    return "usage limits" in err_str or "spending limit" in err_str
+
+
 def call_llm(
     user_prompt: str,
     config: ReviewConfig,
     client: Any,
 ) -> Tuple[Dict[str, Any], Dict[str, int]]:
-    """Call Claude API and return (parsed_response, token_usage).
+    """Call Claude API via direct HTTP and return (parsed_response, token_usage).
 
-    Retries with rate-limit-aware backoff:
-      - 429 rate limit: wait 30-60s (the API needs time to reset)
-      - Connection error: wait 5-15s with jitter
-      - JSON parse error: wait 2-4s, append JSON instruction
+    Uses urllib instead of the Anthropic SDK to avoid httpx hanging issues.
+    Retries with backoff on rate limits and connection errors.
     """
+    import urllib.request
+    import urllib.error
+    import ssl
+
+    api_key = client  # client is now just the API key string
+    url = "https://api.anthropic.com/v1/messages"
+    ssl_ctx = ssl.create_default_context()
+
     last_error = None
     for attempt in range(config.llm_max_retries):
+        body = json.dumps({
+            "model": config.llm_model,
+            "max_tokens": config.llm_max_tokens,
+            "temperature": config.llm_temperature,
+            "system": _SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": user_prompt}],
+        }).encode("utf-8")
+
+        req = urllib.request.Request(url, data=body, headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        })
+
         try:
-            message = client.messages.create(
-                model=config.llm_model,
-                max_tokens=config.llm_max_tokens,
-                temperature=config.llm_temperature,
-                system=_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_prompt}],
+            resp = urllib.request.urlopen(
+                req, timeout=int(config.llm_timeout), context=ssl_ctx,
             )
+            data = json.loads(resp.read().decode("utf-8"))
 
             # Extract text content
             text = ""
-            for block in message.content:
-                if hasattr(block, "text"):
-                    text += block.text
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    text += block.get("text", "")
 
-            # Parse JSON
+            # Parse JSON from response text
             text = text.strip()
-            # Strip markdown code fences if present
             if text.startswith("```"):
                 lines = text.split("\n")
                 text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
 
             parsed = json.loads(text)
+            usage_data = data.get("usage", {})
             usage = {
-                "input": message.usage.input_tokens,
-                "output": message.usage.output_tokens,
+                "input": usage_data.get("input_tokens", 0),
+                "output": usage_data.get("output_tokens", 0),
             }
             return parsed, usage
+
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode("utf-8", errors="replace")
+            last_error = RuntimeError(f"HTTP {e.code}: {error_body}")
+
+            if e.code == 400 and ("spending" in error_body.lower() or "usage limit" in error_body.lower()):
+                raise RuntimeError(f"API spending limit reached: {error_body}")
+
+            if e.code == 429:
+                if attempt < config.llm_max_retries - 1:
+                    wait = min(5 * (2 ** attempt) + random.random() * 5, 60)
+                    print(f"    Rate limited (attempt {attempt + 1}/{config.llm_max_retries}), waiting {wait:.0f}s...", flush=True)
+                    time.sleep(wait)
+                continue
+
+            if e.code == 529:  # overloaded
+                if attempt < config.llm_max_retries - 1:
+                    wait = 3 + random.random() * 3
+                    print(f"    API overloaded (attempt {attempt + 1}/{config.llm_max_retries}), waiting {wait:.0f}s...", flush=True)
+                    time.sleep(wait)
+                continue
+
+            if attempt < config.llm_max_retries - 1:
+                time.sleep(2 ** (attempt + 1))
 
         except json.JSONDecodeError as e:
             last_error = e
             if attempt < config.llm_max_retries - 1:
                 user_prompt += "\n\nIMPORTANT: Respond with valid JSON only. No markdown."
                 time.sleep(2 + random.random() * 2)
+
         except Exception as e:
             last_error = e
             if attempt < config.llm_max_retries - 1:
-                if _is_rate_limit(e):
-                    # Rate limit: long wait with jitter to desync threads
-                    wait = 30 + random.random() * 30
-                    time.sleep(wait)
-                elif _is_connection_error(e):
-                    # Connection: moderate wait with jitter
-                    wait = 5 + random.random() * 10
-                    time.sleep(wait)
-                else:
-                    # Unknown error: short exponential backoff
-                    time.sleep(2 ** (attempt + 1))
+                wait = 3 + random.random() * 3
+                print(f"    Connection error (attempt {attempt + 1}/{config.llm_max_retries}): {e}", flush=True)
+                time.sleep(wait)
 
     raise RuntimeError(f"LLM call failed after {config.llm_max_retries} attempts: {last_error}")
 
@@ -605,7 +651,7 @@ def merge_classification_into_assessment(
         changes.append(f"REMOVE {comp} (LLM: {reason})")
 
     if changes:
-        merged.assessed_rdt = sorted(new_rdt)
+        merged.assessed_rdt = sort_rdt_hevl(new_rdt)
         merged.assessed_components = new_set
         merged.changes = changes
         merged.has_discrepancy = True
@@ -768,9 +814,28 @@ def run_llm_review(
     # Records to send to LLM
     llm_ids = set(bucket.borderline + bucket.no_signal + bucket.validation_sample)
 
-    # --- Cost estimate ---
-    est_input_tokens = len(llm_ids) * 1100  # ~1100 tokens/prompt
-    est_output_tokens = len(llm_ids) * 150   # ~150 tokens/response
+    # --- Cost estimate (accounting for cache hits) ---
+    # Sample cache to estimate hit rate
+    cache_sample_size = min(200, len(llm_ids))
+    cache_sample = sorted(llm_ids)[:cache_sample_size]
+    cache_hits_sample = 0
+    for _sid in cache_sample:
+        _rev = records.get(_sid)
+        _hdx = hdx_metas.get(_sid, {})
+        _cols = load_columns_for_uuid(
+            _rev.hdx_uuid or "", _hdx, column_cache,
+        ) if _rev else []
+        _asmt = assessments.get(_sid)
+        if _rev:
+            _prompt = build_classification_prompt(_rev, _hdx, _cols, _asmt, config)
+            if response_cache.get(_prompt_hash(_prompt)):
+                cache_hits_sample += 1
+
+    cache_hit_rate = cache_hits_sample / cache_sample_size if cache_sample_size > 0 else 0
+    est_uncached = int(len(llm_ids) * (1 - cache_hit_rate))
+
+    est_input_tokens = est_uncached * 1100  # ~1100 tokens/prompt
+    est_output_tokens = est_uncached * 150   # ~150 tokens/response
     est_cost = (
         est_input_tokens / 1_000_000 * config.cost_per_mtok_input
         + est_output_tokens / 1_000_000 * config.cost_per_mtok_output
@@ -779,6 +844,8 @@ def run_llm_review(
     if verbose:
         print(f"\n  Estimated LLM cost: ${est_cost:.2f}")
         print(f"  Records for LLM:   {len(llm_ids)}")
+        print(f"  Cached (est):      {len(llm_ids) - est_uncached} ({cache_hit_rate*100:.0f}%)")
+        print(f"  New API calls:     ~{est_uncached}")
         print(f"  Cost guardrail:    ${config.max_cost_usd:.2f}")
 
     if dry_run:
@@ -829,14 +896,7 @@ def run_llm_review(
     if verbose:
         print(f"\n[Phase 3] LLM classification ({len(llm_ids)} records)...")
 
-    # Initialize Anthropic client
-    try:
-        import anthropic
-    except ImportError:
-        print("ERROR: 'anthropic' package not installed.")
-        print("  Install: pip install anthropic")
-        return {"error": "anthropic_not_installed"}
-
+    # Resolve API key (no SDK needed — we use direct HTTP calls)
     resolved_api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
     if not resolved_api_key:
         # Try .env file in project root
@@ -855,7 +915,8 @@ def run_llm_review(
         print("    3. Create .env file with ANTHROPIC_API_KEY=sk-ant-...")
         return {"error": "no_api_key"}
 
-    client = anthropic.Anthropic(api_key=resolved_api_key)
+    # Pass API key directly — call_llm uses urllib, not the SDK
+    client = resolved_api_key
 
     llm_results: Dict[str, LLMClassification] = {}
     total_input_tokens = 0
@@ -866,73 +927,144 @@ def run_llm_review(
     t2 = time.time()
     llm_list = sorted(llm_ids)
 
-    # Process with ThreadPoolExecutor for concurrency
-    def _classify_one(rdls_id: str) -> Tuple[str, Optional[LLMClassification]]:
+    # --- Pre-pass: resolve cached records instantly (no API calls) ---
+    api_needed: List[str] = []
+    if verbose:
+        print(f"  Pre-checking cache for {len(llm_list)} records...", flush=True)
+    for rdls_id in llm_list:
         reviewable = records.get(rdls_id)
+        if not reviewable:
+            continue
         hdx_meta = hdx_metas.get(rdls_id, {})
         columns = col_data.get(rdls_id, [])
         assessment = assessments.get(rdls_id)
-        if not reviewable:
-            return rdls_id, None
-        result = classify_single(
-            rdls_id, reviewable, hdx_meta, columns,
-            assessment, config, client, response_cache,
-        )
-        return rdls_id, result
+        prompt = build_classification_prompt(reviewable, hdx_meta, columns, assessment, config)
+        phash = _prompt_hash(prompt)
+        cached = response_cache.get(phash)
+        if cached:
+            result = parse_llm_response(
+                cached.get("response", cached),
+                rdls_id, phash, config.llm_model,
+                cached.get("usage", {"input": 0, "output": 0}),
+            )
+            llm_results[rdls_id] = result
+            llm_cached += 1
+        else:
+            api_needed.append(rdls_id)
+    if verbose:
+        print(f"  Cache hits: {llm_cached} (instant) | API calls needed: {len(api_needed)}", flush=True)
 
-    # Feed work in batches to avoid overwhelming the API.
-    # The executor has max_concurrent workers; we submit in chunks
-    # and collect results to maintain steady throughput.
-    batch_size = max(config.llm_max_concurrent * 5, 20)
+    # --- Now process only records that need API calls ---
+    # Sequential processing with rate pacing. No threads.
+    # This avoids thundering-herd rate-limit loops that plague concurrent
+    # approaches and makes Ctrl+C work instantly.
+    llm_list = api_needed
     completed = 0
     error_ids: List[str] = []
+    pace_delay = 1.2  # seconds between API calls (~50 req/min, safe for all tiers)
+    consecutive_rate_limits = 0
+    max_consecutive_rate_limits = 10  # give up after 10 consecutive rate limits
 
-    for batch_start in range(0, len(llm_list), batch_size):
-        batch = llm_list[batch_start : batch_start + batch_size]
+    if verbose and llm_list:
+        est_minutes = len(llm_list) * pace_delay / 60
+        print(f"  Processing {len(llm_list)} API calls sequentially "
+              f"(~{pace_delay}s pacing, est. ~{est_minutes:.0f} min)", flush=True)
 
-        with ThreadPoolExecutor(max_workers=config.llm_max_concurrent) as executor:
-            futures = {executor.submit(_classify_one, rid): rid for rid in batch}
+    # Quick connectivity test before processing thousands of records
+    if verbose and llm_list:
+        print(f"  Testing API connection...", flush=True)
+        try:
+            import urllib.request, urllib.error, ssl
+            _test_body = json.dumps({"model": config.llm_model, "max_tokens": 5,
+                "messages": [{"role": "user", "content": "Reply OK"}]}).encode()
+            _test_req = urllib.request.Request("https://api.anthropic.com/v1/messages",
+                data=_test_body, headers={"x-api-key": client,
+                "anthropic-version": "2023-06-01", "content-type": "application/json"})
+            _test_resp = urllib.request.urlopen(_test_req, timeout=15,
+                context=ssl.create_default_context())
+            _test_data = json.loads(_test_resp.read())
+            print(f"  API OK (model={config.llm_model})", flush=True)
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            print(f"  *** API TEST FAILED (HTTP {e.code}): {err_body[:200]} ***", flush=True)
+            error_ids.extend(llm_list)
+            llm_errors += len(llm_list)
+            llm_list = []
+        except Exception as e:
+            print(f"  *** API TEST FAILED: {e} ***", flush=True)
+            error_ids.extend(llm_list)
+            llm_errors += len(llm_list)
+            llm_list = []
 
-            for future in as_completed(futures):
-                completed += 1
-                rdls_id = futures[future]
-                try:
-                    _, result = future.result()
-                except Exception as e:
-                    result = None
+    try:
+        for i, rdls_id in enumerate(llm_list):
+            completed = i + 1
+            reviewable = records.get(rdls_id)
+            if not reviewable:
+                llm_errors += 1
+                error_ids.append(rdls_id)
+                continue
+
+            try:
+                result = classify_single(
+                    rdls_id, reviewable, hdx_metas.get(rdls_id, {}),
+                    col_data.get(rdls_id, []), assessments.get(rdls_id),
+                    config, client, response_cache,
+                )
+            except Exception as e:
+                result = None
+                err_str = str(e).lower()
+                if "spending limit" in err_str or "usage limits" in err_str:
                     if verbose:
-                        print(f"  LLM error for {rdls_id}: {e}")
+                        remaining = len(llm_list) - completed
+                        print(f"\n  *** API SPENDING LIMIT REACHED at [{completed}/{len(llm_list)}] ***",
+                              flush=True)
+                        print(f"  Classified: {len(llm_results)} | Skipping remaining: {remaining}",
+                              flush=True)
+                        print(f"  All cached results saved. Re-run after limit resets.", flush=True)
+                    # Mark all remaining as errors
+                    error_ids.extend(llm_list[i:])
+                    llm_errors += len(llm_list) - i
+                    break
+                if verbose:
+                    print(f"  Error [{completed}] {rdls_id}: {e}", flush=True)
 
-                if result:
-                    llm_results[rdls_id] = result
-                    total_input_tokens += result.token_usage.get("input", 0)
-                    total_output_tokens += result.token_usage.get("output", 0)
-                    if result.token_usage.get("input", 0) == 0:
-                        llm_cached += 1
-                else:
-                    llm_errors += 1
-                    error_ids.append(rdls_id)
+            if result:
+                llm_results[rdls_id] = result
+                total_input_tokens += result.token_usage.get("input", 0)
+                total_output_tokens += result.token_usage.get("output", 0)
+                consecutive_rate_limits = 0  # reset on success
+            else:
+                llm_errors += 1
+                error_ids.append(rdls_id)
 
-                # Progress
-                if verbose and completed % 50 == 0:
-                    elapsed = time.time() - t2
-                    rate = completed / elapsed if elapsed > 0 else 0
-                    remaining = len(llm_list) - completed
-                    eta = remaining / rate if rate > 0 else 0
-                    cost_so_far = (
-                        total_input_tokens / 1_000_000 * config.cost_per_mtok_input
-                        + total_output_tokens / 1_000_000 * config.cost_per_mtok_output
-                    )
-                    print(
-                        f"  [{completed}/{len(llm_list)}] "
-                        f"cached={llm_cached} errors={llm_errors} "
-                        f"cost=${cost_so_far:.2f} "
-                        f"({rate:.1f} rec/s, ETA {eta:.0f}s)"
-                    )
+            # Progress every record
+            if verbose:
+                elapsed = time.time() - t2
+                rate = completed / elapsed if elapsed > 0 else 0
+                remaining = len(llm_list) - completed
+                eta = remaining / rate if rate > 0 else 0
+                cost_so_far = (
+                    total_input_tokens / 1_000_000 * config.cost_per_mtok_input
+                    + total_output_tokens / 1_000_000 * config.cost_per_mtok_output
+                )
+                print(
+                    f"  [{completed}/{len(llm_list)}] "
+                    f"ok={len(llm_results) - llm_cached} err={llm_errors} "
+                    f"cost=${cost_so_far:.2f} "
+                    f"({rate:.1f}/s, ETA {eta/60:.1f}m)",
+                    flush=True,
+                )
 
-        # Brief pause between batches to respect rate limits (50K tokens/min)
-        if batch_start + batch_size < len(llm_list):
-            time.sleep(1.5)
+            # Rate pacing — small delay between calls
+            if i < len(llm_list) - 1:
+                time.sleep(pace_delay)
+
+    except KeyboardInterrupt:
+        if verbose:
+            print(f"\n  *** USER INTERRUPTED (Ctrl+C) ***", flush=True)
+            print(f"  Classified: {len(llm_results)} | Errors: {llm_errors}", flush=True)
+            print(f"  All cached results saved. Re-run to continue.", flush=True)
 
     # Log failed IDs for retry
     if error_ids:
@@ -999,7 +1131,7 @@ def run_llm_review(
             if not dry_run:
                 tier_out = revised_dir / reviewable.dist_tier
                 tier_out.mkdir(parents=True, exist_ok=True)
-                write_json(tier_out / f"{new_id}.json", {"datasets": [record]})
+                write_json(tier_out / f"{new_id}.json", {"datasets": [reorder_record_keys(record)]})
             unchanged += 1
             continue
 
@@ -1044,7 +1176,7 @@ def run_llm_review(
             if not dry_run:
                 tier_out = revised_dir / reviewable.dist_tier
                 tier_out.mkdir(parents=True, exist_ok=True)
-                write_json(tier_out / f"{new_id}.json", {"datasets": [revised]})
+                write_json(tier_out / f"{new_id}.json", {"datasets": [reorder_record_keys(revised)]})
         else:
             unchanged += 1
             record = reviewable.record
@@ -1062,7 +1194,7 @@ def run_llm_review(
             if not dry_run:
                 tier_out = revised_dir / reviewable.dist_tier
                 tier_out.mkdir(parents=True, exist_ok=True)
-                write_json(tier_out / f"{new_id}.json", {"datasets": [record]})
+                write_json(tier_out / f"{new_id}.json", {"datasets": [reorder_record_keys(record)]})
 
         # Build report row
         row = {

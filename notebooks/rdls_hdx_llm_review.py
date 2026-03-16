@@ -59,6 +59,7 @@ from pathlib import Path
 
 # --- Paths (adjust if your layout differs) ---
 PROJECT_DIR = Path(__file__).resolve().parent.parent  # to-rdls/
+sys.path.insert(0, str(PROJECT_DIR))  # ensure src package is importable
 HDX_CRAWLER_DIR = PROJECT_DIR.parent / "hdx-metadata-crawler"
 
 # Input paths
@@ -167,15 +168,16 @@ NOT_RDLS_DIR.mkdir(parents=True, exist_ok=True)
 all_files = {f.stem: f for f in REVISED_DIR.rglob("*.json")}
 print(f"\nTotal JSON files in revised/: {len(all_files)}")
 
-# Move matching files
+# Move matching files (overwrite dst on re-runs since Phase 4 recreates them)
 moved = 0
 for rdls_id in sorted(not_rdls_ids):
     if rdls_id in all_files:
         src = all_files[rdls_id]
         dst = NOT_RDLS_DIR / src.name
-        if not dst.exists():  # Don't re-move if already done
-            shutil.move(str(src), str(dst))
-            moved += 1
+        if dst.exists():
+            dst.unlink()  # remove stale copy so move succeeds
+        shutil.move(str(src), str(dst))
+        moved += 1
 
 remaining = len(list(REVISED_DIR.rglob("*.json")))
 not_rdls_count = len(list(NOT_RDLS_DIR.glob("*.json")))
@@ -200,7 +202,7 @@ print(f"Not-RDLS:  {not_rdls_count} in not_rdls/")
 # - `risk_data_type: minItems` - empty after LLM stripped all components
 
 # %%
-from src.utils import load_json, write_json
+from src.utils import load_json, write_json, reorder_record_keys
 
 try:
     from jsonschema import Draft202012Validator
@@ -247,6 +249,12 @@ for i, fp in enumerate(json_files):
             path = ".".join(str(p) for p in err.absolute_path) or "(root)"
             path = re.sub(r"\.\d+\.", ".*.", path)
             error_counter[f"{path}: {err.validator}"] += 1
+
+    # Reorder keys to canonical RDLS order (also fixes risk_data_type HEVL order)
+    if "datasets" in data and isinstance(data["datasets"], list):
+        data["datasets"][0] = reorder_record_keys(data["datasets"][0])
+    else:
+        data = reorder_record_keys(data)
 
     tier_dir = DIST_FINAL_DIR / tier
     tier_dir.mkdir(parents=True, exist_ok=True)

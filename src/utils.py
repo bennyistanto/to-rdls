@@ -132,6 +132,55 @@ def as_list(x: Any) -> list:
     return [x]
 
 
+# ---------------------------------------------------------------------------
+# RDLS ordering helpers
+# ---------------------------------------------------------------------------
+
+_HEVL_ORDER = {"hazard": 0, "exposure": 1, "vulnerability": 2, "loss": 3}
+
+
+def sort_rdt_hevl(components) -> List[str]:
+    """Sort risk_data_type components in canonical HEVL order.
+
+    Accepts a list, set, or any iterable of component names.
+    Returns a new list sorted: hazard, exposure, vulnerability, loss.
+    """
+    return sorted(
+        (c for c in components if c in _HEVL_ORDER),
+        key=lambda c: _HEVL_ORDER[c],
+    )
+
+
+# Canonical key order for an RDLS dataset record.
+_RDLS_KEY_ORDER = [
+    "id", "title", "description", "risk_data_type", "details",
+    "spatial", "license", "contact_point",
+    "attributions", "referenced_by", "resources",
+    "hazard", "exposure", "vulnerability", "loss",
+    "links",
+]
+
+
+def reorder_record_keys(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a new dict with keys in canonical RDLS order.
+
+    Keys not in the canonical list are placed at the end in their
+    original relative order. Also ensures risk_data_type is in HEVL order.
+    """
+    if "risk_data_type" in record:
+        record["risk_data_type"] = sort_rdt_hevl(record["risk_data_type"])
+
+    ordered: Dict[str, Any] = {}
+    for key in _RDLS_KEY_ORDER:
+        if key in record:
+            ordered[key] = record[key]
+    # Append any remaining keys not in the canonical list
+    for key in record:
+        if key not in ordered:
+            ordered[key] = record[key]
+    return ordered
+
+
 def normalize_text(s: str) -> str:
     """Normalize text for pattern matching: lowercase, stripped, collapsed whitespace."""
     return re.sub(r"\s+", " ", (s or "").strip().lower())
