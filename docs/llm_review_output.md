@@ -71,6 +71,83 @@ Of 12,594 records, **3,508 (27.9%)** were modified:
 | Low (<0.7) | 12 | 0.1% | Uncertain - worth manual review |
 | **Average** | | **0.94** | |
 
+### Console Output (First Production Run)
+
+<details>
+<summary>Click to view full console output ($21.98, 7,761 records, ~22 min)</summary>
+
+```
+❯ python -m src.llm_review --dist-dir output/hdx/revised --metadata-dir "..." --output-dir output/llm
+[Phase 1] Loading from cache...
+  12594 records loaded from cache
+  Confident:    5087 (skip LLM)
+  Borderline:   7052 (send to LLM)
+  No-signal:    455 (send to LLM)
+  Validation:   254 (5% cross-check)
+  Time:         3.3s
+  Records:      12594
+
+  Estimated LLM cost: $14.36
+  Records for LLM:   7761
+  Cost guardrail:    $15.00
+
+[Phase 2] Loading column headers from cache...
+  With columns:    5093
+  Without columns: 2668
+
+[Phase 3] LLM classification (7761 records)...
+  [50/7761] cached=0 errors=0 cost=$0.18 (16.2 rec/s, ETA 475s)
+  [100/7761] cached=0 errors=0 cost=$0.33 (16.2 rec/s, ETA 473s)
+  ...
+  [1000/7761] cached=0 errors=0 cost=$3.08 (8.9 rec/s, ETA 761s)
+  ...
+  [2000/7761] cached=0 errors=0 cost=$6.13 (8.3 rec/s, ETA 695s)
+  ...
+  [3000/7761] cached=0 errors=0 cost=$8.92 (7.3 rec/s, ETA 656s)
+  ...
+  [4000/7761] cached=0 errors=0 cost=$11.54 (6.6 rec/s, ETA 569s)
+  LLM error for rdls_exp-nic_dhs_nicaraguanationaldemograp: Connection error.
+  [4300/7761] cached=0 errors=1 cost=$12.32 (6.1 rec/s, ETA 571s)
+  LLM error for rdls_exp-nld_worldbank_economygrowth: Connection error.
+  LLM error for rdls_exp-nor_metad4g_highresolutionpopulationd: Connection error.
+  ...
+  [5000/7761] cached=0 errors=3 cost=$14.17 (5.7 rec/s, ETA 488s)
+  ...
+  LLM error for rdls_he-ind_heigit_accessibilityindicators: Connection error.
+  [5700/7761] cached=0 errors=4 cost=$16.10 (5.5 rec/s, ETA 376s)
+  ...
+  [6000/7761] cached=0 errors=4 cost=$16.98 (5.5 rec/s, ETA 321s)
+  ...
+  [7000/7761] cached=0 errors=4 cost=$19.84 (5.8 rec/s, ETA 131s)
+  ...
+  [7750/7761] cached=0 errors=4 cost=$21.95 (6.1 rec/s, ETA 2s)
+
+  Failed IDs (4): saved to output\llm\reports\failed_ids.txt
+
+  LLM complete: 7757 classified, 4 errors
+  Cached:       0
+  Tokens:       11,830,496 in / 2,028,982 out
+  Cost:         $21.98
+  Time:         1266.8s
+
+[Phase 4] Merging results and writing output...
+
+============================================================
+  LLM REVIEW COMPLETE
+============================================================
+  Total:          12594
+  Changed:        3443 (27.3%)
+  Unchanged:      9151
+  Disagreements:  173 (validation sample)
+  LLM cost:       $21.98
+  Time:           1343.4s
+  Reports:        output\llm\reports
+  Revised:        output\llm\revised
+============================================================
+```
+
+</details>
+
 ---
 
 ## Distribution by Component Prefix

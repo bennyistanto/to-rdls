@@ -87,6 +87,7 @@ to-rdls/
 | [Config Reference](docs/CONFIG_REFERENCE.md) | Each YAML config: structure, fields, how to modify |
 | [Limitations and Roadmap](docs/LIMITATIONS_AND_ROADMAP.md) | Current gaps, pending work, near-term roadmap |
 | [LLM Review Guide](docs/llm_review_guide.md) | Operations guide for the LLM classification pipeline |
+| [LLM Review Output](docs/llm_review_output.md) | Results, not-RDLS categorization, prefix distribution, report interpretation |
 | [DELTA vs RDLS Comparison](docs/delta_vs_rdls_system_comparison.md) | System-level comparison with UNDRR DELTA |
 
 ## Quick Start
@@ -161,7 +162,7 @@ To add support for a new metadata source (e.g., GeoNode):
 - `pyyaml>=6.0` &mdash; YAML config loading
 - `requests>=2.28` &mdash; HTTP client for API crawling
 - `jsonschema>=4.20` &mdash; RDLS schema validation (Draft 2020-12)
-- `anthropic>=0.40` &mdash; Claude API client (LLM review pipeline)
+- `anthropic>=0.40` &mdash; Claude API client (optional; pipeline uses `urllib` direct HTTP)
 - `rapidfuzz>=3.5` &mdash; Fuzzy codelist matching
 
 ### Geospatial (conda)
