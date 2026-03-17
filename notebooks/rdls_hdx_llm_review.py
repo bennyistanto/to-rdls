@@ -163,8 +163,13 @@ print(f"Not-RDLS records identified: {len(not_rdls_ids)}")
 for domain, count in domain_counts.most_common():
     print(f"  {domain}: {count}")
 
-# Index all JSON files in revised/ (recursive, handles tier subdirs)
+# Clean not_rdls/ from prior runs to prevent stale file accumulation
+# (Phase 4 rewrites revised/ each run, so old filenames would linger)
 NOT_RDLS_DIR.mkdir(parents=True, exist_ok=True)
+for _stale in NOT_RDLS_DIR.glob("*.json"):
+    _stale.unlink()
+
+# Index all JSON files in revised/ (recursive, handles tier subdirs)
 all_files = {f.stem: f for f in REVISED_DIR.rglob("*.json")}
 print(f"\nTotal JSON files in revised/: {len(all_files)}")
 

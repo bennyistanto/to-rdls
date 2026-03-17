@@ -552,11 +552,12 @@ def revise_record(
             if comp_name in record:
                 del record[comp_name]
 
-    # Update risk_data_type based on the assessed components.
-    # The assessment (from LLM or signals) is the authority on which
-    # components are present — use assessed_rdt directly.
-    final_rdt = set(assessment.assessed_rdt) if assessment.assessed_rdt else set(reviewable.current_rdt)
-    record["risk_data_type"] = sort_rdt_hevl(final_rdt)
+    # Update risk_data_type based on what blocks ACTUALLY exist in the record.
+    # The LLM/assessment may say "ADD loss" but if the extractor couldn't build
+    # a loss block, we must not claim loss in risk_data_type.
+    _COMP_KEYS = {"hazard", "exposure", "vulnerability", "loss"}
+    actual_rdt = [comp for comp in _COMP_KEYS if comp in record]
+    record["risk_data_type"] = sort_rdt_hevl(actual_rdt)
 
     return record
 

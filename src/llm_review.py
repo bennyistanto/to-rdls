@@ -1087,6 +1087,18 @@ def run_llm_review(
         print(f"  Time:         {t3 - t2:.1f}s")
 
     # --- Phase 4: Merge + write ---
+
+    def _reconcile_rdt(record: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure risk_data_type matches blocks that actually exist in the record.
+
+        Prevents phantom components (rdt claims 'loss' but no loss block)
+        and unlisted blocks (loss block exists but not in rdt).
+        """
+        _COMP_KEYS = ("hazard", "exposure", "vulnerability", "loss")
+        actual = [c for c in _COMP_KEYS if c in record]
+        record["risk_data_type"] = sort_rdt_hevl(actual)
+        return record
+
     if verbose:
         print(f"\n[Phase 4] Merging results and writing output...")
 
@@ -1118,8 +1130,9 @@ def run_llm_review(
     for rdls_id, reviewable in records.items():
         assessment = assessments.get(rdls_id)
         if not assessment:
-            # No assessment - rebuild ID from current rdt, then copy
-            record = reviewable.record
+            # No assessment - reconcile rdt with actual blocks, rebuild ID, then copy
+            record = {**reviewable.record}  # shallow copy so we can modify
+            _reconcile_rdt(record)
             new_id = _rebuild_id_for_new_rdt(
                 rdls_id, record.get("risk_data_type", []), naming_config,
             )
@@ -1163,6 +1176,7 @@ def run_llm_review(
             changed += 1
             hdx_meta = hdx_metas.get(rdls_id, {})
             revised = revise_record(reviewable, final_assessment, hdx_meta, extractors)
+            _reconcile_rdt(revised)
 
             # Rebuild ID based on updated risk_data_type
             new_rdt = revised.get("risk_data_type", [])
@@ -1179,7 +1193,8 @@ def run_llm_review(
                 write_json(tier_out / f"{new_id}.json", {"datasets": [reorder_record_keys(revised)]})
         else:
             unchanged += 1
-            record = reviewable.record
+            record = {**reviewable.record}  # shallow copy so we can modify
+            _reconcile_rdt(record)
 
             # Rebuild ID even for unchanged records (fix pre-existing mismatches)
             new_id = _rebuild_id_for_new_rdt(
