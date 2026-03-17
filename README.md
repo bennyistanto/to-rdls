@@ -5,7 +5,7 @@ Transform metadata from various sources (HDX, GeoNode, etc.) into
 
 ## Overview
 
-This is a modular, config-driven toolkit that evolved from the [HDX-RDLS Metadata Crawler](https://github.com/your-org/hdx-metadata-crawler) pipeline. While the crawler focused exclusively on HDX with a notebook-based approach, to-rdls redesigns the pipeline as a modular library supporting any metadata source.
+This is a modular, config-driven toolkit that evolved from the [HDX-RDLS Metadata Crawler](https://github.com/bennyistanto/hdx-metadata-crawler) pipeline. While the crawler focused exclusively on HDX with a notebook-based approach, to-rdls redesigns the pipeline as a modular library supporting any metadata source.
 
 It is **not** a Python package &mdash; it is a portable folder of scripts and YAML configs that you can copy alongside any project.
 
@@ -79,7 +79,7 @@ to-rdls/
 ## Documentation
 
 | Document | Description |
-|----------|-------------|
+| -------- | ----------- |
 | [Getting Started](docs/GETTING_STARTED.md) | Installation, setup, first pipeline run |
 | [Features](docs/FEATURES.md) | Complete capability overview |
 | [Architecture](docs/ARCHITECTURE.md) | Design principles, pipeline data flow, extension points |
@@ -159,6 +159,7 @@ To add support for a new metadata source (e.g., GeoNode):
 ## Dependencies
 
 ### Core (pip)
+
 - `pyyaml>=6.0` &mdash; YAML config loading
 - `requests>=2.28` &mdash; HTTP client for API crawling
 - `jsonschema>=4.20` &mdash; RDLS schema validation (Draft 2020-12)
@@ -166,15 +167,18 @@ To add support for a new metadata source (e.g., GeoNode):
 - `rapidfuzz>=3.5` &mdash; Fuzzy codelist matching
 
 ### Geospatial (conda)
+
 - `gdal>=3.8`, `rasterio>=1.3`, `fiona>=1.9`, `geopandas>=0.14` &mdash; Geospatial file inspection
 - `shapely>=2.0`, `pyproj>=3.6` &mdash; Geometry and projection handling
 
 ### Data and Documents (conda + pip)
+
 - `pandas>=2.1`, `openpyxl>=3.1`, `xlrd>=2.0` &mdash; Tabular data handling
 - `netcdf4>=1.6`, `xarray>=2024.1` &mdash; Scientific data formats
 - `pillow>=10.0`, `python-docx>=1.1`, `PyMuPDF>=1.24` &mdash; Document reading (images, DOCX, PDF)
 
 ### MCP Server
+
 - `mcp>=1.2.0` &mdash; Claude Code MCP server SDK
 
 ## License
