@@ -158,19 +158,25 @@ Every output file has an RDLS prefix encoding its component composition. Here is
 
 | Prefix | Components | dist/high | dist/invalid | not_rdls | Total |
 |--------|-----------|----------:|-------------:|---------:|------:|
-| `exp` | Exposure only | 2,454 | 1,400 | 2,192 | 6,046 |
-| `ev` | Exposure+Vulnerability | 345 | 339 | 2,111 | 2,795 |
-| `hzd` | Hazard only | 12 | 1,136 | 47 | 1,195 |
+| | **Single component** | | | | |
+| `hzd` | Hazard | 12 | 1,136 | 47 | 1,195 |
+| `exp` | Exposure | 2,454 | 1,400 | 2,192 | 6,046 |
+| `vln` | Vulnerability | 3 | 2 | 10 | 15 |
+| `lss` | Loss | 370 | 431 | - | 801 |
+| | **Two components** | | | | |
 | `he` | Hazard+Exposure | - | 839 | 18 | 857 |
-| `lss` | Loss only | 370 | 431 | - | 801 |
-| `evl` | Exposure+Vln+Loss | 1 | 1 | 407 | 409 |
-| `el` | Exposure+Loss | 118 | 233 | 4 | 355 |
-| `hev` | Hazard+Exposure+Vln | - | 43 | 5 | 48 |
+| `hv` | Hazard+Vulnerability | - | - | - | - |
 | `hl` | Hazard+Loss | - | 38 | - | 38 |
-| `hel` | Hazard+Exposure+Loss | - | 26 | 5 | 31 |
-| `vln` | Vulnerability only | 3 | 2 | 10 | 15 |
-| `hevl` | All four (HEVL) | - | 1 | 2 | 3 |
+| `ev` | Exposure+Vulnerability | 345 | 339 | 2,111 | 2,795 |
+| `el` | Exposure+Loss | 118 | 233 | 4 | 355 |
 | `vl` | Vulnerability+Loss | - | 1 | - | 1 |
+| | **Three components** | | | | |
+| `hev` | Hazard+Exposure+Vln | - | 43 | 5 | 48 |
+| `hel` | Hazard+Exposure+Loss | - | 26 | 5 | 31 |
+| `hvl` | Hazard+Vln+Loss | - | - | - | - |
+| `evl` | Exposure+Vln+Loss | 1 | 1 | 407 | 409 |
+| | **Four components** | | | | |
+| `hevl` | Hazard+Exposure+Vln+Loss | - | 1 | 2 | 3 |
 | **Total** | | **3,303** | **4,490** | **4,801** | **12,594** |
 
 **Key observations:**
