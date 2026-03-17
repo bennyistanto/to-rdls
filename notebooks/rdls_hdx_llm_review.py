@@ -184,10 +184,32 @@ for rdls_id in sorted(not_rdls_ids):
         shutil.move(str(src), str(dst))
         moved += 1
 
+# Also move records with empty risk_data_type (no HEVL blocks after sync)
+# These have no components and don't belong in the RDLS output
+empty_rdt_moved = 0
+for stem, fp in list(all_files.items()):
+    if stem in not_rdls_ids:
+        continue  # already moved above
+    if not fp.exists():
+        continue
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+        rec = data["datasets"][0] if "datasets" in data and isinstance(data["datasets"], list) else data
+        rdt = rec.get("risk_data_type", None)
+        if isinstance(rdt, list) and len(rdt) == 0:
+            dst = NOT_RDLS_DIR / fp.name
+            if dst.exists():
+                dst.unlink()
+            shutil.move(str(fp), str(dst))
+            empty_rdt_moved += 1
+    except Exception:
+        pass
+
 remaining = len(list(REVISED_DIR.rglob("*.json")))
 not_rdls_count = len(list(NOT_RDLS_DIR.glob("*.json")))
 
-print(f"\nMoved:     {moved} (new this run)")
+print(f"\nMoved:     {moved} (LLM-flagged not-RDLS)")
+print(f"Moved:     {empty_rdt_moved} (empty risk_data_type, no HEVL blocks)")
 print(f"Remaining: {remaining} in revised/ (RDLS-relevant)")
 print(f"Not-RDLS:  {not_rdls_count} in not_rdls/")
 

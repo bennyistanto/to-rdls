@@ -1212,9 +1212,12 @@ def run_llm_review(
                 write_json(tier_out / f"{new_id}.json", {"datasets": [reorder_record_keys(record)]})
 
         # Build report row
+        hdx_uuid = reviewable.hdx_uuid or ""
+        hdx_link = f"https://data.humdata.org/dataset/{hdx_uuid}" if hdx_uuid else ""
         row = {
             "rdls_id": rdls_id,
             "new_id": new_id,
+            "hdx_link": hdx_link,
             "original_rdt": "|".join(assessment.current_rdt),
             "final_rdt": "|".join(final_assessment.assessed_rdt),
             "source": source,
@@ -1233,7 +1236,7 @@ def run_llm_review(
     _write_triage_summary(reports_dir, bucket, assessments)
     _write_review_report(reports_dir, all_rows)
     _write_disagreements(reports_dir, disagreements)
-    _write_llm_audit(reports_dir, llm_results)
+    _write_llm_audit(reports_dir, llm_results, records)
     _write_summary_md(reports_dir, {
         "total": total,
         "changed": changed,
@@ -1328,12 +1331,21 @@ def _write_disagreements(reports_dir: Path, disagreements: List[Dict]):
             writer.writerows(disagreements)
 
 
-def _write_llm_audit(reports_dir: Path, results: Dict[str, LLMClassification]):
+def _write_llm_audit(
+    reports_dir: Path,
+    results: Dict[str, LLMClassification],
+    records: Optional[Dict[str, Any]] = None,
+):
     path = reports_dir / "llm_classifications.jsonl"
     with open(path, "w", encoding="utf-8") as f:
         for rdls_id, cls in sorted(results.items()):
+            hdx_uuid = ""
+            if records and rdls_id in records:
+                hdx_uuid = getattr(records[rdls_id], "hdx_uuid", "") or ""
+            hdx_link = f"https://data.humdata.org/dataset/{hdx_uuid}" if hdx_uuid else ""
             entry = {
                 "rdls_id": rdls_id,
+                "hdx_link": hdx_link,
                 "is_rdls_relevant": cls.is_rdls_relevant,
                 "components": cls.components,
                 "reasoning": cls.component_reasoning,

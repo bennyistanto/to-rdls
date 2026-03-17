@@ -18,17 +18,18 @@ The LLM review pipeline takes 12,594 regex-classified RDLS records and uses Clau
 ```
 Input: 12,594 regex-reviewed records (output/hdx/revised/)
   │
-  ├─ Phase 1: Signal Triage ── 4,303 confident (skip LLM)
+  ├─ Phase 1: Signal Triage ── 4,088 confident (skip LLM)
   │                          ── 8,506 sent to LLM
   ├─ Phase 2: Column Enrichment (adds CKAN column context)
   ├─ Phase 3: LLM Classification (Claude Haiku)
   ├─ Phase 4: Merge + Reconcile blocks + Rename IDs + Write
   │
-  ├─ Step 2: Separate not-RDLS ── 4,801 removed
+  ├─ Step 2: Separate not-RDLS ── 4,794 LLM-flagged
+  │                             ── 654 empty risk_data_type (no HEVL blocks)
   │
   └─ Step 3: Validate & Distribute
-       ├─ dist/high/    3,303 schema-valid (final)
-       └─ dist/invalid/ 4,490 schema-invalid
+       ├─ dist/high/    3,312 schema-valid (final)
+       └─ dist/invalid/ 3,834 schema-invalid
 ```
 
 ---
@@ -39,28 +40,31 @@ Input: 12,594 regex-reviewed records (output/hdx/revised/)
 
 | Category | Count | % of Input | Location |
 |----------|------:|------------|----------|
-| **RDLS-relevant** | **7,793** | 61.9% | `output/llm/revised/` |
-| Schema-valid (production-ready) | 3,303 | 26.2% | `output/llm/dist/high/` |
-| Schema-invalid (needs fixes) | 4,490 | 35.6% | `output/llm/dist/invalid/` |
-| **Not-RDLS (removed)** | **4,801** | 38.1% | `output/llm/not_rdls/` |
-| LLM errors (unprocessed) | 5 | 0.04% | Listed in `reports/failed_ids.txt` |
+| **RDLS-relevant** | **7,146** | 56.7% | `output/llm/revised/` |
+| Schema-valid (production-ready) | 3,312 | 26.3% | `output/llm/dist/high/` |
+| Schema-invalid (needs fixes) | 3,834 | 30.4% | `output/llm/dist/invalid/` |
+| **Not-RDLS (removed)** | **5,448** | 43.3% | `output/llm/not_rdls/` |
+| LLM-flagged not-RDLS | 4,794 | 38.1% | Semantic classification |
+| Empty risk_data_type (no blocks) | 654 | 5.2% | Phantom block reconciliation |
+| LLM errors (unprocessed) | 0 | 0% | All retries succeeded |
 
 ### What the LLM Changed
 
-Of 12,594 records, **3,506 (27.8%)** were modified:
+Of 12,594 records, **3,511 (27.9%)** were modified:
 
 | Action | Count | Description |
 |--------|------:|-------------|
-| Flagged as not-RDLS | 4,801 | Dataset unrelated to disaster risk |
-| ADD loss | 1,747 | LLM found genuine loss data the regex missed |
-| REMOVE exposure | 1,683 | Fabricated exposure component removed |
-| REMOVE hazard | 855 | Fabricated hazard component removed |
-| REMOVE vulnerability | 552 | Fabricated vulnerability component removed |
-| ADD hazard | 357 | LLM found genuine hazard data |
-| ADD exposure | 201 | LLM found genuine exposure data |
-| REMOVE loss | 120 | Fabricated loss component removed |
-| ADD vulnerability | 5 | LLM found genuine vulnerability data |
-| **IDs renamed** | **2,427** | Filename prefix updated to match new components |
+| Flagged as not-RDLS | 4,794 | Dataset unrelated to disaster risk |
+| Empty risk_data_type | 654 | No HEVL blocks after phantom reconciliation |
+| REMOVE exposure | ~1,680 | Fabricated exposure component removed |
+| REMOVE hazard | ~855 | Fabricated hazard component removed |
+| REMOVE vulnerability | ~550 | Fabricated vulnerability component removed |
+| REMOVE loss | ~120 | Fabricated loss component removed |
+| ADD loss | ~1,750 | LLM found genuine loss data the regex missed |
+| ADD hazard | ~360 | LLM found genuine hazard data |
+| ADD exposure | ~200 | LLM found genuine exposure data |
+| ADD vulnerability | ~5 | LLM found genuine vulnerability data |
+| **IDs renamed** | **2,425** | Filename prefix updated to match new components |
 
 > **Note on ADD actions**: The LLM may recommend adding a component, but the pipeline only includes it in `risk_data_type` if the corresponding HEVL block actually exists in the JSON. This prevents phantom components (e.g., "loss" in `risk_data_type` with no `loss` block).
 
@@ -159,51 +163,51 @@ Every output file has an RDLS prefix encoding its component composition. Here is
 | Prefix | Components | dist/high | dist/invalid | not_rdls | Total |
 |--------|-----------|----------:|-------------:|---------:|------:|
 | | **Single component** | | | | |
-| `hzd` | Hazard | 12 | 1,136 | 47 | 1,195 |
-| `exp` | Exposure | 2,454 | 1,400 | 2,192 | 6,046 |
-| `vln` | Vulnerability | 3 | 2 | 10 | 15 |
-| `lss` | Loss | 370 | 431 | - | 801 |
+| `hzd` | Hazard | 12 | 1,001 | 182 | 1,195 |
+| `exp` | Exposure | 2,460 | 1,299 | 2,286 | 6,045 |
+| `vln` | Vulnerability | 3 | 1 | 11 | 15 |
+| `lss` | Loss | 370 | 436 | - | 806 |
 | | **Two components** | | | | |
-| `he` | Hazard+Exposure | - | 839 | 18 | 857 |
+| `he` | Hazard+Exposure | - | 802 | 54 | 856 |
 | `hv` | Hazard+Vulnerability | - | - | - | - |
 | `hl` | Hazard+Loss | - | 38 | - | 38 |
-| `ev` | Exposure+Vulnerability | 345 | 339 | 2,111 | 2,795 |
-| `el` | Exposure+Loss | 118 | 233 | 4 | 355 |
+| `ev` | Exposure+Vulnerability | 348 | 2 | 2,448 | 2,798 |
+| `el` | Exposure+Loss | 118 | 226 | 5 | 349 |
 | `vl` | Vulnerability+Loss | - | 1 | - | 1 |
 | | **Three components** | | | | |
-| `hev` | Hazard+Exposure+Vln | - | 43 | 5 | 48 |
-| `hel` | Hazard+Exposure+Loss | - | 26 | 5 | 31 |
+| `hev` | Hazard+Exposure+Vln | - | 2 | 46 | 48 |
+| `hel` | Hazard+Exposure+Loss | - | 24 | 7 | 31 |
 | `hvl` | Hazard+Vln+Loss | - | - | - | - |
 | `evl` | Exposure+Vln+Loss | 1 | 1 | 407 | 409 |
 | | **Four components** | | | | |
 | `hevl` | Hazard+Exposure+Vln+Loss | - | 1 | 2 | 3 |
-| **Total** | | **3,303** | **4,490** | **4,801** | **12,594** |
+| **Total** | | **3,312** | **3,834** | **5,448** | **12,594** |
 
 **Key observations:**
 
-- **Exposure-only (`exp`)** dominates — 6,046 records (48%). Most HDX datasets describe assets/populations at risk.
+- **Exposure-only (`exp`)** dominates — 6,045 records (48%). Most HDX datasets describe assets/populations at risk.
 - **Hazard-only (`hzd`)** has 1,195 records but only 12 schema-valid — most lack required `occurrence` sub-fields.
-- **Loss-only (`lss`)** — 801 records of post-event impact data, roughly split between valid and invalid.
-- **Vulnerability-only (`vln`)** has 15 files total (3 valid, 2 invalid, 10 not-RDLS). Standalone vulnerability data (fragility curves, damage functions) is rare on HDX.
+- **Loss-only (`lss`)** — 806 records of post-event impact data, roughly split between valid and invalid.
+- **Vulnerability-only (`vln`)** has 15 files total (3 valid, 1 invalid, 11 not-RDLS). Standalone vulnerability data (fragility curves, damage functions) is rare on HDX.
 - **Full HEVL** reduced from thousands (regex over-classification) to just 3 — confirming the LLM correctly fixed Problem 7.
-- **`ev` (exposure+vulnerability)** has 2,111 in not_rdls — many were general socioeconomic datasets that the regex misclassified.
-- **Phantom component fix**: `risk_data_type` is reconciled with actual HEVL blocks — if a block doesn't exist in the JSON, the component is removed from `risk_data_type` regardless of what the LLM recommended.
+- **`ev` (exposure+vulnerability)** has 2,448 in not_rdls — many were general socioeconomic datasets that the regex misclassified. Only 2 remain in dist/invalid after reconciliation.
+- **Phantom component fix**: `risk_data_type` is reconciled with actual HEVL blocks — if a block doesn't exist in the JSON, the component is removed from `risk_data_type` regardless of what the LLM recommended. 654 records with no blocks at all are moved to not_rdls.
 
 ---
 
 ## Not-RDLS Records
 
-The LLM identified 4,801 records as not relevant to disaster risk data. These were moved to `output/llm/not_rdls/` and excluded from validation.
+The pipeline identified 5,448 records as not belonging in the RDLS output. These were moved to `output/llm/not_rdls/` and excluded from validation. This includes 4,794 flagged by the LLM as not disaster-relevant, plus 654 with empty `risk_data_type` after phantom block reconciliation.
 
 ### Domain Categories
 
 | Domain | Count | Description | Examples |
 |--------|------:|-------------|----------|
-| **other** | 2,661 | General statistics unrelated to disasters | Price indices, education stats, gender data, trade |
-| **health** | 945 | Health/medical data | Disease surveillance, nutrition surveys, COVID tracking |
-| **reference** | 896 | Reference/codelist data | Country code lists, administrative boundaries, lookup tables |
-| **humanitarian_ops** | 261 | Humanitarian operations | Aid delivery tracking, refugee camp management, 3W/4W |
-| **climate** | 38 | Climate data without disaster risk focus | General temperature records, climate normals |
+| **other** | 2,657 | General statistics unrelated to disasters | Price indices, education stats, gender data, trade |
+| **health** | 941 | Health/medical data | Disease surveillance, nutrition surveys, COVID tracking |
+| **reference** | 894 | Reference/codelist data | Country code lists, administrative boundaries, lookup tables |
+| **humanitarian_ops** | 263 | Humanitarian operations | Aid delivery tracking, refugee camp management, 3W/4W |
+| **climate** | 39 | Climate data without disaster risk focus | General temperature records, climate normals |
 
 ### How to Review Not-RDLS Decisions
 
@@ -211,14 +215,15 @@ Each not-RDLS record has full LLM reasoning available in the reports:
 
 **Quick check** - `review_report.csv`:
 ```csv
-rdls_id,new_id,original_rdt,final_rdt,source,has_change,changes,confidence,llm_confidence,llm_domain
-rdls_ev-abw_fao_arubaprices,...,...,...,llm,True,LLM: not RDLS relevant (domain=other),0.98,0.98,other
+rdls_id,new_id,hdx_link,original_rdt,final_rdt,source,has_change,changes,confidence,llm_confidence,llm_domain
+rdls_ev-abw_fao_arubaprices,...,https://data.humdata.org/dataset/...,exposure|vulnerability,...,llm,True,LLM: not RDLS relevant (domain=other),0.98,0.98,other
 ```
 
 **Full reasoning** - `llm_classifications.jsonl`:
 ```json
 {
   "rdls_id": "rdls_ev-abw_fao_arubaprices",
+  "hdx_link": "https://data.humdata.org/dataset/...",
   "is_rdls_relevant": false,
   "components": {"hazard": false, "exposure": false, "vulnerability": false, "loss": false},
   "reasoning": {
@@ -268,19 +273,18 @@ After LLM:   rdls_lss-ken_ocharosea_droughtrelatedkeyfigures.json
 
 ## Validation Errors (Schema-Invalid Records)
 
-4,490 records have schema validation errors. The most common:
+3,834 records have schema validation errors. The most common:
 
 | Error | Count | Cause |
 |-------|------:|-------|
-| `referenced_by.*.author_names: minItems` | 3,616 | Empty author_names array `[]` |
-| `referenced_by.*.doi: minLength` | 3,616 | Empty DOI string `""` |
-| `loss.losses.*.impact_and_losses: required` | 2,915 | Missing required sub-field in loss block |
-| `hazard.event_sets.*.events.*.occurrence: minProperties` | 1,928 | Empty `occurrence: {}` (schema gap) |
-| `risk_data_type: minItems` | 656 | Empty `risk_data_type: []` after phantom block reconciliation |
-| `loss.losses.0: required` | 640 | Malformed loss entry |
-| `resources: minItems` | 47 | No resources attached |
+| `referenced_by.*.author_names: minItems` | 3,587 | Empty author_names array `[]` |
+| `referenced_by.*.doi: minLength` | 3,587 | Empty DOI string `""` |
+| `loss.losses.*.impact_and_losses: required` | 2,907 | Missing required sub-field in loss block |
+| `hazard.event_sets.*.events.*.occurrence: minProperties` | 1,927 | Empty `occurrence: {}` (schema gap) |
+| `loss.losses.0: required` | 638 | Malformed loss entry |
+| `resources: minItems` | 24 | No resources attached |
 
-These are **data quality issues** from the original HDX metadata, not LLM errors. The `risk_data_type: minItems` error (656 records) occurs when a record has no actual HEVL blocks — the pipeline correctly sets `risk_data_type: []` rather than keeping phantom components. A future sanitization step (NB 08) can address many of these automatically.
+These are **data quality issues** from the original HDX metadata, not LLM errors. Records with empty `risk_data_type` (654 files with no HEVL blocks) are now moved to `not_rdls/` rather than remaining in `dist/invalid`. A future sanitization step (NB 08) can address the remaining errors automatically.
 
 ---
 
@@ -291,8 +295,8 @@ All reports are in `output/llm/reports/`:
 | File | Purpose | Key Columns/Fields |
 |------|---------|-------------------|
 | **`review_summary.md`** | Quick overview | Totals, cost, timing |
-| **`review_report.csv`** | Per-record decisions | `rdls_id`, `new_id`, `original_rdt`, `final_rdt`, `changes`, `llm_confidence`, `llm_domain` |
-| **`llm_classifications.jsonl`** | Full LLM reasoning | `components`, `reasoning` (per HEVL), `confidence`, `domain_category`, `is_rdls_relevant` |
+| **`review_report.csv`** | Per-record decisions | `rdls_id`, `new_id`, `hdx_link`, `original_rdt`, `final_rdt`, `changes`, `llm_confidence`, `llm_domain` |
+| **`llm_classifications.jsonl`** | Full LLM reasoning | `rdls_id`, `hdx_link`, `components`, `reasoning` (per HEVL), `confidence`, `domain_category`, `is_rdls_relevant` |
 | **`triage_summary.csv`** | Phase 1 bucket assignments | Signal scores, bucket (confident/borderline/no-signal) |
 | **`disagreements.csv`** | LLM vs regex conflicts | Validation sample where LLM overrode regex |
 | **`failed_ids.txt`** | Unprocessed records | IDs that failed all retry attempts |
