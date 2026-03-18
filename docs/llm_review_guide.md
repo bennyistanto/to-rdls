@@ -1,6 +1,6 @@
 # LLM-Assisted HEVL Review Pipeline - Operations Guide
 
-> Last updated: 2026-03-13 (post sanitize + validate)
+> Last updated: 2026-03-18 (aligned with final pipeline run)
 
 ## Overview
 
@@ -13,11 +13,13 @@ Phase 1: Signal Triage (regex, free, ~10 min)
     ↓
 Phase 2: Column Enrichment (CKAN API, free, ~8 hrs first run)
     ↓
-Phase 3: LLM Classification (Claude Haiku, ~$11.49)
+Phase 3: LLM Classification (Claude Haiku, ~$22)
     ↓
-Phase 4: Merge + Write (automatic)
+Phase 4: Merge + Reconcile + Rename + Write (automatic)
     ↓
-Step 8: Sanitize + Validate (offline, ~2 min)
+Step 2: Separate not-RDLS (4,794 LLM-flagged + 654 empty risk_data_type)
+    ↓
+Step 3: Validate & Distribute (offline, ~2 min)
 ```
 
 ---
@@ -28,8 +30,8 @@ Step 8: Sanitize + Validate (offline, ~2 min)
 |--------|------|-------------|
 | `src/ckan_columns.py` | 1 | Fetch column headers from HDX CKAN API |
 | `src/llm_review.py` | 2-5 | LLM review pipeline (triage → classify → merge) |
-| `notebooks/rdls_hdx_07_llm_review.py` | 5-7 | Automated: full run + not-RDLS separation + validation |
-| `notebooks/rdls_hdx_08_sanitize_validate.py` | 8 | Rebuild, sanitize, and validate all records |
+| `notebooks/rdls_hdx_llm_review.py` | 5-7 | Automated: full run + not-RDLS separation + validation |
+| `notebooks/rdls_hdx_08_sanitize_validate.py` | 8 | Rebuild, sanitize, and validate all records (optional) |
 
 ---
 
@@ -56,7 +58,7 @@ conda run -n to-rdls pip install -r requirements.txt
 | PyYAML | >=6.0 | Config loading (all modules) |
 | requests | >=2.28 | CKAN API (`ckan_columns.py`) |
 | jsonschema | >=4.20 | Schema validation |
-| anthropic | >=0.40 | LLM API (`llm_review.py`) |
+| anthropic | >=0.40 | Optional; pipeline uses `urllib` direct HTTP (SDK had hanging issues on Windows) |
 | pandas | >=2.0 | Notebook scripts |
 | openpyxl | >=3.1 | Excel read/write |
 | xlrd | >=2.0 | Legacy .xls read |
@@ -174,13 +176,13 @@ conda run -n to-rdls python -m src.llm_review ^
 
 ```
 [Phase 1] Signal triage...
-  Confident:    5087 (skip LLM)
-  Borderline:   7052 (send to LLM)
+  Confident:    4088 (skip LLM)
+  Borderline:   7836 (send to LLM)
   No-signal:    455 (send to LLM)
-  Validation:   254 (5% cross-check)
+  Validation:   215 (5% cross-check)
 
-  Estimated LLM cost: $11.49
-  Records for LLM:   7761
+  Estimated LLM cost: $14.36
+  Records for LLM:   8506
   Cost guardrail:    $15.00
 ```
 
@@ -215,7 +217,7 @@ type output\llm\reports\llm_classifications.jsonl
 
 ---
 
-### Step 5: Full Run (12,594 records, ~$11.49)
+### Step 5: Full Run (12,594 records, ~$22)
 
 Once pilot looks good, run on all records.
 
@@ -230,24 +232,24 @@ conda run -n to-rdls python -m src.llm_review ^
 
 **Estimated time:** ~25 min (Phase 1: 3s cached / 190s fresh, Phase 3: ~22 min).
 
-**Actual results (2026-03-12 run):**
+**Actual results (2026-03-17 final run):**
 
 ```
 Total:          12594
-Changed:        3443 (27.3%)
-Unchanged:      9151
-Disagreements:  173 (validation sample)
-LLM cost:       $21.98
+Changed:        3511 (27.9%)
+Unchanged:      9083
+Disagreements:  132 (validation sample)
+LLM cost:       $21.98 (first run) / $0 (re-runs, cached)
 Tokens:         11,830,496 in / 2,028,982 out
-Errors:         4 (connection timeouts, 0.05%)
-Time:           1343.4s (~22 min)
+Errors:         0 (all retries succeeded)
+Time:           ~22 min (first run) / ~2 min (cached re-run)
 ```
 
 ---
 
 ### Step 6-7: Automated Post-Processing
 
-`notebooks/rdls_hdx_07_llm_review.py` runs Steps 5-7 (LLM pipeline + not-RDLS separation + basic validation) in sequence. This is the original pipeline script.
+`notebooks/rdls_hdx_llm_review.py` runs Steps 5-7 (LLM pipeline + not-RDLS separation + validation + distribution) in sequence. This is the main pipeline entry point. It also handles phantom component reconciliation (syncing `risk_data_type` with actual HEVL blocks) and separates records with empty `risk_data_type` to `not_rdls/`.
 
 ---
 
@@ -292,18 +294,16 @@ python notebooks\rdls_hdx_08_sanitize_validate.py
 | Field ordering | Schema property order | Reorder: id...resources...loss...links |
 | `occurrence: {}` | minProperties:1 | **Kept as-is** (team will revise schema) |
 
-**Actual results (2026-03-13):**
+**Actual results (2026-03-17 final run):**
 
 ```
-  Written to revised/:  8822
-  Written to not_rdls/: 3772
-  Renamed:              4087
-  HEVL changed:         3426
-  Filename/ID mismatch: 0
-  Filename/RDT mismatch: 0
+  RDLS-relevant:        7,146
+  Not-RDLS separated:   5,448 (4,794 LLM-flagged + 654 empty risk_data_type)
+  IDs renamed:          2,425
+  HEVL changed:         3,511
 
-  Valid:   6,132  (69.4%)
-  Invalid: 2,690  (30.5%)  -- all occurrence:{} only
+  Valid (dist/high):    3,312  (46.3% of relevant)
+  Invalid (dist/invalid): 3,834  (53.7% of relevant)
 ```
 
 **Time:** ~2 min, **Cost:** $0 (fully offline, no API calls)
@@ -318,12 +318,11 @@ After Steps 5-8, outputs go to `output/llm/`:
 
 ```
 output/llm/
-├── revised/                         # RDLS-relevant records (sanitized)
-│   └── high/                        # All RDLS records (8,822)
-├── not_rdls/                        # Non-disaster records (3,772)
+├── revised/                         # RDLS-relevant records (7,146)
+├── not_rdls/                        # Non-risk records (5,448)
 ├── dist/                            # Final validated distribution
-│   ├── high/                        # Schema-valid (6,132)
-│   └── invalid/                     # Schema errors (2,690 - all occurrence:{})
+│   ├── high/                        # Schema-valid (3,312)
+│   └── invalid/                     # Schema errors (3,834)
 ├── reports/
 │   ├── review_summary.md            # Start here: aggregate stats
 │   ├── triage_summary.csv           # Bucket assignment per record
@@ -400,6 +399,7 @@ All settings in `configs/llm_review.yaml`:
 | `cost_guardrail_exceeded` | Increase `max_cost_usd` in `configs/llm_review.yaml` |
 | Interrupted mid-run | Re-run same command. Cached results reused automatically |
 | `ModuleNotFoundError: src` | Make sure you `cd` to `to-rdls/` project root first |
+| Phase 3 hangs indefinitely | Known issue with Anthropic SDK v0.84.0 httpx on Windows. Pipeline now uses `urllib` direct HTTP instead |
 | Wrong conda env | Column cache: `climate` OK. LLM review + Step 8: must use `to-rdls` |
 | `PYTHONPATH` not set | `set PYTHONPATH=C:\Users\benny\OneDrive\Documents\Github\to-rdls` |
 
@@ -412,8 +412,8 @@ All settings in `configs/llm_review.yaml`:
 | Column cache (Step 1) | Free | 48+ hrs with API key (88,327 resources) | Once |
 | Dry-run (Step 3) | Free | ~3s cached / ~3 min fresh | Unlimited |
 | Pilot 100 records (Step 4) | ~$0.10 | ~2 min | Cached after first run |
-| Full 12,594 records (Step 5) | **$21.98** | ~22 min | Cached after first run |
-| Sanitize + Validate (Step 8) | Free | ~2 min | Idempotent |
+| Full 12,594 records (Step 5) | **~$22** | ~22 min | Cached after first run |
+| Post-processing (Steps 6-7) | Free | ~2 min | Idempotent |
 | Any re-run | $0 | ~2 min | Fully cached |
 
 ---
@@ -425,15 +425,17 @@ HDX crawl (26,246)
   -> OSM excluded (3,649)
   -> RDLS candidates (13,053)
   -> Regex review: output/hdx/revised/ (12,594)
-  -> LLM review + sanitize:
-       output/llm/revised/ (8,822 RDLS-relevant)
-       output/llm/not_rdls/ (3,772 not disaster-relevant)
+  -> LLM review + reconcile:
+       output/llm/revised/ (7,146 RDLS-relevant)
+       output/llm/not_rdls/ (5,448 not risk-relevant)
+         ├─ 4,794 LLM-flagged (semantic classification)
+         └─ 654 empty risk_data_type (no HEVL blocks)
   -> Validation:
-       output/llm/dist/high/ (6,132 schema-valid, 69.4%)
-       output/llm/dist/invalid/ (2,690 occurrence:{} only, 30.5%)
+       output/llm/dist/high/ (3,312 schema-valid, 46.3%)
+       output/llm/dist/invalid/ (3,834 schema errors, 53.7%)
 ```
 
-**Note:** Once the team revises the `occurrence` schema (remove minProperties:1), many invalid records should become valid.
+**Note:** Many invalid records have `occurrence: {}` or empty `referenced_by` fields — once the team revises the schema constraints, the valid count should increase significantly.
 
 ---
 
