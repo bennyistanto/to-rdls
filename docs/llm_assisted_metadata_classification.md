@@ -173,5 +173,6 @@ The resulting catalogue of 7,146 RDLS-relevant records, with 3,312 schema-valid 
 
 ---
 
-*Source code: [github.com/GFDRR/to-rdls](https://github.com/GFDRR/to-rdls)*
-*Detailed output analysis: [LLM Review Output](llm_review_output.md) | [LLM Review Guide](llm_review_guide.md)*
+*Source code: https://github.com/bennyistanto/to-rdls*</br>
+*Detailed output analysis: https://github.com/bennyistanto/to-rdls/blob/main/docs/llm_review_output.md*</br>
+*LLM Review Guide: https://github.com/bennyistanto/to-rdls/blob/main/docs/llm_review_guide.md*</br>

@@ -1,372 +1,452 @@
 {
+  "_comment": "RDLS v0.3 Template — Every field annotated with type, requirement level, and constraints",
+  "_legend": {
+    "REQUIRED": "Field must be present",
+    "optional": "Field may be omitted",
+    "conditional": "Required under certain conditions (see note)",
+    "{string}": "Free text value",
+    "{format:email}": "Email format (user@example.com)",
+    "{format:iri}": "URL/IRI format (https://...)",
+    "{format:date}": "Date YYYY-MM-DD",
+    "{format:duration}": "ISO 8601 duration (P1Y, P6M, P30D)",
+    "{date-flex}": "Flexible: YYYY or YYYY-MM or YYYY-MM-DD",
+    "{enum:a|b|c}": "Closed codelist — must pick one of listed values",
+    "{open:file.csv}": "Open codelist — pick from file or add custom value",
+    "{depends:X->Y}": "Value constrained by another field's value",
+    "0": "Number placeholder (> 0 where noted)",
+    "0 (integer)": "Integer placeholder"
+  },
+  "_cross_field_rules": {
+    "_about": "Fields activate/deactivate based on other field values. Validation must check these.",
+
+    "rule_1_type_to_process": {
+      "trigger_field": "hazard.type",
+      "affected_field": "hazard.hazard_process",
+      "behavior": "hazard_process enum changes based on type value. If type is absent, hazard_process is unconstrained.",
+      "mappings": {
+        "coastal_flood": ["coastal_flood", "storm_surge"],
+        "convective_storm": ["tornado"],
+        "drought": ["agricultural_drought", "hydrological_drought", "meteorological_drought", "socioeconomic_drought"],
+        "earthquake": ["primary_rupture", "secondary_rupture", "ground_motion", "liquefaction"],
+        "extreme_temperature": ["extreme_cold", "extreme_heat"],
+        "flood": ["fluvial_flood", "pluvial_flood", "groundwater_flood"],
+        "landslide": ["snow_avalanche", "landslide_general", "landslide_rockslide", "landslide_mudflow", "landslide_rockfall"],
+        "strong_wind": ["extratropical_cyclone", "tropical_cyclone", "tornado"],
+        "tsunami": ["tsunami"],
+        "volcanic": ["ashfall", "volcano_ballistics", "lahar", "lava", "pyroclastic_flow"],
+        "wildfire": ["wildfire"]
+      },
+      "note": "v0.3 has fewer process types than v1.0 (no lightning, thunderstorm, hail, wildfire_smoke, etc.)",
+      "applies_to": "event_set.hazards, event.hazard, event_set.hazards.trigger, vulnerability.functions.*.hazard_primary/hazard_process_primary, loss.losses.hazard_type/hazard_process"
+    },
+
+    "rule_2_type_to_imt": {
+      "trigger_field": "hazard.type",
+      "affected_field": "hazard.intensity_measure",
+      "behavior": "intensity_measure is an open codelist (IMT.csv). Format is 'metric:unit' (e.g. PGA:g, flow_depth_ground:m). Also check per-type files imt_[type].csv.",
+      "applies_to": "same locations as rule_1"
+    },
+
+    "rule_3_scale_to_countries": {
+      "trigger_field": "spatial.scale",
+      "affected_field": "spatial.countries",
+      "behavior": "countries requirement changes based on scale value",
+      "mappings": {
+        "global": "countries NOT required (ignored)",
+        "regional": "countries REQUIRED, min 2 items",
+        "national": "countries REQUIRED, min 1 item",
+        "sub-national": "countries REQUIRED, min 1 item",
+        "urban": "countries REQUIRED, min 1 item"
+      },
+      "applies_to": "dataset.spatial"
+    },
+
+    "rule_4_analysis_to_occurrence": {
+      "trigger_field": "event_set.analysis_type",
+      "affected_field": "event.occurrence",
+      "behavior": "occurrence must contain exactly ONE of three sub-objects matching analysis_type",
+      "mappings": {
+        "probabilistic": "occurrence.probabilistic activates (return_period, event_rate, probability)",
+        "empirical": "occurrence.empirical activates (temporal, return_period)",
+        "deterministic": "occurrence.deterministic activates (index_criteria, thresholds)"
+      },
+      "applies_to": "hazard.event_sets.events.occurrence"
+    },
+
+    "rule_5_entity_contact": {
+      "trigger_field": "entity.name",
+      "affected_field": "entity.email, entity.url",
+      "behavior": "Entity always requires name. Additionally, at least one of email or url must be present.",
+      "applies_to": "attributions.entity"
+    },
+
+    "rule_6_risk_data_type_to_sections": {
+      "trigger_field": "risk_data_type",
+      "affected_field": "hazard, exposure, vulnerability, loss sections",
+      "behavior": "Each section only makes sense when its type is in risk_data_type. Not enforced by schema but semantically expected.",
+      "mappings": {
+        "hazard in risk_data_type": "hazard section activates (event_sets required)",
+        "exposure in risk_data_type": "exposure section activates (array of exposure items)",
+        "vulnerability in risk_data_type": "vulnerability section activates (functions, socio_economic)",
+        "loss in risk_data_type": "loss section activates (losses array)"
+      }
+    },
+
+    "rule_7_attributions_required_roles": {
+      "trigger_field": "attributions",
+      "affected_field": "attributions[].role",
+      "behavior": "Must include at least one attribution for each of: publisher, creator, contact_point. Schema enforces minItems: 3 and contains constraint.",
+      "applies_to": "dataset.attributions"
+    }
+  },
   "datasets": [
     {
-      "id": "rdls_hzd-entity_datasetname",
-      "title": "The title of the dataset.",
-      "description": "A short description of the dataset.",
+      "id":                "{string}  REQUIRED",
+      "title":             "{string}  REQUIRED",
+      "description":       "{string}  optional",
       "risk_data_type": [
-        "hazard"
+        "{enum:hazard|exposure|vulnerability|loss}  REQUIRED (min 1 item)"
       ],
-      "version": "1",
-      "purpose": "Dataset purpose.",
+      "version":  "{string}  optional",
+      "purpose":  "{string}  optional",
       "project": {
-        "name": "Project name",
-        "url": "https://www.projectname.com/"
+        "_req": "optional",
+        "name": "{string}  REQUIRED (if project present)",
+        "url":  "{format:iri}  optional"
       },
-      "details": "Additional details about the dataset.",
+      "details":  "{string}  optional",
       "spatial": {
-        "scale": "national",
+        "_req": "REQUIRED",
+        "scale":     "{enum:global|regional|national|sub-national|urban}  optional",
         "countries": [
-          "ABW"
-        ],
-        "bbox": [
-          -70.11,
-          12.38,
-          -69.83,
-          12.65
+          "{enum:ISO3166-alpha3 — e.g. AFG|ALB|DZA|COD|MDG}  conditional — required unless scale=global; min 2 if scale=regional"
         ],
         "gazetteer_entries": [
           {
-            "scheme": "GEONAMES",
-            "description": "Geonames",
-            "uri": "geonames.org/3577279/aruba.html",
-            "id": "gazetteer_1"
+            "id":          "{string}  REQUIRED",
+            "scheme":      "{enum:ISO 3166-2|NUTS|ISO 3166-1 alpha-2|ISO 3166-1 alpha-3|GEONAMES|OSMN|OSMR}  optional",
+            "description": "{string}  optional",
+            "uri":         "{format:iri}  optional"
           }
-        ]
+        ],
+        "bbox":     "[min_lon, min_lat, max_lon, max_lat]  optional (recommended)",
+        "centroid": "[longitude, latitude]  optional"
       },
-      "license": "CC0-1.0",
-      "attributions": [
-        {
-          "id": "attribution_publisher",
-          "role": "publisher",
+      "license":     "{open:license.csv — e.g. CC0-1.0|CC-BY-4.0|CC-BY-SA-4.0|Copyright}  REQUIRED",
+      "license_url": "{string — pattern: ^https?://}  optional (required when license=Custom)",
+      "attributions": {
+        "_req": "REQUIRED (array, min 3 items — must include publisher, creator, contact_point roles)",
+        "_item": {
+          "id":   "{string}  REQUIRED",
+          "role": "{enum:publisher|creator|contact_point|world_bank_team_lead|resource_provider|custodian|owner|user|distributor|principal_investigator|processor|author|sponsor|co_author|collaborator|editor|mediator|rights_holder|contributor|funder|stakeholder}  REQUIRED",
           "entity": {
-            "name": "Name",
-            "email": "info@thewebsite.com",
-            "url": "https://datalocation.org/records/8147088"
-          }
-        },
-        {
-          "id": "attribution_creator",
-          "role": "creator",
-          "entity": {
-            "name": "Name",
-            "email": "info@thewebsite.com",
-            "url": "https://datalocation.org/records/8147088"
-          }
-        },
-        {
-          "id": "attribution_contact",
-          "role": "contact_point",
-          "entity": {
-            "name": "Name",
-            "email": "info@thewebsite.com",
-            "url": "https://datalocation.org/records/8147088"
-          }
-        },
-        {
-          "id": "attribution_funder",
-          "role": "funder",
-          "entity": {
-            "name": "Name",
-            "email": "info@thewebsite.com",
-            "url": "https://datalocation.org/records/8147088"
+            "_req": "REQUIRED",
+            "name":  "{string}  REQUIRED",
+            "email": "{format:email}  conditional — need email or url",
+            "url":   "{format:iri}  conditional — need email or url"
           }
         }
-      ],
-      "sources": [
-        {
-          "name": "",
-          "description": "",
-          "lineage": "",
-          "url": "",
-          "type": "dataset",
-          "component": "hazard",
-          "license": "CC0-1.0",
-          "id": "source_1"
-        },
-        {
-          "name": "",
-          "description": "",
-          "lineage": "",
-          "url": "",
-          "type": "dataset",
-          "component": "model",
-          "license": "CC0-1.0",
-          "id": "source_2"
-        },
-        {
-          "name": "",
-          "description": "",
-          "lineage": "",
-          "url": "",
-          "type": "dataset",
-          "component": "exposure",
-          "license": "Copyright",
-          "id": "source_3"
-        },
-        {
-          "name": "",
-          "description": "",
-          "lineage": "",
-          "url": "",
-          "type": "model",
-          "component": "exposure",
-          "license": "MIT",
-          "id": "source_4"
+      },
+      "sources": {
+        "_req": "optional (array, min 1 item if present)",
+        "_note": "v0.3: sources is at dataset level (not nested under lineage like v1.0)",
+        "_item": {
+          "id":          "{string}  REQUIRED",
+          "name":        "{string}  optional",
+          "description": "{string}  optional",
+          "lineage":     "{string}  optional — processing steps, transformations applied to the source",
+          "url":         "{format:iri}  optional",
+          "type":        "{enum:dataset|model}  optional",
+          "component":   "{enum:hazard|exposure|vulnerability|loss}  optional — risk data component the source was used in",
+          "license":     "{open:license.csv}  optional"
         }
-      ],
-      "referenced_by": [
-        {
-          "author_names": [
-            "Author Name",
-            "Author Name"
-          ],
-          "name": "Title",
-          "date_published": "2024-06-11",
-          "url": "https://zenodo.org/records/11582369",
-          "doi": "https://doi.org/10.5281/zenodo.7732392",
-          "id": "reference_1"
+      },
+      "referenced_by": {
+        "_req": "optional (array, min 1 item if present)",
+        "_item": {
+          "id":             "{string}  REQUIRED",
+          "name":           "{string}  optional",
+          "author_names":   ["{string}  optional"],
+          "date_published": "{format:date}  optional",
+          "url":            "{format:iri}  optional",
+          "doi":            "{string}  optional"
         }
-      ],
-      "resources": [
-        {
-          "title": "",
-          "description": "",
-          "data_format": "",
-          "access_modality": "",
-          "spatial_resolution": "",
-          "coordinate_system": "",
-          "access_url": "",
-          "download_url": "",
+      },
+      "resources": {
+        "_req": "REQUIRED (array, min 1 item)",
+        "_item": {
+          "id":          "{string}  REQUIRED",
+          "title":       "{string}  REQUIRED",
+          "description": "{string}  REQUIRED",
+          "data_format": "{enum:GeoTIFF (tif)|Cloud Optimized GeoTIFF (cog)|GRID (grd)|NetCDF (nc)|GRIB (grib)|HDF5 (hdf5)|Zarr (zarr)|GeoPackage (gpkg)|GeoJSON (geojson)|FlatGeobuf (fgb)|Shapefile (shp)|File Geodatabase (gdb)|KML (kml)|CSV (csv)|Parquet (parquet)|Excel (xlsx)|JSON (json)|XML (xml)|PDF (pdf)|LAS (las)|COPC (copc)}  REQUIRED",
+          "access_modality": "{enum:file_download|download_page|API|OGC_API|GEE_collection|WMS|WFS|WCS|STAC|REST|dashboard}  optional",
+          "spatial_resolution":  "0  optional — meters, must be > 0",
+          "coordinate_system":   "{string — pattern: EPSG:NNNN or ESRI:NNNN — e.g. EPSG:4326}  optional",
+          "access_url":    "{format:iri}  conditional — need access_url or download_url",
+          "download_url":  "{string — direct download URL}  conditional — need access_url or download_url",
           "temporal": {
-            "start": "",
-            "end": "",
-            "duration": "",
-            "temporal_resolution": ""
-          },
-          "id": ""
+            "_req": "optional",
+            "_note": "v0.3: temporal_resolution is nested inside Period (not separate field like v1.0)",
+            "start":               "{date-flex}  optional",
+            "end":                 "{date-flex}  optional",
+            "duration":            "{format:duration}  optional",
+            "temporal_resolution": "{format:duration}  optional — minimum time step resolvable"
+          }
         }
-      ],
+      },
+
       "hazard": {
-        "event_sets": [
-          {
-            "id": "",
-            "analysis_type": "",
-            "frequency_distribution": "",
-            "seasonality": "",
-            "calculation_method": "",
-            "event_count": "",
-            "occurrence_range": "",
-            "hazards": [
-              {
-                "id": "",
-                "disaster_identifiers": [],
-                "occurrence.deterministic.thresholds": [],
-                "type": "",
-                "hazard_process": "",
-                "intensity_measure": "",
+        "_req": "conditional — required if risk_data_type includes 'hazard'",
+        "event_sets": {
+          "_req": "REQUIRED if hazard is present (array, min 1 item)",
+          "_item": {
+            "id":            "{string}  REQUIRED",
+            "hazards": {
+              "_req": "REQUIRED (array, min 1 item)",
+              "_note": "v0.3 Hazard: uses 'hazard_process' (not 'process' like v1.0); type+hazard_process+id are all REQUIRED",
+              "_item": {
+                "id":                "{string}  REQUIRED",
+                "type":              "{enum:coastal_flood|convective_storm|drought|earthquake|extreme_temperature|flood|landslide|strong_wind|tsunami|volcanic|wildfire}  REQUIRED",
+                "hazard_process":    "{depends:type->process_type.csv}  REQUIRED  [RULE 1: must match type]",
+                "intensity_measure": "{open:IMT.csv — format metric:unit e.g. PGA:g|wd:m|AirTemp:C}  optional  [RULE 2: check imt_[type].csv]",
                 "trigger": {
-                  "type": "",
-                  "processes": ""
+                  "_req": "optional — for cascading hazards",
+                  "type":            "{enum:coastal_flood|...|wildfire}  optional",
+                  "hazard_process":  "{depends:trigger.type->process_type.csv}  optional  [RULE 1 applies to trigger too]"
                 }
               }
-            ],
-            "events": [
-              {
-                "id": "",
-                "calculation_method": "",
-                "description": "",
+            },
+            "analysis_type":         "{enum:deterministic|empirical|probabilistic}  REQUIRED",
+            "frequency_distribution": "{enum:poisson|negative_binomial|user_defined|generalized_extreme_value}  optional",
+            "seasonality":            "{enum:uniform|user_defined}  optional",
+            "calculation_method":     "{enum:inferred|observed|simulated}  optional",
+            "event_count":            "0  optional — number",
+            "occurrence_range":       "{string}  optional — only use when analysis_type=probabilistic",
+            "events": {
+              "_req": "optional (array)",
+              "_item": {
+                "id":                 "{string}  REQUIRED",
+                "calculation_method": "{enum:inferred|observed|simulated}  REQUIRED",
                 "hazard": {
-                  "id": "",
-                  "type": "",
-                  "hazard_process": "",
-                  "intensity_measure": ""
+                  "_req": "REQUIRED",
+                  "id":                "{string}  REQUIRED",
+                  "type":              "{enum:coastal_flood|...|wildfire}  REQUIRED",
+                  "hazard_process":    "{depends:type->process_type.csv}  REQUIRED  [RULE 1]",
+                  "intensity_measure": "{open:IMT.csv}  optional  [RULE 2]",
+                  "trigger": {
+                    "_req": "optional",
+                    "type":           "{enum:coastal_flood|...|wildfire}  optional",
+                    "hazard_process": "{depends:trigger.type->process_type.csv}  optional"
+                  }
+                },
+                "disaster_identifiers": {
+                  "_req": "optional (array)",
+                  "_note": "v0.3: disaster_identifiers at event level only (not event_set level like v1.0)",
+                  "_item": {
+                    "id":          "{string}  REQUIRED",
+                    "scheme":      "{enum:GED4ALL|MOVER|GLIDE|EMDAT|USGS_EHP|OED|HAZUS|EMS-98|PAGER|CDC-SVI|INFORM|Custom}  optional",
+                    "description": "{string}  optional",
+                    "uri":         "{format:iri}  optional"
+                  }
                 },
                 "occurrence": {
+                  "_req": "REQUIRED — use ONE of the three types below  [RULE 4: should match event_set.analysis_type]",
                   "probabilistic": {
-                    "return_period": "",
-                    "event_rate": "",
+                    "_req": "Use for analysis_type=probabilistic (min 1 property)",
+                    "return_period": "0  optional — number >= 0 (years)",
+                    "event_rate":    "0  optional — number >= 0 (events per year)",
                     "probability": {
-                      "value": "",
-                      "span": ""
+                      "value": "0  optional — number 0-1",
+                      "span":  "0  REQUIRED if probability used — years"
                     }
                   },
                   "empirical": {
+                    "_req": "Use for analysis_type=empirical",
                     "temporal": {
-                      "start": "",
-                      "end": "",
-                      "duration": "",
-                      "temporal_resolution": ""
+                      "_req": "optional",
+                      "start":               "{date-flex}  optional",
+                      "end":                 "{date-flex}  optional",
+                      "duration":            "{format:duration}  optional",
+                      "temporal_resolution": "{format:duration}  optional"
                     },
-                    "return_period": ""
+                    "return_period": "0  optional — number >= 0"
                   },
                   "deterministic": {
-                    "index_criteria": ""
+                    "_req": "Use for analysis_type=deterministic",
+                    "index_criteria": "{string}  optional",
+                    "thresholds":     ["{string}  optional"]
                   }
-                }
+                },
+                "description": "{string}  optional"
               }
-            ]
-          }
-        ]
-      },
-      "exposure": [
-        {
-          "id": "",
-          "category": "",
-          "taxonomy": "",
-          "metrics": [
-            {
-              "id": "",
-              "dimension": "",
-              "quantity_kind": "",
-              "currency": ""
             }
-          ]
+          }
         }
-      ],
-      "vulnerability": {
-        "functions": {
-          "vulnerability": [
-            {
-              "approach": "",
-              "relationship": "",
-              "hazard_primary": "",
-              "hazard_secondary": "",
-              "hazard_process_primary": "",
-              "hazard_process_secondary": "",
-              "hazard_analysis_type": "",
-              "intensity_measure": "",
-              "category": "",
-              "impact_type": "",
-              "impact_modelling": "",
-              "impact_metric": "",
-              "quantity_kind": "",
-              "taxonomy": "",
-              "analysis_details": "",
-              "id": ""
-            }
-          ],
-          "fragility": [
-            {
-              "damage_states_names": [
-                ""
-              ],
-              "approach": "",
-              "relationship": "",
-              "damage_scale_name": "",
-              "hazard_primary": "",
-              "hazard_secondary": "",
-              "hazard_process_primary": "",
-              "hazard_process_secondary": "",
-              "hazard_analysis_type": "",
-              "intensity_measure": "",
-              "category": "",
-              "impact_type": "",
-              "impact_modelling": "",
-              "impact_metric": "",
-              "quantity_kind": "",
-              "taxonomy": "",
-              "analysis_details": "",
-              "id": ""
-            }
-          ],
-          "damage_to_loss": [
-            {
-              "damage_states_names": [
-                ""
-              ],
-              "approach": "",
-              "relationship": "",
-              "damage_scale_name": "",
-              "hazard_primary": "",
-              "hazard_secondary": "",
-              "hazard_process_primary": "",
-              "hazard_process_secondary": "",
-              "hazard_analysis_type": "",
-              "intensity_measure": "",
-              "category": "",
-              "impact_type": "",
-              "impact_modelling": "",
-              "impact_metric": "",
-              "quantity_kind": "",
-              "taxonomy": "",
-              "analysis_details": "",
-              "id": ""
-            }
-          ],
-          "engineering_demand": [
-            {
-              "damage_states_names": [
-                ""
-              ],
-              "parameter": "",
-              "approach": "",
-              "relationship": "",
-              "damage_scale_name": "",
-              "hazard_primary": "",
-              "hazard_secondary": "",
-              "hazard_process_primary": "",
-              "hazard_process_secondary": "",
-              "hazard_analysis_type": "",
-              "intensity_measure": "",
-              "category": "",
-              "impact_type": "",
-              "impact_modelling": "",
-              "impact_metric": "",
-              "quantity_kind": "",
-              "taxonomy": "",
-              "analysis_details": "",
-              "id": ""
-            }
-          ]
-        },
-        "socio_economic": [
-          {
-            "scheme": "",
-            "indicator_name": "",
-            "indicator_code": "",
-            "description": "",
-            "threshold": "",
-            "reference_year": null,
-            "uri": "",
-            "analysis_details": "",
-            "id": ""
-          }
-        ]
       },
+
+      "exposure": {
+        "_req": "conditional — required if risk_data_type includes 'exposure' (array, min 1 item)",
+        "_note": "v0.3: exposure metrics use flat quantity_kind (not nested measurement like v1.0); taxonomy at exposure item level",
+        "_item": {
+          "id":       "{string}  optional",
+          "category": "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  REQUIRED",
+          "taxonomy": "{enum:GED4ALL|MOVER|GLIDE|EMDAT|USGS_EHP|OED|HAZUS|EMS-98|PAGER|CDC-SVI|INFORM|Custom}  optional",
+          "metrics": {
+            "_req": "REQUIRED (array, min 1 item)",
+            "_item": {
+              "id":            "{string}  REQUIRED",
+              "dimension":     "{enum:structure|content|product|disruption|population|index}  REQUIRED",
+              "quantity_kind": "{open:quantity_kind.csv — e.g. area|count|monetary|length|time}  REQUIRED"
+            }
+          }
+        }
+      },
+
+      "vulnerability": {
+        "_req": "conditional — required if risk_data_type includes 'vulnerability'",
+        "_note": "v0.3 requires either 'functions' or 'socio_economic' (anyOf constraint)",
+        "functions": {
+          "_req": "optional (needs at least one function type if present)",
+          "_comment": "Four function types below. v0.3 uses flat hazard_primary/hazard_process_primary fields (not nested hazard object like v1.0).",
+          "vulnerability": {
+            "_req": "optional (array, min 1 item if present)",
+            "_item": {
+              "id":                       "{string}  optional",
+              "approach":                 "{enum:analytical|empirical|hybrid|judgement}  REQUIRED",
+              "relationship":             "{enum:math_parametric|math_bespoke|discrete}  REQUIRED",
+              "hazard_primary":           "{enum:coastal_flood|...|wildfire}  REQUIRED",
+              "hazard_secondary":         "{enum:coastal_flood|...|wildfire}  optional",
+              "hazard_process_primary":   "{depends:hazard_primary->process_type.csv}  optional",
+              "hazard_process_secondary": "{depends:hazard_secondary->process_type.csv}  optional",
+              "hazard_analysis_type":     "{enum:probabilistic|deterministic|empirical}  REQUIRED",
+              "intensity_measure":        "{open:IMT.csv}  REQUIRED",
+              "category":                 "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  REQUIRED",
+              "impact_type":              "{enum:direct|indirect|total}  REQUIRED",
+              "impact_modelling":         "{enum:inferred|observed|simulated}  REQUIRED",
+              "impact_metric":            "{enum:damage_ratio|mean_damage_ratio|probability|damage_index|loss_ratio|mean_loss_ratio|downtime_vulnerability|casualty_ratio_vulnerability|economic_loss_value|insured_loss_value|casualty_count|casualty_ratio_loss|loss_annual_average_value|loss_probable_maximum_value|at_risk_value|at_risk_tail_value|downtime_loss|asset_loss|displaced_count|exposure_to_hazard}  REQUIRED",
+              "quantity_kind":            "{open:quantity_kind.csv}  REQUIRED",
+              "taxonomy":                 "{enum:GED4ALL|...|Custom}  optional",
+              "analysis_details":         "{string}  optional"
+            }
+          },
+          "fragility": {
+            "_req": "optional (array, min 1 item if present)",
+            "_item": {
+              "id":                       "{string}  optional",
+              "approach":                 "{enum:analytical|empirical|hybrid|judgement}  REQUIRED",
+              "relationship":             "{enum:math_parametric|math_bespoke|discrete}  REQUIRED",
+              "damage_scale_name":        "{open:damage_scale_name.csv — e.g. EMS-98|HAZUS-MH_MR4}  optional",
+              "damage_states_names":      ["{string — e.g. slight|moderate|extensive|complete}  optional"],
+              "hazard_primary":           "{enum:coastal_flood|...|wildfire}  REQUIRED",
+              "hazard_secondary":         "{enum:coastal_flood|...|wildfire}  optional",
+              "hazard_process_primary":   "{depends:hazard_primary->process_type.csv}  optional",
+              "hazard_process_secondary": "{depends:hazard_secondary->process_type.csv}  optional",
+              "hazard_analysis_type":     "{enum:probabilistic|deterministic|empirical}  REQUIRED",
+              "intensity_measure":        "{open:IMT.csv}  REQUIRED",
+              "category":                 "{enum:agriculture|...|development_index}  REQUIRED",
+              "impact_type":              "{enum:direct|indirect|total}  REQUIRED",
+              "impact_modelling":         "{enum:inferred|observed|simulated}  REQUIRED",
+              "impact_metric":            "{enum:damage_ratio|...|exposure_to_hazard}  REQUIRED",
+              "quantity_kind":            "{open:quantity_kind.csv}  REQUIRED",
+              "taxonomy":                 "{enum:GED4ALL|...|Custom}  optional",
+              "analysis_details":         "{string}  optional"
+            }
+          },
+          "damage_to_loss": {
+            "_req": "optional (array, min 1 item if present)",
+            "_comment": "Same structure as fragility"
+          },
+          "engineering_demand": {
+            "_req": "optional (array, min 1 item if present)",
+            "_comment": "Same as fragility, plus parameter field",
+            "_extra_field": {
+              "parameter": "{open:engineering_demand_parameter.csv — e.g. PA_dmg_index|PGA|PGV|SA}  optional"
+            }
+          }
+        },
+        "socio_economic": {
+          "_req": "optional (array)",
+          "_item": {
+            "id":              "{string}  optional",
+            "scheme":          "{enum:GED4ALL|...|Custom}  optional",
+            "indicator_name":  "{string}  REQUIRED",
+            "indicator_code":  "{string}  REQUIRED",
+            "description":     "{string}  REQUIRED",
+            "threshold":       "{string}  optional",
+            "reference_year":  "0  REQUIRED — integer, 1900-2100",
+            "uri":             "{format:iri}  optional",
+            "analysis_details": "{string}  optional"
+          }
+        }
+      },
+
       "loss": {
-        "losses": [
-          {
-            "hazard_type": "",
-            "hazard_process": "",
-            "asset_category": "",
-            "asset_dimension": "",
+        "_req": "conditional — required if risk_data_type includes 'loss'",
+        "_note": "v0.3: loss uses flat hazard_type/hazard_process (not nested hazard object like v1.0); has quantity_kind+currency (not measurement object); has lineage for dataset references",
+        "losses": {
+          "_req": "REQUIRED if loss is present (array, min 1 item)",
+          "_item": {
+            "id":             "{string}  REQUIRED",
+            "hazard_type":    "{enum:coastal_flood|...|wildfire}  REQUIRED",
+            "hazard_process": "{depends:hazard_type->process_type.csv}  optional",
+            "asset_category":  "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  REQUIRED",
+            "asset_dimension": "{enum:structure|content|product|disruption|population|index}  REQUIRED",
             "impact_and_losses": {
-              "impact_type": "",
-              "impact_modelling": "",
-              "impact_metric": "",
-              "quantity_kind": "",
-              "currency": "",
-              "loss_type": "",
-              "loss_approach": "",
-              "loss_frequency_type": ""
+              "_req": "REQUIRED — all 7 fields below are REQUIRED",
+              "impact_type":      "{enum:direct|indirect|total}  REQUIRED",
+              "impact_modelling": "{enum:inferred|observed|simulated}  REQUIRED",
+              "impact_metric":    "{enum:damage_ratio|mean_damage_ratio|probability|damage_index|loss_ratio|mean_loss_ratio|downtime_vulnerability|casualty_ratio_vulnerability|economic_loss_value|insured_loss_value|casualty_count|casualty_ratio_loss|loss_annual_average_value|loss_probable_maximum_value|at_risk_value|at_risk_tail_value|downtime_loss|asset_loss|displaced_count|exposure_to_hazard}  REQUIRED",
+              "quantity_kind":    "{open:quantity_kind.csv}  REQUIRED",
+              "currency":         "{enum:ISO4217 currency codes — e.g. USD|EUR|GBP}  optional — required when quantity_kind=monetary",
+              "loss_type":           "{enum:ground_up|insured|gross|count|net_precat|net_postcat}  REQUIRED",
+              "loss_approach":       "{enum:analytical|empirical|hybrid|judgement}  REQUIRED",
+              "loss_frequency_type": "{enum:probabilistic|deterministic|empirical}  REQUIRED"
             },
             "lineage": {
-              "hazard_dataset": "",
-              "exposure_dataset": "",
-              "vulnerability_dataset": ""
+              "_req": "optional",
+              "_note": "v0.3-only: references to hazard/exposure/vulnerability datasets used in loss calculation",
+              "hazard_dataset":        "{string — dataset ID or URI}  optional",
+              "exposure_dataset":      "{string — dataset ID or URI}  optional",
+              "vulnerability_dataset": "{string — dataset ID or URI}  optional"
             },
-            "description": "",
-            "id": ""
+            "description": "{string}  optional"
           }
-        ]
+        }
       },
+
       "links": [
         {
-          "href": "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",
-          "rel": "describedby"
+          "href": "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json  REQUIRED",
+          "rel":  "describedby  REQUIRED"
         }
       ]
     }
-  ]
+  ],
+
+  "_v03_vs_v10_key_differences": {
+    "_purpose": "Reference for future v0.3→v1.0 conversion script",
+    "structural_changes": {
+      "sources_location": "v0.3: dataset.sources[] → v1.0: dataset.lineage.sources[]",
+      "source_fields": "v0.3: component → v1.0: used_in; v0.3: lineage (string) → v1.0: removed",
+      "resource_format": "v0.3: data_format (closed enum) + access_modality → v1.0: media_type + format (both open/string)",
+      "resource_temporal": "v0.3: temporal_resolution inside Period → v1.0: temporal_resolution as separate field on resource",
+      "resource_spatial": "v0.3: no spatial at resource level → v1.0: resource has spatial object",
+      "resource_climate": "v0.3: not available → v1.0: resource.climate {model, scenario, percentile}",
+      "resource_baseline": "v0.3: not available → v1.0: resource.baseline_period",
+      "resource_spatial_agg": "v0.3: not available → v1.0: resource.spatial_aggregation",
+      "hazard_field_name": "v0.3: hazard_process → v1.0: process",
+      "hazard_required": "v0.3: id+type+hazard_process all REQUIRED → v1.0: all optional",
+      "disaster_ids_location": "v0.3: event level only → v1.0: both event_set and event level",
+      "exposure_metrics": "v0.3: flat quantity_kind on metric → v1.0: nested measurement {quantity_kind, unit}",
+      "vuln_hazard_fields": "v0.3: flat hazard_primary/hazard_process_primary → v1.0: nested hazard_primary {type, process, intensity_measure}",
+      "loss_hazard_fields": "v0.3: flat hazard_type/hazard_process → v1.0: nested hazard {type, process, intensity_measure}",
+      "loss_measurement": "v0.3: flat quantity_kind + currency → v1.0: nested measurement {quantity_kind, unit}",
+      "loss_lineage": "v0.3: has lineage {hazard_dataset, exposure_dataset, vulnerability_dataset} → v1.0: removed",
+      "publisher_creator": "v0.3: only via attributions array → v1.0: separate publisher, creator, contact_point required fields",
+      "license_url": "v0.3: separate license_url field → v1.0: removed",
+      "period_central_year": "v0.3: not available → v1.0: Period has central_year field",
+      "hazard_types": "v0.3: 11 types (no dust_sand_storm, pest_infestation, erosion, sea_level_rise) → v1.0: 15 types",
+      "process_types": "v0.3: 28 processes (no lightning, thunderstorm, hail, wildfire_smoke, etc.) → v1.0: more processes"
+    }
+  }
 }
