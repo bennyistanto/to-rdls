@@ -628,9 +628,17 @@ def main():
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
 
-    # Resolve schema path (look in schema/ dir relative to repo root)
+    # Resolve schema path
+    # Priority: --schema arg → rdl-standard sibling repo → local snapshot
     schema_dir = repo_root / "schema"
-    schema_path = Path(args.schema) if args.schema else schema_dir / "rdls_schema_v1.0.json"
+    if args.schema:
+        schema_path = Path(args.schema)
+    else:
+        rdl_standard_schema = repo_root.parent / "rdl-standard" / "schema" / "rdls_schema.json"
+        if rdl_standard_schema.exists():
+            schema_path = rdl_standard_schema
+        else:
+            schema_path = schema_dir / "rdls_schema_v1.0.json"
     if not schema_path.exists():
         print(f"ERROR: Schema file not found: {schema_path}")
         sys.exit(1)

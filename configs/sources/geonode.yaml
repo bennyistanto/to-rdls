@@ -1,25 +1,101 @@
 # =============================================================================
-# GeoNode Source Configuration (Stub)
+# GeoNode Source Configuration
 # =============================================================================
-# GeoNode-specific settings for future implementation.
-# Follows the same structure as hdx.yaml for consistency.
+# Multi-portal GeoNode metadata crawler config.
+# Each portal entry inherits top-level api defaults unless overridden.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# API configuration
+# Default API settings (inherited by all portals unless overridden)
 # ---------------------------------------------------------------------------
 api:
-  # base_url: "https://your-geonode-instance.org"
-  # GeoNode REST API v2
-  # datasets_endpoint: "/api/v2/datasets"
-  # resources_endpoint: "/api/v2/datasets/{id}"
   rows_per_page: 100
   timeout: 60
   max_retries: 3
-  rate_limit: 5.0
+  rate_limit: 1.0          # seconds between requests
+  max_datasets_per_portal: ~  # null = no limit; set integer to cap crawl
 
 # ---------------------------------------------------------------------------
-# GeoNode field paths - where to find metadata in GeoNode API JSON
+# Portal registry
+# ---------------------------------------------------------------------------
+# Each portal can override any api default.  At minimum, name + base_url.
+# keyword_filters / category_filters are sent as API query params to
+# pre-filter datasets server-side.  Leave empty to crawl everything.
+# ---------------------------------------------------------------------------
+portals:
+  - name: "rcmrd"
+    base_url: "https://geoportal.rcmrd.org"
+    enabled: true
+    verify_ssl: false       # RCMRD has SSL certificate issue
+    rate_limit: 1.5         # conservative for external portal
+    rows_per_page: 50
+    # No keyword/category filters -- crawl all 376 datasets, filter via pipeline
+    keyword_filters: []
+    category_filters: []
+
+  - name: "pacificdata"
+    base_url: "https://geonode.pacificdata.org"
+    enabled: false              # Cloudflare JS challenge blocks programmatic access
+    rate_limit: 2.0
+    rows_per_page: 50
+    # PCRAFI risk datasets are tagged with loss/hazard keywords
+    keyword_filters: []
+    category_filters: []
+
+  # Example portal -- update base_url to a real GeoNode instance
+  # - name: "thinkhazard-geonode"
+  #   base_url: "https://geonode.thinkhazard.org"
+  #   enabled: true
+  #   # rate_limit: 2.0          # override default if needed
+  #   keyword_filters:
+  #     - "hazard"
+  #     - "flood"
+  #     - "earthquake"
+  #   category_filters:
+  #     - "climatologyMeteorologyAtmosphere"
+  #     - "environment"
+
+# ---------------------------------------------------------------------------
+# Default HEVL keyword filters
+# Applied when a portal does not specify its own keyword_filters.
+# These are sent as filter{keywords.slug.in} to GeoNode API v2.
+# ---------------------------------------------------------------------------
+hevl_keywords:
+  - "hazard"
+  - "flood"
+  - "earthquake"
+  - "cyclone"
+  - "typhoon"
+  - "hurricane"
+  - "drought"
+  - "landslide"
+  - "tsunami"
+  - "wildfire"
+  - "storm"
+  - "exposure"
+  - "building"
+  - "population"
+  - "infrastructure"
+  - "vulnerability"
+  - "fragility"
+  - "damage"
+  - "loss"
+  - "risk"
+
+# ---------------------------------------------------------------------------
+# Default HEVL category filters
+# ISO 19115 topic category identifiers for API-level pre-filtering.
+# ---------------------------------------------------------------------------
+hevl_categories:
+  - "climatologyMeteorologyAtmosphere"
+  - "environment"
+  - "geoscientificInformation"
+  - "structure"
+  - "society"
+  - "inlandWaters"
+
+# ---------------------------------------------------------------------------
+# GeoNode field paths (documentation -- used by extract_geonode_fields)
 # ---------------------------------------------------------------------------
 field_paths:
   id: "pk"
@@ -28,32 +104,210 @@ field_paths:
   notes: "abstract"
   methodology: "supplemental_information"
   organization: "owner.organization"
+  org_name: "owner.username"
   license_title: "license.name"
-  groups: "regions"          # GeoNode regions
-  tags: "keywords"           # list of keyword dicts
-  resources: "links"         # download links
+  license_url: "license.url"
+  groups: "regions"
+  tags: "keywords"
+  resources: "links"
   dataset_date: "date"
   url: "detail_url"
 
-# Resource field paths
+# ---------------------------------------------------------------------------
+# Resource field paths (for links array entries)
+# ---------------------------------------------------------------------------
 resource_fields:
   id: "pk"
   name: "name"
   description: "description"
   format: "extension"
   url: "url"
+  mime: "mime"
+  link_type: "link_type"
 
 # ---------------------------------------------------------------------------
-# GeoNode format name overrides
+# GeoNode link_type -> access modality mapping
 # ---------------------------------------------------------------------------
-format_overrides: {}
+link_modality_map:
+  original: "file_download"
+  data: "file_download"
+  "OGC:WMS": "WMS"
+  "OGC:WFS": "WFS"
+  "OGC:WCS": "WCS"
+
+# Skip these link_types (thumbnails, metadata pages)
+skip_link_types:
+  - "metadata"
+  - "image"
+  - "html"
 
 # ---------------------------------------------------------------------------
-# Notes
+# GeoNode format overrides (supplement format_mapping.yaml)
 # ---------------------------------------------------------------------------
-# To implement GeoNode support:
-# 1. Create src/sources/geonode.py with GeoNodeClient class
-# 2. Implement normalize_geonode_record() to match the common record format
-# 3. Implement extract_geonode_fields() using the field_paths above
-# 4. The rest of the pipeline (classification, translation, HEVL extraction,
-#    validation) works identically - no changes needed.
+format_overrides:
+  "WMS": "WMS"
+  "WFS": "GeoJSON"
+  "WCS": "GeoTIFF"
+
+# ---------------------------------------------------------------------------
+# ISO 19115 category -> synthetic classification tags
+# Injected into tags[] so classify_dataset() tag-weight system picks them up.
+# ---------------------------------------------------------------------------
+category_tag_map:
+  climatologyMeteorologyAtmosphere: "climate hazard meteorology atmosphere"
+  environment: "environment natural hazard"
+  geoscientificInformation: "geology geoscience seismic"
+  structure: "buildings infrastructure structure exposure"
+  society: "population society social exposure"
+  planningCadastre: "buildings cadastre planning exposure"
+  elevation: "elevation terrain topography"
+  farming: "agriculture crops farming cropland exposure"
+  inlandWaters: "hydrology water flood river"
+  DisasterRiskReduction: "drr disaster risk reduction"
+  economy: "economic loss economic exposure"
+  PestandDisease: "pest disease agriculture"
+  health: "health facilities exposure"
+  transportation: "roads infrastructure transport exposure"
+  population: "population settlements populated places exposure"
+
+# ---------------------------------------------------------------------------
+# MIME type -> format string mapping
+# ---------------------------------------------------------------------------
+mime_format_map:
+  "application/json": "JSON"
+  "application/geo+json": "GeoJSON"
+  "image/tiff": "GeoTIFF"
+  "application/x-shapefile": "Shapefile"
+  "application/geopackage+sqlite3": "GeoPackage"
+  "text/csv": "CSV"
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX"
+  "application/pdf": "PDF"
+  "application/xml": "XML"
+  "application/netcdf": "NetCDF"
+  "application/zip": "ZIP"
+
+# ---------------------------------------------------------------------------
+# Title humanization
+# ---------------------------------------------------------------------------
+# When GeoNode titles are technical codes (e.g. "CK_EQ_HazardMap_03_100_MRP"),
+# these rules generate a human-readable title.
+#
+# The adapter checks if the title looks technical (high ratio of underscores,
+# uppercase abbreviations, or matches known code patterns).  If so, it builds
+# a readable title from decoded components.
+#
+# country_codes: 2-letter code -> country name (Pacific Island PCRAFI codes)
+# spectral_codes: spectral acceleration parameter codes
+# hazard_type_codes: 2-letter hazard abbreviation -> readable name
+# infrastructure_codes: short code -> readable name for non-hazard datasets
+# ---------------------------------------------------------------------------
+title_humanize:
+  # When to humanize: title matches pattern AND score >= threshold
+  # Score: count of (underscores, ALL_CAPS segments, single-letter segments)
+  min_technical_score: 2
+
+  # 2-letter ISO-like country prefix -> full country name
+  country_codes:
+    CK: "Cook Islands"
+    FJ: "Fiji"
+    FM: "Micronesia"
+    KI: "Kiribati"
+    MH: "Marshall Islands"
+    NR: "Nauru"
+    NU: "Niue"
+    PG: "Papua New Guinea"
+    PW: "Palau"
+    SB: "Solomon Islands"
+    TL: "Timor-Leste"
+    TO: "Tonga"
+    TV: "Tuvalu"
+    VU: "Vanuatu"
+    WS: "Samoa"
+
+  # Hazard type codes
+  hazard_codes:
+    EQ: "Earthquake"
+    TC: "Tropical Cyclone"
+
+  # Spectral acceleration parameters -> readable label
+  spectral_codes:
+    PGA: "Peak Ground Acceleration"
+    "03": "0.3s Spectral Acceleration"
+    "10": "1.0s Spectral Acceleration"
+
+  # Named map patterns: regex -> title template
+  # Groups: {country}, {hazard}, {spectral}, {rp}, {suffix}
+  # These are tried in order; first match wins.
+  patterns:
+    # XX_EQ_HazardMap_PGA_500_MRP  or  XX_EQ_HazardMap_03_100 MRP
+    - regex: '^([A-Z]{2})_EQ_Hazard_?Map[_ ]([A-Z0-9]+)[_ ](\d+)[_ ]?MRP(.*)$'
+      template: "{country} Earthquake Hazard Map, {spectral}, {rp}-year Return Period{suffix}"
+    # XX_TC_HazardMap Wind 500 MRP  or  XX_TC_HazardMap Wind 100 MRP_East
+    - regex: '^([A-Z]{2})_TC_HazardMap[_ ]Wind[_ ](\d+)[_ ]?MRP(.*)$'
+      template: "{country} Tropical Cyclone Wind Hazard Map, {rp}-year Return Period{suffix}"
+    # XX_Roads, XX_Island, XX_Group, etc.
+    - regex: '^([A-Z]{2})_(\w+)$'
+      template: "{country} {feature}"
+
+  # Feature name cleanup for simple XX_Feature patterns
+  feature_names:
+    Roads: "Roads"
+    Island: "Island Boundaries"
+    Group: "Island Groups"
+    Tikina: "Tikina (Districts)"
+    Atoll: "Atoll Boundaries"
+    Islet: "Islet Boundaries"
+    Hamlet: "Hamlets"
+    State: "State Boundaries"
+    Suco: "Sucos (Villages)"
+
+# ---------------------------------------------------------------------------
+# GeoNode-native metadata fields
+# ---------------------------------------------------------------------------
+# GeoNode provides significantly richer metadata than HDX/CKAN, based on
+# ISO 19115 (MD_Metadata).  The adapter extracts these as _geonode_* keys.
+#
+# Key GeoNode-native fields used by the adapter:
+#
+# Spatial (ISO 19115):
+#   bbox_polygon / ll_bbox_polygon  -> bounding box geometry
+#   srid                            -> CRS (default EPSG:4326)
+#   spatial_representation_type     -> vector/raster/textTable/tin
+#   extent                          -> computed {coords, srid}
+#
+# Temporal (ISO 19115):
+#   date + date_type                -> creation/publication/revision
+#   temporal_extent_start/end       -> coverage period
+#
+# Quality/Lineage (ISO 19115):
+#   data_quality_statement          -> producer's lineage knowledge
+#   purpose                         -> why the dataset was created
+#   supplemental_information        -> additional context
+#
+# Contacts (ISO 19115 CI_ResponsibleParty):
+#   poc                             -> point of contact
+#   metadata_author                 -> metadata author
+#   publisher                       -> data publisher
+#   custodian, distributor          -> data stewards
+#   originator, principal_investigator -> creators
+#
+# Classification (ISO 19115):
+#   category                        -> MD_TopicCategoryCode
+#   keywords                        -> free keywords
+#   tkeywords                       -> thesaurus keywords with URIs
+#   regions                         -> geographic keywords
+#
+# Access restrictions (ISO 19115):
+#   restriction_code_type           -> MD_RestrictionCode
+#   constraints_other               -> other access constraints
+#   license                         -> {identifier, name, url, license_text}
+#
+# Vector layer attributes:
+#   attribute_set                   -> per-field name, type, label, stats
+#
+# Other:
+#   language                        -> ISO 639-2 code
+#   maintenance_frequency           -> MD_MaintenanceFrequencyCode
+#   subtype                         -> vector/raster/vector_time
+#   edition                         -> dataset version
+#   doi                             -> Digital Object Identifier

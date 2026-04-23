@@ -10,7 +10,7 @@ import copy
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .naming import build_rdls_id, encode_component_types
-from .utils import load_yaml
+from .utils import load_yaml, sort_rdt_hevl
 
 
 # ---------------------------------------------------------------------------
@@ -52,21 +52,31 @@ def determine_risk_data_types(
 ) -> List[str]:
     """Reconcile base record risk_data_types with HEVL extraction flags.
 
+    Only includes a component if the extractor actually produced a block.
+    The classifier's initial assignment is treated as a *suggestion* —
+    the extractor is the authoritative source for what's in the data.
+
     Args:
-        base_types: risk_data_type from NB 06 translation.
+        base_types: risk_data_type from classification/translation.
         hevl_flags: {"hazard": True/False, "exposure": True/False, ...}
 
     Returns:
-        Updated risk_data_type list.
+        Updated risk_data_type list (only components with blocks).
     """
-    types = set(base_types)
+    valid_components = {"hazard", "exposure", "vulnerability", "loss"}
+    types: Set[str] = set()
 
-    # Add types found by HEVL extraction
     for component, found in hevl_flags.items():
-        if found and component in {"hazard", "exposure", "vulnerability", "loss"}:
+        if found and component in valid_components:
             types.add(component)
 
-    return sorted(types)
+    # Preserve any non-HEVL types from base (future-proofing)
+    for t in base_types:
+        if t not in valid_components:
+            types.add(t)
+
+    # Return in canonical HEVL order
+    return sort_rdt_hevl(types)
 
 
 # ---------------------------------------------------------------------------
@@ -303,6 +313,7 @@ def integrate_record(
     require_he_for_vl: bool = False,
     naming_config: Optional[Dict[str, Any]] = None,
     provenance_note: Optional[str] = None,
+    org_slug: str = "",
 ) -> Optional[Dict[str, Any]]:
     """Integrate base record with HEVL blocks.
 
@@ -319,6 +330,8 @@ def integrate_record(
         require_he_for_vl: Whether V/L require H or E (default False).
         naming_config: Optional naming config for ID generation.
         provenance_note: Optional provenance text to append to description.
+        org_slug: Optional org slug override for ID generation
+                  (e.g. portal name for GeoNode sources).
 
     Returns:
         Merged record dict, or None if validation fails.
@@ -333,8 +346,8 @@ def integrate_record(
     if loss_block:
         hevl_blocks["loss"] = loss_block
 
-    # Validate
-    components = set(hevl_blocks.keys()) | set(base_record.get("risk_data_type", []))
+    # Validate using actual blocks (not classifier suggestions)
+    components = set(hevl_blocks.keys())
     is_valid, reason = validate_component_combination(components, require_he_for_vl)
     if not is_valid:
         return None
@@ -345,19 +358,24 @@ def integrate_record(
     if naming_config:
         iso3_list = extract_iso3_from_spatial(record.get("spatial", {}))
         org_name = extract_org_from_attributions(record.get("attributions", []))
-        title = record.get("title", "")
+        # Prefer _slug_title for ID generation (original technical title
+        # that's compact and unique), falling back to display title.
+        slug_title = base_record.get("_slug_title") or record.get("title", "")
 
         record["id"] = build_integrated_id(
             components=record.get("risk_data_type", []),
             iso3_codes=iso3_list,
             org_name=org_name,
-            org_slug="",  # slug not available in integrated record
+            org_slug=org_slug,
             naming_config=naming_config,
-            title=title,
+            title=slug_title,
         )
 
     # Append provenance note if provided
     if provenance_note:
         append_provenance(record, provenance_note)
+
+    # Strip pipeline-internal fields that must not appear in final output
+    record.pop("_slug_title", None)
 
     return record

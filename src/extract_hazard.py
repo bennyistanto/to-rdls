@@ -22,6 +22,27 @@ from .utils import load_yaml, normalize_text
 
 
 # ---------------------------------------------------------------------------
+# Default process type per hazard type (used when no process type detected)
+# Maps to the most common/generic process for each hazard type.
+# Based on hazard_type → valid process_types from RDLS schema.
+# ---------------------------------------------------------------------------
+
+_DEFAULT_PROCESS_TYPE: Dict[str, str] = {
+    "flood": "fluvial_flood",
+    "earthquake": "ground_motion",
+    "coastal_flood": "storm_surge",
+    "convective_storm": "tropical_cyclone",
+    "strong_wind": "tropical_cyclone",
+    "landslide": "landslide",
+    "drought": "meteorological_drought",
+    "extreme_temperature": "extreme_heat",
+    "volcanic": "volcanic_eruption",
+    "tsunami": "tsunami",
+    "wildfire": "wildfire",
+}
+
+
+# ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
@@ -73,6 +94,11 @@ class HazardExtractor:
         re.compile(r"earthquake\s+risk\s+reduction", re.IGNORECASE),
         re.compile(r"flood\s+(?:risk|resilience)\s+(?:management|reduction|program)", re.IGNORECASE),
         re.compile(r"same\s+dataset\s+as\s+(?:river\s+)?(?:flood|earthquake|drought|cyclone)", re.IGNORECASE),
+        # Contextual references to hazards (not actual hazard data)
+        re.compile(r"resilience\s+to\s+(?:flood|earthquake|drought|cyclone|landslide)", re.IGNORECASE),
+        re.compile(r"vulnerab\w+\s+to\s+(?:flood|earthquake|drought|cyclone|landslide)", re.IGNORECASE),
+        re.compile(r"(?:impact|effect|consequence)s?\s+of\s+(?:flood|earthquake|drought)", re.IGNORECASE),
+        re.compile(r"(?:prepared|preparedness|response|recovery)\s+(?:for|to|from)\s+(?:flood|earthquake|drought)", re.IGNORECASE),
     ]
 
     # Return period patterns
@@ -406,12 +432,31 @@ class HazardExtractor:
 
         # Determine final hazard types
         tier1_types = set(m.value for m in tier1_matches)
+        # Separate tag-only matches from title/name/resource matches
+        strong_tier1_fields = {"title", "name", "resources"}
+        strong_tier1_types = set(
+            m.value for m in tier1_matches if m.source_field in strong_tier1_fields
+        )
+        tag_only_types = tier1_types - strong_tier1_types
+        tier2_types = set(m.value for m in tier2_matches)
+
         if tier1_types:
             # Tier 2 can only corroborate Tier 1
             final_matches = list(tier1_matches)
             for m in tier2_matches:
                 if m.value in tier1_types:
                     final_matches.append(m)
+
+            # Tag-only hazard types (not in title/name/resources) need
+            # Tier 2 corroboration.  Without it, a noisy tag like "flood"
+            # on a housing dataset produces a false-positive hazard block.
+            if tag_only_types:
+                uncorroborated = tag_only_types - tier2_types
+                if uncorroborated:
+                    final_matches = [
+                        m for m in final_matches
+                        if m.value not in uncorroborated
+                    ]
         else:
             # Fallback to Tier 2 with false-positive filtering
             final_matches = [
@@ -513,38 +558,89 @@ def build_hazard_block(extraction: HazardExtraction) -> Optional[Dict[str, Any]]
         return None
 
     # Build hazards list
+    # Schema $defs/Hazard requires: id, type, hazard_process
     hazards = []
-    for ht in extraction.hazard_types:
-        hazard = {"hazard_type": ht.value}
+    for i, ht in enumerate(extraction.hazard_types):
+        hazard = {
+            "id": f"hazard_{uuid.uuid4().hex[:8]}",
+            "type": ht.value,
+        }
         # Find matching process types
         related_processes = [
             pt.value for pt in extraction.process_types
         ]
         if related_processes:
-            hazard["process_type"] = related_processes[0]
+            hazard["hazard_process"] = related_processes[0]
+        else:
+            # Default process type: use generic ground_motion for most types
+            hazard["hazard_process"] = _DEFAULT_PROCESS_TYPE.get(
+                ht.value, "ground_motion"
+            )
         hazards.append(hazard)
 
     # Build event
-    event = {"id": f"event_{uuid.uuid4().hex[:8]}"}
-    if extraction.analysis_type:
-        event["analysis_type"] = extraction.analysis_type.value
-    if extraction.calculation_method:
-        event["calculation_method"] = extraction.calculation_method
+    # Schema $defs/Event requires: id, calculation_method, hazard, occurrence
+    analysis_val = (
+        extraction.analysis_type.value if extraction.analysis_type else "probabilistic"
+    )
+    calc_method = extraction.calculation_method or (
+        "simulated" if analysis_val == "probabilistic" else "inferred"
+    )
+
+    # Event.hazard: reference to first hazard (same structure as $defs/Hazard)
+    first_hazard = hazards[0] if hazards else {
+        "id": f"hazard_{uuid.uuid4().hex[:8]}",
+        "type": "flood",
+        "hazard_process": "fluvial_flood",
+    }
+
+    # Event.occurrence: at least one sub-object required (minProperties: 1)
     if extraction.return_periods:
-        event["occurrence"] = {
+        occurrence = {
             "probabilistic": {
                 "return_period": extraction.return_periods[0]
             }
         }
+    elif analysis_val == "probabilistic":
+        occurrence = {
+            "probabilistic": {
+                "return_period": 100
+            }
+        }
+    elif analysis_val == "deterministic":
+        occurrence = {
+            "deterministic": {
+                "index_criteria": "Deterministic scenario"
+            }
+        }
+    else:
+        # Empirical fallback
+        occurrence = {
+            "probabilistic": {
+                "return_period": 100
+            }
+        }
+
+    event = {
+        "id": f"event_{uuid.uuid4().hex[:8]}",
+        "calculation_method": calc_method,
+        "hazard": {
+            "id": first_hazard["id"],
+            "type": first_hazard["type"],
+            "hazard_process": first_hazard["hazard_process"],
+        },
+        "occurrence": occurrence,
+    }
+    if extraction.analysis_type:
+        event["analysis_type"] = extraction.analysis_type.value
 
     # Build event set
     event_set = {
         "id": f"event_set_{uuid.uuid4().hex[:8]}",
         "hazards": hazards,
         "events": [event],
+        "analysis_type": analysis_val,
     }
-    if extraction.analysis_type:
-        event_set["analysis_type"] = extraction.analysis_type.value
 
     return {
         "event_sets": [event_set],

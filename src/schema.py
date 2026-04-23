@@ -93,11 +93,12 @@ def validate_record(
         except ImportError:
             return (True, ["jsonschema not installed - validation skipped"])
 
-    # Wrap record in the root datasets array for schema validation
-    wrapped = {"datasets": [record]}
-
+    # Validate record directly against the schema (which defines a single
+    # dataset at root level).  The {"datasets": [...]} envelope is an output
+    # convention added by wrap_datasets() / distribute_records(), NOT part
+    # of the schema.
     validator = ValidatorClass(schema)
-    errors = sorted(validator.iter_errors(wrapped), key=lambda e: list(e.path))
+    errors = sorted(validator.iter_errors(record), key=lambda e: list(e.path))
 
     if not errors:
         return (True, [])

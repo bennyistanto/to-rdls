@@ -19,7 +19,7 @@ validate_qa.py ← (pipeline exit)
 inventory.py ← (standalone - no to-rdls dependencies, stdlib only)
 review.py ← inventory.py, configs/review_knowledge.yaml (YAML-driven patterns; requires geospatial env)
 sources/hdx.py ← (source adapter - reference implementation)
-sources/geonode.py ← (source adapter - stub, template for new sources)
+sources/geonode.py ← (source adapter - implemented; title humanization, region ISO3 extraction)
 zipaccess.py ← review.py (ZIP member inspection)
 hdx_review.py ← llm_review.py (HEVL re-scoring)
 ckan_columns.py ← llm_review.py (column enrichment)
@@ -458,3 +458,122 @@ Fetches actual column headers from HDX resources via CKAN resource_show API with
 Allows running inventory as: `python -m src /path/to/folder`
 
 Delegates to `inventory.main()`.
+
+---
+
+## Key dataclasses (all modules)
+
+```python
+# classify.py
+Classification(scores, components, rdls_candidate, confidence, top_signals)
+
+# extract_*.py (common)
+ExtractionMatch(value, confidence, source_field, matched_text, pattern)
+
+# extract_hazard.py
+HazardExtraction(hazard_types, process_types, analysis_type, return_periods, intensity_measures, overall_confidence)
+
+# extract_exposure.py
+ExposureExtraction(categories, metrics, taxonomy_hint, currency, overall_confidence)
+
+# extract_vulnloss.py
+FunctionExtraction(function_type, approach, relationship, hazard_primary, impact_type, impact_metric, quantity_kind, confidence)
+LossEntryExtraction(loss_signal_type, hazard_type, impact_metric, loss_frequency_type, currency, reference_year, is_insured)
+
+# validate_qa.py
+ScoredRecord(record, validation_status, error_count, fix_count, warnings, composite_confidence, auto_fixed)
+
+# review.py
+_PipelineResult(groups, inspections, stats, rows, intermediate_summary)
+
+# llm_review.py
+LLMClassification(rdls_id, is_rdls_relevant, components, component_reasoning, overall_reasoning, confidence, domain_category, llm_model, prompt_hash, token_usage)
+ReviewConfig(confident_score_min, max_components_for_confident, validation_sample_pct, ckan_*, llm_*, max_cost_usd, llm_overrides_signals, disagreement_confidence_min)
+TriageBucket(confident, borderline, no_signal, validation_sample)
+
+# hdx_review.py
+ReviewableRecord(filepath, record, rdls_id, hdx_uuid, current_rdt, current_blocks, dist_tier)
+HEVLAssessment(rdls_id, old_components, new_components, changes, evidence, confidence)
+
+# ckan_columns.py
+ColumnInfo(resource_id, resource_name, format, columns, column_types, hxl_tags, sheet_name, n_rows, n_cols, source)
+ColumnCache(cache_dir) - disk-backed cache: {resource_id}.json or {resource_id}.none sentinel
+```
+
+---
+
+## HEVL extraction cascade
+
+### Hazard (2-tier, HazardExtractor)
+- **Tier 1** (title, name, tags, resources): Can INTRODUCE hazard_types — high authority
+- **Tier 2** (notes, methodology): CORROBORATE only, or fallback if Tier 1 found nothing
+- False-positive filter on Tier 2 (suppresses "earthquake risk reduction", "flood preparedness")
+- Also extracts: return_periods, intensity_measures, analysis_type, calculation_method
+
+### Exposure (3-tier, ExposureExtractor)
+- **Tier 1** (title, name, tags): Introduce categories
+- **Tier 2** (resources): Introduce new or corroborate (+0.05 confidence boost)
+- **Tier 3** (notes, methodology): Corroborate only
+- Validates metrics against exposure_valid_triplets constraint table
+
+### Vulnerability (VulnerabilityExtractor)
+- Extracts function_type, approach, relationship, impact_metric
+- Detects 18 socioeconomic indicators (POV_HEADCOUNT, HDI, SVI, FOOD_SECURITY, etc.)
+- Validates against function_type_constraints table
+
+### Loss (LossExtractor)
+- 8 signal types: human_loss, displacement, affected_population, economic_loss, structural_damage, agricultural_loss, catastrophe_model, general_loss
+- Each has default impact_metric, asset_category, quantity_kind from rdls_defaults.yaml
+- Exclusion patterns filter false positives ("data loss", "profit & loss")
+- Detects insured loss, currency, reference_year
+
+---
+
+## Validation & QA (validate_qa.py)
+
+5-pass autofix engine:
+1. Codelist fuzzy matching (case-insensitive, substring, fuzzy)
+2. Enum fixes for nested properties
+3. Component validation
+4. Type coercion
+5. Defaults for missing required fields
+
+Confidence scoring: composite from data completeness, attribution variety, resource format quality, spatial precision, component confidence. Weights: hazard 0.3, exposure 0.3, vulnerability 0.2, loss 0.2.
+
+Distribution tiers: high (≥0.8 valid), medium (≥0.5 valid), low (<0.5 valid), plus invalid variants.
+
+---
+
+## LLM-Assisted Review (llm_review.py)
+
+Solves the content-blind over-classification problem (Problem 7).
+
+4-phase pipeline:
+1. **Signal triage** — Re-scores each record; buckets into `confident` (skip LLM), `borderline`, `no_signal`. 5% validation sample from confident cross-checked.
+2. **Column enrichment** — Fetches actual column headers from CKAN resource_show API via `ColumnCache`. ~88K resources, ~55% have headers. 48+ hours for full cache build.
+3. **LLM classification** — Claude Haiku 4.5. Cost guardrail (`max_cost_usd`), rate limiting (1.5s between batches for 50K tokens/min), disk-cached responses. Returns `LLMClassification` with per-component reasoning.
+4. **Merge + write** — When LLM disagrees (confidence ≥ 0.7), LLM wins. Rebuilds record ID if risk_data_type changes. Separates non-RDLS records to `output/llm/not_rdls/`. Validates remaining.
+
+Production results (12,594 HDX records): $21.98, 22 min. 3,443 reclassified, 4,103 separated as non-RDLS. 8,822 RDLS-relevant → 6,132 valid, 2,690 blocked by `occurrence:{}` schema gap.
+
+### HDX review (hdx_review.py)
+Second-pass HEVL review using improved signal matching (column detection, resource-name signals). Functions: `build_hdx_index()`, `assess_hevl()`, `revise_record()`, `_scan_dist_tiers()`.
+
+### CKAN columns (ckan_columns.py)
+Fetches column headers from HDX resources via CKAN resource_show API. Parses `fs_check_info` (CSV/XLSX) and `shape_info` (GeoJSON/SHP). Disk-backed `ColumnCache` with sentinel files for resources without columns.
+
+---
+
+## GeoNode source adapter (sources/geonode.py)
+
+**Implemented** (not a stub). Key components:
+- `GeoNodeConfig(portals, title_humanize_config, ...)` — loaded from `configs/sources/geonode.yaml`
+- `GeoNodeClient(portal)` — HTTP session with rate limiting and retries
+- `iter_datasets(client, portal, max_datasets)` — paginated dataset generator
+- `normalize_geonode_record(raw)` — handles GeoNode 4.x `{"dataset": {...}}` wrapper
+- `extract_geonode_fields(ds, portal_name, portal_base_url, ..., title_humanize_config)` — returns common 17-key dict + underscore extras: `_source_portal`, `_geonode_spatial`, `_geonode_category`, `_region_iso3_codes`, `_slug_title`
+- `_humanize_title(title, config)` — decodes machine-code titles using config regex patterns (e.g., `CK_EQ_HazardMap_03_100_MRP` → `Cook Islands Earthquake Hazard Map, 0.3s SA, 100-year Return Period`)
+
+**Key internal fields** (stripped before final output):
+- `_slug_title`: original technical title used for unique ID slug — stripped in `integrate.py`
+- `_region_iso3_codes`: authoritative ISO3 codes from GeoNode region `code` fields, filtered through `_NON_ISO3_REGION_CODES` blocklist (PAC, GLO, ASI, EAS, SEA, AFR, NAF, WAF, EAF, CAF, SAF, EUR, CAM, SAM, NAM, CAR, MDE)

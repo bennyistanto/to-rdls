@@ -876,31 +876,32 @@ def build_loss_block(extraction: LossExtraction) -> Optional[Dict[str, Any]]:
 
     losses = []
     for entry in extraction.losses:
+        # Schema $defs/Losses requires: id, hazard_type, asset_category,
+        # asset_dimension, impact_and_losses.
+        # impact_and_losses requires: impact_type, impact_modelling,
+        # impact_metric, quantity_kind, loss_type, loss_approach,
+        # loss_frequency_type.
         loss = {
             "id": f"loss_{uuid.uuid4().hex[:8]}",
+            "hazard_type": entry.hazard_type or "flood",
             "asset_category": entry.asset_category,
             "asset_dimension": entry.asset_dimension,
             "impact_and_losses": {
-                "type": entry.impact_type,
-                "metric": entry.impact_metric,
+                "impact_type": entry.impact_type or "direct",
+                "impact_modelling": entry.impact_modelling or "inferred",
+                "impact_metric": entry.impact_metric or "economic_loss_value",
                 "quantity_kind": entry.quantity_kind,
                 "loss_type": entry.loss_type,
+                "loss_approach": entry.loss_approach or "judgement",
+                "loss_frequency_type": entry.loss_frequency_type or "probabilistic",
             },
         }
-        if entry.hazard_type:
-            loss["hazard_type"] = entry.hazard_type
         if entry.hazard_process:
             loss["hazard_process"] = entry.hazard_process
         if entry.reference_year:
             loss["reference_year"] = entry.reference_year
         if entry.currency:
             loss["impact_and_losses"]["currency"] = entry.currency
-        if entry.impact_modelling:
-            loss["impact_and_losses"]["impact_modelling"] = entry.impact_modelling
-        if entry.loss_approach:
-            loss["impact_and_losses"]["loss_approach"] = entry.loss_approach
-        if entry.loss_frequency_type:
-            loss["impact_and_losses"]["loss_frequency_type"] = entry.loss_frequency_type
         if entry.is_insured:
             loss["impact_and_losses"]["loss_type"] = "insured"
 

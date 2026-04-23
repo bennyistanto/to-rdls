@@ -1,5 +1,5 @@
 {
-  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints",
+  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints. Last updated: 2026-04-23 against rdl-standard 1.0-dev branch schema.",
   "_legend": {
     "REQUIRED": "Field must be present",
     "optional": "Field may be omitted",
@@ -27,7 +27,7 @@
         "coastal_flood": ["coastal_flood", "storm_surge"],
         "convective_storm": ["tornado", "lightning", "thunderstorm", "hail"],
         "drought": ["agricultural_drought", "hydrological_drought", "meteorological_drought", "socioeconomic_drought"],
-        "earthquake": ["primary_rupture", "secondary_rupture", "ground_motion", "liquefaction", "subsidence_uplift"],
+        "earthquake": ["rupture", "ground_motion", "liquefaction", "subsidence_uplift"],
         "erosion": ["coastal_erosion", "soil_erosion"],
         "extreme_temperature": ["extreme_cold", "extreme_heat"],
         "flood": ["fluvial_flood", "pluvial_flood", "groundwater_flood", "coastal_flood", "glacial_lake_outburst"],
@@ -40,13 +40,14 @@
         "wildfire": ["wildfire", "wildfire_smoke"],
         "dust_sand_storm": ["dust_sand_storm"]
       },
+      "_note": "earthquake: codelist CSV has 'rupture' (singular). Schema conditional has 'primary_rupture'/'secondary_rupture' — this is a schema bug; use 'rupture' from CSV.",
       "applies_to": "event_set.hazards, event.hazard, event_set.hazards.trigger, vulnerability.functions.*.hazard_primary, vulnerability.functions.*.hazard_secondary, loss.losses.hazard"
     },
 
     "rule_2_type_to_imt": {
       "trigger_field": "hazard.type",
       "affected_field": "hazard.intensity_measure",
-      "behavior": "intensity_measure codelist switches based on type. All are open codelists (custom values allowed). Format is 'metric:unit' (e.g. flow_depth_ground:m).",
+      "behavior": "intensity_measure codelist switches based on type. All are open codelists (custom values allowed). Format is 'metric:unit' (e.g. AirTemp:C, PGWS:m/s, pptn24:mm).",
       "mappings": {
         "coastal_flood": "imt_coastal_flood.csv",
         "convective_storm": "imt_convective_storm.csv",
@@ -57,7 +58,7 @@
         "flood": "imt_flood.csv",
         "landslide": "imt_landslide.csv",
         "pest_infestation": "imt_pest_infestation.csv",
-        "sea_level_rise": "imt_sea_level_rise.csv — NOTE: no conditional in schema, but logically expected",
+        "sea_level_rise": "(no imt_sea_level_rise.csv file exists — use IMT.csv universal entries)",
         "strong_wind": "imt_strong_wind.csv",
         "tsunami": "imt_tsunami.csv",
         "volcanic": "imt_volcanic.csv",
@@ -83,7 +84,7 @@
         "time": "unit_time.csv (open)",
         "volume": "unit_volume.csv (open)"
       },
-      "applies_to": "exposure.metrics.measurement, vulnerability.functions.*.impact_measurement, loss.losses.impact_and_losses.measurement"
+      "applies_to": "exposure.metrics.measurement, vulnerability.functions.*.impact.measurement, loss.losses.impact_and_losses.measurement"
     },
 
     "rule_4_scale_to_countries": {
@@ -143,7 +144,7 @@
     {
       "id":                "{string}  REQUIRED",
       "title":             "{string}  REQUIRED",
-      "description":       "{string}  optional",
+      "description":       "{string}  REQUIRED",
       "risk_data_type": [
         "{enum:hazard|exposure|vulnerability|loss}  REQUIRED (min 1 item)"
       ],
@@ -155,7 +156,11 @@
       },
       "version":  "{string}  optional",
       "purpose":  "{string}  optional",
-      "project":  "{string}  optional",
+      "project": {
+        "_req": "optional",
+        "name": "{string}  REQUIRED",
+        "url":  "{format:iri}  optional"
+      },
       "details":  "{string}  optional",
       "contact_point": {
         "_req": "REQUIRED",
@@ -184,10 +189,6 @@
           }
         ],
         "bbox":     "[min_lon, min_lat, max_lon, max_lat]  optional (recommended)",
-        "geometry": {
-          "type":        "{enum:Point|MultiPoint|LineString|MultiLineString|Polygon|MultiPolygon}  optional",
-          "coordinates": "GeoJSON coordinate array  optional"
-        },
         "centroid": "[longitude, latitude]  optional"
       },
       "spatial_resolution":  "0  optional — meters, must be > 0",
@@ -262,10 +263,6 @@
               }
             ],
             "bbox":     "[min_lon, min_lat, max_lon, max_lat]  optional (recommended)",
-            "geometry": {
-              "type":        "{enum:Point|...|MultiPolygon}  optional",
-              "coordinates": "GeoJSON array  optional"
-            },
             "centroid": "[longitude, latitude]  optional"
           },
           "spatial_resolution":  "0  optional — meters, must be > 0",
@@ -291,7 +288,7 @@
           "climate": {
             "_req": "optional (min 1 property if present)",
             "model":      "{string — e.g. CORDEX-Africa ensemble|HadGEM3-GC31-LL}  optional",
-            "scenario":   "{enum:SSP1-1.9|SSP1-2.6|SSP2-4.5|SSP3-7.0|SSP4-3.4|SSP4-6.0|SSP5-3.4|SSP5-8.5|RCP2.6|RCP4.5|RCP6.0|RCP8.5}  optional",
+            "scenario":   "{enum:SSP1-1.9|SSP1-2.6|SSP2-4.5|SSP3-7.0|SSP4-3.4|SSP4-6.0|SSP5-3.4|SSP5-8.5|RCP2.6|RCP4.5|RCP6.0|RCP8.5}  optional — use only when resource covers EXACTLY ONE scenario",
             "percentile": "0  optional — number 0-100"
           }
         }
@@ -305,11 +302,12 @@
             "id":            "{string}  REQUIRED",
             "hazards": {
               "_req": "REQUIRED (array, min 1 item)",
+              "_note": "Each item requires id + process (inline) AND type + intensity_measure (from HazardWithTrigger allOf chain). All four are REQUIRED.",
               "_item": {
-                "id":                "{string}  optional",
-                "type":              "{enum:coastal_flood|convective_storm|drought|earthquake|erosion|extreme_temperature|flood|landslide|pest_infestation|sea_level_rise|strong_wind|tsunami|volcanic|wildfire|dust_sand_storm}  optional",
-                "process":           "{depends:type->process_type.csv}  optional  [RULE 1: must match type]",
-                "intensity_measure": "{depends:type->imt_[type].csv}  optional  [RULE 2: codelist per type]",
+                "id":                "{string}  REQUIRED",
+                "type":              "{enum:coastal_flood|convective_storm|drought|earthquake|erosion|extreme_temperature|flood|landslide|pest_infestation|sea_level_rise|strong_wind|tsunami|volcanic|wildfire|dust_sand_storm}  REQUIRED",
+                "process":           "{depends:type->process_type.csv — see rule_1}  REQUIRED  [RULE 1: must match type]",
+                "intensity_measure": "{depends:type->imt_[type].csv}  REQUIRED  [RULE 2: codelist per type, format: metric:unit]",
                 "classification": {
                   "_req": "optional",
                   "id":          "{string}  REQUIRED",
@@ -319,28 +317,18 @@
                   "uri":         "{format:iri}  optional"
                 },
                 "trigger": {
-                  "_req": "optional — for cascading hazards",
-                  "type":    "{enum:coastal_flood|...|dust_sand_storm}  optional",
+                  "_req": "optional — for cascading hazards. Uses SimpleHazard ($ref) which requires type.",
+                  "type":    "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED if trigger present",
                   "process": "{depends:trigger.type->process_type.csv}  optional  [RULE 1 applies to trigger too]"
                 }
               }
             },
-            "analysis_type":         "{enum:deterministic|empirical|probabilistic}  REQUIRED",
+            "analysis_type":          "{enum:deterministic|empirical|probabilistic}  REQUIRED",
             "frequency_distribution": "{enum:poisson|negative_binomial|user_defined|generalized_extreme_value}  optional",
             "seasonality":            "{enum:uniform|user_defined}  optional",
             "calculation_method":     "{enum:inferred|observed|simulated}  optional",
-            "event_count":            "0  optional — number",
-            "occurrence_range":       "{string}  optional",
-            "disaster_identifiers": {
-              "_req": "optional (array)",
-              "_item": {
-                "id":          "{string}  REQUIRED",
-                "scheme":      "{open:classification_scheme.csv — e.g. GLIDE|EM-DAT}  optional",
-                "title":       "{string}  optional",
-                "description": "{string}  optional",
-                "uri":         "{format:iri}  optional"
-              }
-            },
+            "event_count":            "0  optional — number (use only when events array is NOT populated)",
+            "occurrence_range":       "{string}  optional — use only when analysis_type=probabilistic",
             "events": {
               "_req": "optional (array)",
               "_item": {
@@ -348,10 +336,10 @@
                 "calculation_method": "{enum:inferred|observed|simulated}  REQUIRED",
                 "hazard": {
                   "_req": "REQUIRED",
-                  "id":                "{string}  optional",
-                  "type":              "{enum:coastal_flood|...|dust_sand_storm}  optional",
-                  "process":           "{depends:type->process_type.csv}  optional  [RULE 1]",
-                  "intensity_measure": "{depends:type->imt_[type].csv}  optional  [RULE 2]",
+                  "_note": "event.hazard requires process (inline) + type + intensity_measure (from HazardWithTrigger allOf). id is NOT a defined schema field here.",
+                  "type":              "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED",
+                  "process":           "{depends:type->process_type.csv}  REQUIRED  [RULE 1]",
+                  "intensity_measure": "{depends:type->imt_[type].csv}  REQUIRED  [RULE 2]",
                   "classification": {
                     "_req": "optional",
                     "id":          "{string}  REQUIRED",
@@ -362,7 +350,7 @@
                   },
                   "trigger": {
                     "_req": "optional",
-                    "type":    "{enum:coastal_flood|...|dust_sand_storm}  optional",
+                    "type":    "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED if trigger present",
                     "process": "{depends:trigger.type->process_type.csv}  optional  [RULE 1]"
                   }
                 },
@@ -395,10 +383,10 @@
                   }
                 },
                 "disaster_identifiers": {
-                  "_req": "optional (array)",
+                  "_req": "optional (array) — belongs on event, NOT on event_set",
                   "_item": {
                     "id":          "{string}  REQUIRED",
-                    "scheme":      "{open:classification_scheme.csv}  optional",
+                    "scheme":      "{open:classification_scheme.csv — e.g. GLIDE|EM-DAT}  optional",
                     "title":       "{string}  optional",
                     "description": "{string}  optional",
                     "uri":         "{format:iri}  optional"
@@ -443,7 +431,7 @@
         "_req": "conditional — required if risk_data_type includes 'vulnerability'",
         "functions": {
           "_req": "optional",
-          "_comment": "Four function types below. All share the same base structure (Function def).",
+          "_comment": "Four function types below. All share the same base structure (Function def). hazard_primary uses $ref: Hazard — requires type + intensity_measure. impact is a NESTED object (not flat fields).",
           "vulnerability": {
             "_req": "optional (array, min 1 item if present)",
             "_item": {
@@ -451,10 +439,10 @@
               "approach":     "{enum:analytical|empirical|hybrid|judgement}  REQUIRED",
               "relationship": "{enum:math_parametric|math_bespoke|discrete}  REQUIRED",
               "hazard_primary": {
-                "_req": "optional",
-                "type":              "{enum:coastal_flood|...|dust_sand_storm}  optional",
+                "_req": "optional — uses $ref: Hazard (requires type + intensity_measure via allOf)",
+                "type":              "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED if hazard_primary present",
                 "process":           "{depends:type->process_type.csv}  optional  [RULE 1]",
-                "intensity_measure": "{depends:type->imt_[type].csv}  optional  [RULE 2]",
+                "intensity_measure": "{depends:type->imt_[type].csv}  REQUIRED if hazard_primary present  [RULE 2]",
                 "classification": {
                   "_req": "optional",
                   "id": "{string}  REQUIRED",
@@ -469,13 +457,16 @@
               },
               "hazard_analysis_type": "{enum:probabilistic|deterministic|empirical}  optional",
               "category":      "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  optional",
-              "impact_type":     "{enum:direct|indirect|total}  optional",
-              "impact_modelling": "{enum:inferred|observed|simulated}  optional",
-              "impact_metric":   "{open:impact_metric.csv — e.g. damage_ratio|mean_damage_ratio|probability|loss_ratio}  optional",
-              "impact_measurement": {
-                "_req": "optional",
-                "quantity_kind": "{open:quantity_kind.csv}  optional",
-                "unit":          "{depends:quantity_kind->unit_[kind].csv}  optional  [RULE 3]"
+              "impact": {
+                "_req": "optional — nested Impact object (type/modelling/metric/measurement are sub-fields, NOT top-level on function)",
+                "type":       "{enum:direct|indirect|total}  optional",
+                "modelling":  "{enum:inferred|observed|simulated}  optional",
+                "metric":     "{open:impact_metric.csv — e.g. damage_ratio|mean_damage_ratio|probability|loss_ratio}  optional",
+                "measurement": {
+                  "_req": "optional",
+                  "quantity_kind": "{open:quantity_kind.csv}  optional",
+                  "unit":          "{depends:quantity_kind->unit_[kind].csv}  optional  [RULE 3]"
+                }
               },
               "taxonomy":         "{open:classification_scheme.csv — e.g. GED4ALL|HAZUS|GEM}  optional",
               "analysis_details": "{string}  optional"
@@ -492,13 +483,16 @@
               "hazard_secondary":     "same structure (optional)",
               "hazard_analysis_type": "{enum:probabilistic|deterministic|empirical}  optional",
               "category":        "{enum:agriculture|...|development_index}  optional",
-              "impact_type":     "{enum:direct|indirect|total}  optional",
-              "impact_modelling": "{enum:inferred|observed|simulated}  optional",
-              "impact_metric":   "{open:impact_metric.csv}  optional",
-              "impact_measurement": {
-                "_req": "optional",
-                "quantity_kind": "{open:quantity_kind.csv}  optional",
-                "unit":          "{depends:quantity_kind->unit_[kind].csv}  optional  [RULE 3]"
+              "impact": {
+                "_req": "optional — nested Impact object",
+                "type":       "{enum:direct|indirect|total}  optional",
+                "modelling":  "{enum:inferred|observed|simulated}  optional",
+                "metric":     "{open:impact_metric.csv}  optional",
+                "measurement": {
+                  "_req": "optional",
+                  "quantity_kind": "{open:quantity_kind.csv}  optional",
+                  "unit":          "{depends:quantity_kind->unit_[kind].csv}  optional  [RULE 3]"
+                }
               },
               "taxonomy":           "{open:classification_scheme.csv}  optional",
               "analysis_details":   "{string}  optional",
@@ -541,11 +535,10 @@
           "_item": {
             "id": "{string}  REQUIRED",
             "hazard": {
-              "_req": "REQUIRED",
-              "id":                "{string}  optional",
-              "type":              "{enum:coastal_flood|...|dust_sand_storm}  optional",
+              "_req": "REQUIRED — uses $ref: HazardWithTrigger. type + intensity_measure are REQUIRED via allOf chain. process is optional (no inline required here).",
+              "type":              "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED",
               "process":           "{depends:type->process_type.csv}  optional  [RULE 1]",
-              "intensity_measure": "{depends:type->imt_[type].csv}  optional  [RULE 2]",
+              "intensity_measure": "{depends:type->imt_[type].csv}  REQUIRED  [RULE 2]",
               "classification": {
                 "_req": "optional",
                 "id": "{string}  REQUIRED",
@@ -553,12 +546,18 @@
                 "title": "{string}  optional",
                 "description": "{string}  optional",
                 "uri": "{format:iri}  optional"
+              },
+              "trigger": {
+                "_req": "optional",
+                "type":    "{enum:coastal_flood|...|dust_sand_storm}  REQUIRED if trigger present",
+                "process": "{depends:trigger.type->process_type.csv}  optional  [RULE 1]"
               }
             },
             "asset_category":  "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  REQUIRED",
             "asset_dimension": "{enum:structure|content|product|disruption|population|index}  REQUIRED",
             "impact_and_losses": {
-              "_req": "REQUIRED — all 7 fields below are REQUIRED",
+              "_req": "REQUIRED",
+              "_note": "Schema inconsistency: 'required' array lists flat field names (impact_type, impact_modelling, impact_metric, measurement) but 'properties' only defines nested 'impact' + loss_type/approach/frequency_type. Use flat field names as listed here — they are what the JSON Schema validator enforces. The nested 'impact' object is defined in properties but its subfields are not required.",
               "impact_type":      "{enum:direct|indirect|total}  REQUIRED",
               "impact_modelling": "{enum:inferred|observed|simulated}  REQUIRED",
               "impact_metric":    "{enum:damage_ratio|mean_damage_ratio|probability|damage_index|affected_population|fatalities|injuries|displaced|homeless|non_residential_damage|residential_damage|crop_loss|livestock_loss|infrastructure_damage|economic_loss|insured_loss|business_interruption|downtime_loss|loss_ratio}  REQUIRED",
@@ -578,7 +577,7 @@
 
       "links": [
         {
-          "href": "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json  REQUIRED",
+          "href": "https://docs.riskdatalibrary.org/en/0__2__0/rdls_schema.json  REQUIRED",
           "rel":  "describedby  REQUIRED"
         }
       ]

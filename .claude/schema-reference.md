@@ -81,15 +81,19 @@ Resource
 
 ## Hazard block
 
+**CRITICAL: Hazard entries use `type` NOT `hazard_type`, and `hazard_process` NOT `process_type`.**
+
 ```
 Hazard
-└── event_sets[] → Event_set
-    ├── id (string)
-    ├── hazards[]
-    │   ├── hazard_type (required) - from hazard_type codelist
-    │   ├── hazard_process (required) - from process_type codelist
-    │   └── intensity_measure (string) - e.g., "PGA:g", "wd:m"
-    ├── analysis_type - probabilistic, deterministic, empirical
+└── event_sets[] → Event_set (required: id, hazards, analysis_type)
+    ├── id (string, REQUIRED)
+    ├── hazards[] (REQUIRED, min 1)
+    │   ├── id (string, REQUIRED)
+    │   ├── type (REQUIRED) - from hazard_type codelist ⚠️ NOT "hazard_type"
+    │   ├── hazard_process (REQUIRED) - from process_type codelist ⚠️ NOT "process_type"
+    │   ├── intensity_measure (string) - e.g., "PGA:g", "wd:m"
+    │   └── trigger {type, hazard_process}
+    ├── analysis_type (REQUIRED) - probabilistic, deterministic, empirical
     ├── frequency_distribution - poisson, negative_binomial, etc.
     ├── seasonality - uniform, user_defined
     ├── calculation_method - simulated, observed, inferred
@@ -97,38 +101,41 @@ Hazard
     ├── occurrence_range
     │   ├── start_date, end_date
     │   └── return_period (number, years)
-    └── events[] → Event
-        ├── id (string)
+    └── events[] → Event (required: id, calculation_method, hazard, occurrence)
+        ├── id (string, REQUIRED)
+        ├── calculation_method (REQUIRED) - simulated, observed, inferred
+        ├── hazard (REQUIRED) - full Hazard object, same structure as above:
+        │   ├── id (REQUIRED)
+        │   ├── type (REQUIRED) ⚠️ NOT "hazard_type"
+        │   └── hazard_process (REQUIRED) ⚠️ NOT "process_type"
+        ├── occurrence (REQUIRED, minProperties: 1)
+        │   ├── probabilistic (use when analysis_type=probabilistic)
+        │   │   ├── return_period (number)
+        │   │   ├── probability (number)
+        │   │   └── span (number) - required when probability is used
+        │   ├── empirical (use when analysis_type=empirical)
+        │   │   ├── temporal {start, end}
+        │   │   └── return_period (number)
+        │   └── deterministic (use when analysis_type=deterministic)
+        │       ├── index_criteria (string)
+        │       └── thresholds[] (string array)
         ├── disaster_identifiers[]
         │   ├── scheme - GLIDE, EMDAT, USGS_EHP, Custom
         │   └── id (string)
-        ├── calculation_method - simulated, observed, inferred
-        ├── hazard
-        │   ├── hazard_type, hazard_process
-        │   └── intensity_measure
-        ├── occurrence
-        │   ├── time
-        │   │   ├── start, end, duration
-        │   │   └── date (string)
-        │   └── probability
-        │       ├── return_period (number)
-        │       └── occurrence_probability (number)
-        ├── description (string)
-        └── footprint
-            ├── bbox (required) - [minLon, minLat, maxLon, maxLat]
-            ├── centroid - [lon, lat]
-            └── geometry - GeoJSON
+        └── description (string)
 ```
 
 ## Exposure block (array)
 
 ```
-Exposure[] → Exposure_item
-├── category (required) - from exposure_category codelist
+Exposure[] → Exposure_item (required: id, category)
+├── id (string, REQUIRED)
+├── category (REQUIRED) - from exposure_category codelist
 ├── taxonomy - GED4ALL, MOVER, GLIDE, EMDAT, OED, HAZUS, etc.
-└── metrics[]
-    ├── dimension (required) - structure, content, product, disruption, population, index
-    └── quantity_kind (required) - count, area, length, monetary, time
+└── metrics[] → Metric (required: id, dimension, quantity_kind)
+    ├── id (string, REQUIRED)
+    ├── dimension (REQUIRED) - structure, content, product, disruption, population, index
+    └── quantity_kind (REQUIRED) - count, area, length, monetary, time
 ```
 
 ## Vulnerability block
@@ -162,21 +169,26 @@ Vulnerability
 
 ## Loss block
 
+**CRITICAL: impact_and_losses uses `impact_type` NOT `type`, `impact_metric` NOT `metric`, `loss_approach` NOT `approach`.**
+
 ```
 Loss
-└── losses[] → Losses
-    ├── hazard_type - from hazard_type codelist
+└── losses[] → Losses (required: id, hazard_type, asset_category, asset_dimension, impact_and_losses)
+    ├── id (string, REQUIRED)
+    ├── hazard_type (REQUIRED) - from hazard_type codelist
     ├── hazard_process - from process_type codelist
-    ├── asset_category - from exposure_category codelist
-    ├── asset_dimension - structure, content, product, disruption, population, index
-    ├── impact_and_losses (required)
-    │   ├── impact_type (required) - direct, indirect, total
-    │   ├── impact_metric (required) - from impact_metric codelist
-    │   ├── quantity_kind (required) - count, area, monetary, ratio, time
-    │   ├── loss_type (required) - ground_up, insured, gross, count, net_precat, net_postcat
-    │   ├── approach (required) - analytical, empirical, hybrid, judgement
-    │   ├── currency (string) - ISO 4217, required if quantity_kind is monetary
-    │   └── reference_year (integer) - year of monetary values
+    ├── asset_category (REQUIRED) - from exposure_category codelist
+    ├── asset_dimension (REQUIRED) - structure, content, product, disruption, population, index
+    ├── impact_and_losses (REQUIRED, all 7 sub-fields required)
+    │   ├── impact_type (REQUIRED) - direct, indirect, total ⚠️ NOT "type"
+    │   ├── impact_modelling (REQUIRED) - inferred, observed, simulated
+    │   ├── impact_metric (REQUIRED) - from impact_metric codelist ⚠️ NOT "metric"
+    │   ├── quantity_kind (REQUIRED) - count, area, monetary, ratio, time
+    │   ├── loss_type (REQUIRED) - ground_up, insured, gross, count, net_precat, net_postcat
+    │   ├── loss_approach (REQUIRED) - analytical, empirical, hybrid, judgement ⚠️ NOT "approach"
+    │   ├── loss_frequency_type (REQUIRED) - probabilistic, deterministic, empirical
+    │   └── currency (string) - ISO 4217, required if quantity_kind is monetary
+    ├── reference_year (integer)
     ├── lineage (string)
     └── description (string)
 ```
@@ -191,3 +203,31 @@ links[] → Link
 ```
 
 First link must be: `{"href": "...", "rel": "describedby", "type": "application/json"}`
+
+---
+
+## Layer 3 — Closed codelist fields to verify after schema validation
+
+The JSON Schema may accept strings that are NOT in the closed codelist. Always check these fields proactively:
+
+| Field | Location | Valid values |
+|-------|----------|-------------|
+| `risk_data_type` | root (array) | `["hazard"]`, `["exposure"]`, `["vulnerability"]`, `["loss"]` |
+| `hazard.event_sets[].hazards[].type` | hazard block | 11 hazard_type values |
+| `hazard.event_sets[].hazards[].hazard_process` | hazard block | 32 process_type values |
+| `hazard.event_sets[].analysis_type` | event_set | `probabilistic`, `deterministic`, `empirical` |
+| `exposure[].category` | exposure block | 7 exposure_category values |
+| `vulnerability.functions.vulnerability[].approach` | vuln block | `analytical`, `empirical`, `hybrid`, `judgement` |
+| `vulnerability.functions.vulnerability[].relationship` | vuln block | `math_parametric`, `math_bespoke`, `discrete` |
+| `vulnerability.functions.vulnerability[].hazard_analysis_type` | vuln block | `probabilistic`, `deterministic`, `empirical` |
+| `vulnerability.functions.vulnerability[].category` | vuln block | 7 exposure_category values |
+| `vulnerability.functions.vulnerability[].impact_type` | vuln block | `direct`, `indirect`, `total` |
+| `vulnerability.functions.vulnerability[].impact_modelling` | vuln block | `inferred`, `observed`, `simulated` |
+| `vulnerability.functions.vulnerability[].impact_metric` | vuln block | 21 impact_metric values |
+| `loss.losses[].hazard_type` | loss block | 11 hazard_type values |
+| `loss.losses[].impact_and_losses.impact_type` | loss block | `direct`, `indirect`, `total` |
+| `loss.losses[].impact_and_losses.impact_modelling` | loss block | `inferred`, `observed`, `simulated` |
+| `loss.losses[].impact_and_losses.impact_metric` | loss block | 21 impact_metric values |
+| `loss.losses[].impact_and_losses.loss_frequency_type` | loss block | `probabilistic`, `deterministic`, `empirical` |
+| `resources[].data_format` | resources | 20+ values from data_format codelist |
+| `license` | root | CC-BY-4.0, CC-BY-SA-4.0, CC0-1.0, ODbL-1.0, etc. |

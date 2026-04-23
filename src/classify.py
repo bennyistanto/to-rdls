@@ -191,6 +191,27 @@ def classify_dataset(
                     scores[comp] = max(0, scores[comp] - exclusion_penalty)
                     top_signals.append(f"excl:{pat.pattern}(-{exclusion_penalty})→{comp}")
 
+    # 5. Loss-dominance suppression (Problem 7: contextual hazard/exposure)
+    #    When the title matches a loss-output pattern, hazard/exposure keywords
+    #    in the description are contextual, not data content.
+    loss_dom = config.get("loss_dominance")
+    if loss_dom and title:
+        suppress = set(loss_dom.get("suppress", []))
+        keep = set(loss_dom.get("keep", []))
+        for pat_str in loss_dom.get("title_patterns", []):
+            try:
+                if re.search(pat_str, title, re.IGNORECASE):
+                    for comp in list(suppress):
+                        if comp in scores and scores[comp] > 0:
+                            old_score = scores[comp]
+                            scores[comp] = 0
+                            top_signals.append(
+                                f"loss_dom:{pat_str[:40]}->suppress({comp},-{old_score})"
+                            )
+                    break  # First matching pattern wins
+            except re.error:
+                continue
+
     # Determine components and confidence
     active_components = [c for c in components if scores[c] >= conf_med]
     max_score = max(scores.values()) if scores else 0

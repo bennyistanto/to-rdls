@@ -52,7 +52,7 @@ IANA_LINK_RELATIONS = {
 
 # Intensity measure format: "MEASURE:UNIT" (single value)
 # From schema's intensity_measure_definitions keys
-IM_PATTERN = re.compile(r"^[A-Za-z0-9_()]+:[A-Za-z0-9²/]+$")
+IM_PATTERN = re.compile(r"^[A-Za-z0-9_()]+:[A-Za-z0-9²/\-]+$")
 
 # Known quantity_kind values (QUDT + schema suggestions)
 KNOWN_QUANTITY_KINDS = {

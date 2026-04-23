@@ -89,9 +89,17 @@ def country_name_to_iso3(
     if not n:
         return None
 
-    # Already ISO3?
+    # Already ISO3?  Validate against known codes when table is available
+    # to avoid false positives (e.g. "drr", "gis", "map").
     if len(n) == 3 and n.isalpha():
-        return n.upper()
+        candidate = n.upper()
+        if iso3_table:
+            # iso3_table values are ISO3 codes — check membership
+            if candidate in iso3_table.values():
+                return candidate
+            # Fall through to name-based lookup
+        else:
+            return candidate
 
     key = _norm_country_key(n)
 
@@ -105,6 +113,27 @@ def country_name_to_iso3(
 
     # Try pycountry
     return _try_pycountry(n)
+
+
+def build_iso3_table_from_naming(naming_config: Dict[str, Any]) -> Dict[str, str]:
+    """Build a name→ISO3 lookup table from naming config's iso3_to_name.
+
+    Reverses the iso3_to_name mapping (e.g. BWA: "botswana" → "botswana": "BWA")
+    so country_name_to_iso3() can resolve standard country names without pycountry.
+
+    Args:
+        naming_config: Loaded naming.yaml dict.
+
+    Returns:
+        Dict mapping normalized country name → ISO3 code.
+    """
+    iso3_to_name = naming_config.get("iso3_to_name", {})
+    table: Dict[str, str] = {}
+    for code, name in iso3_to_name.items():
+        key = _norm_country_key(name)
+        if key and len(code) == 3:
+            table[key] = code.upper()
+    return table
 
 
 def load_country_iso3_table(csv_path: Union[str, Path]) -> Dict[str, str]:

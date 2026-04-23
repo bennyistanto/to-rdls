@@ -23,6 +23,7 @@ data/
 # Session files
 temp/
 HANDOFF.md
+HANDOFF-*.md
 
 # OS
 .DS_Store

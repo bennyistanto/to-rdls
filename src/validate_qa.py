@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .schema import SchemaContext, validate_record
+from .translate import wrap_datasets
 from .utils import (
     load_json,
     load_yaml,
@@ -270,7 +271,11 @@ def compute_composite_confidence(
     record: Dict[str, Any],
     weights: Optional[Dict[str, float]] = None,
 ) -> float:
-    """Compute weighted composite confidence from HEVL component confidences.
+    """Compute composite confidence from record completeness.
+
+    Scores each HEVL component based on structural completeness of the
+    schema-compliant block (not from any non-schema field). Also factors
+    in data completeness of top-level required fields.
 
     Args:
         record: RDLS record with optional hazard/exposure/vulnerability/loss blocks.
@@ -291,17 +296,104 @@ def compute_composite_confidence(
     scores = []
     for component in ["hazard", "exposure", "vulnerability", "loss"]:
         block = record.get(component)
-        if block and isinstance(block, dict):
-            conf = block.get("overall_confidence", 0.5)
-            if isinstance(conf, (int, float)):
-                scores.append((conf, weights.get(component, 0.25)))
+        if not block:
+            continue
+        conf = _score_block_completeness(component, block)
+        scores.append((conf, weights.get(component, 0.25)))
 
     if not scores:
-        return 0.0
+        # No HEVL blocks — score from top-level field completeness only
+        return _score_record_completeness(record)
 
     weighted_sum = sum(c * w for c, w in scores)
     total_weight = sum(w for _, w in scores)
-    return weighted_sum / total_weight if total_weight > 0 else 0.0
+    block_conf = weighted_sum / total_weight if total_weight > 0 else 0.0
+
+    # Blend with record-level completeness (70% block, 30% record)
+    record_conf = _score_record_completeness(record)
+    return 0.7 * block_conf + 0.3 * record_conf
+
+
+def _score_block_completeness(component: str, block: Any) -> float:
+    """Score a HEVL block's structural completeness (0.0-1.0).
+
+    Uses only schema-compliant fields — never reads non-schema metadata.
+    """
+    if component == "hazard" and isinstance(block, dict):
+        event_sets = block.get("event_sets", [])
+        if not event_sets:
+            return 0.3
+        es = event_sets[0]
+        score = 0.4  # Base: has event_sets
+        if es.get("hazards"):
+            score += 0.2
+        if es.get("analysis_type"):
+            score += 0.1
+        if es.get("events"):
+            evt = es["events"][0] if es["events"] else {}
+            if evt.get("hazard"):
+                score += 0.15
+            if evt.get("occurrence"):
+                score += 0.15
+        return min(score, 1.0)
+
+    elif component == "exposure" and isinstance(block, list):
+        if not block:
+            return 0.3
+        score = 0.5  # Base: has items
+        item = block[0]
+        if item.get("category"):
+            score += 0.2
+        if item.get("metrics"):
+            score += 0.3
+        return min(score, 1.0)
+
+    elif component == "vulnerability" and isinstance(block, dict):
+        score = 0.5
+        if block.get("functions"):
+            score += 0.3
+        if block.get("socio_economic"):
+            score += 0.2
+        return min(score, 1.0)
+
+    elif component == "loss" and isinstance(block, dict):
+        losses = block.get("losses", [])
+        if not losses:
+            return 0.3
+        score = 0.4
+        entry = losses[0]
+        if entry.get("hazard_type"):
+            score += 0.15
+        if entry.get("asset_category"):
+            score += 0.15
+        ial = entry.get("impact_and_losses", {})
+        if ial.get("impact_type"):
+            score += 0.1
+        if ial.get("impact_metric"):
+            score += 0.1
+        if ial.get("loss_frequency_type"):
+            score += 0.1
+        return min(score, 1.0)
+
+    # Fallback
+    return 0.5
+
+
+def _score_record_completeness(record: Dict[str, Any]) -> float:
+    """Score top-level record field completeness (0.0-1.0)."""
+    checks = [
+        bool(record.get("id")),
+        bool(record.get("title")),
+        bool(record.get("description")),
+        bool(record.get("risk_data_type")),
+        bool(record.get("attributions")),
+        bool(record.get("spatial")),
+        bool(record.get("license")),
+        bool(record.get("resources")),
+        len(record.get("attributions", [])) >= 3,
+        bool(record.get("spatial", {}).get("countries")),
+    ]
+    return sum(checks) / len(checks)
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +478,7 @@ def distribute_records(
         tier_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"{record.get('id', 'unknown')}.json"
-        write_json(tier_dir / filename, record)
+        write_json(tier_dir / filename, wrap_datasets(record))
         tier_counts[tier] += 1
 
     return dict(tier_counts)

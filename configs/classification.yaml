@@ -32,6 +32,7 @@ components:
 tag_weights:
   hazard:
     flooding: 5
+    floods: 5
     drought: 5
     "cyclones-hurricanes-typhoons": 5
     "earthquake-tsunami": 5
@@ -41,10 +42,15 @@ tag_weights:
     "hazards and risk": 3
     forecasting: 2
     topography: 2
+    # DRR / GeoNode common tags
+    drr: 3
+    undrr: 3
+    "disaster risk": 3
 
   exposure:
     "facilities-infrastructure": 5
     "populated places-settlements": 4
+    "populated places": 4
     population: 4
     roads: 4
     ports: 3
@@ -53,9 +59,21 @@ tag_weights:
     energy: 3
     "education facilities-schools": 4
     "health facilities": 4
+    "health-care": 3
     "points of interest-poi": 3
     geodata: 2
     gazetteer: 2
+    # Agriculture exposure
+    cropland: 4
+    croplands: 4
+    crops: 4
+    farms: 3
+    farming: 3
+    agriculture: 4
+    livestock: 3
+    # DRR / GeoNode common tags
+    housing: 4
+    drr: 2
 
   vulnerability_proxy:
     demographics: 4
@@ -68,6 +86,12 @@ tag_weights:
     livelihoods: 2
     health: 2
     education: 2
+    # DRR / GeoNode common tags
+    sanitation: 3
+    "drinking water": 3
+    wealth: 3
+    migration: 3
+    drr: 2
 
   loss_impact:
     "damage assessment": 5
@@ -78,6 +102,17 @@ tag_weights:
     "affected area": 4
     "people in need-pin": 3
     severity: 3
+    # Loss output indicators
+    loss: 4
+    losses: 4
+    aal: 5
+    "annual average loss": 5
+    "economic loss": 4
+    "economic impact": 3
+    displacement: 4
+    displaced: 4
+    damage: 3
+    "insured loss": 4
 
 # ---------------------------------------------------------------------------
 # Keyword regex patterns by component
@@ -95,6 +130,10 @@ keyword_patterns:
     - '\btsunami\b'
     - '\breturn period\b'
     - '\bhazard\b'
+    - '\bflood\s+(prone|prevalence|frequency|extent|risk)\b'
+    - '\blandslide(s)?\b'
+    - '\bwildfire(s)?\b'
+    - '\bstorm\s+surge\b'
 
   exposure:
     - '\bairport(s)?\b'
@@ -107,6 +146,16 @@ keyword_patterns:
     - '\binfrastructure\b'
     - '\bbuildings?\b'
     - '\bsettlement(s)?\b'
+    - '\bpopulated\s+places?\b'
+    - '\bcroplands?\b'
+    - '\bagricultur(e|al)\b'
+    - '\bfarmlands?\b'
+    - '\blivestock\b'
+    - '\bplantation(s)?\b'
+    - '\bhousing\s+(material|structure|type)\b'
+    - '\bphysical\s+exposure\b'
+    - '\beconomic\s+exposure\b'
+    - '\bhealth\s+facilit(y|ies)\b'
 
   vulnerability_proxy:
     - '\bpoverty\b'
@@ -117,6 +166,11 @@ keyword_patterns:
     - '\bdemographic(s)?\b'
     - '\bvulnerability\b'
     - '\bhousehold(s)?\b'
+    - '\bsanitation\b'
+    - '\bdrinking water\b'
+    - '\bwealth\s*index\b'
+    - '\bmigration\b'
+    - '\binequality\b'
 
   loss_impact:
     - '\bdamage\b'
@@ -125,6 +179,46 @@ keyword_patterns:
     - '\bfatalit(y|ies)\b'
     - '\bcasualt(y|ies)\b'
     - '\baffected\b'
+
+# ---------------------------------------------------------------------------
+# Loss-dominance suppression (Problem 7 fix, non-LLM)
+# ---------------------------------------------------------------------------
+# When the TITLE matches a loss-output pattern, the dataset likely contains
+# LOSS RESULTS, not raw hazard or exposure data. Hazard/exposure keywords
+# in the description are contextual ("loss FROM earthquakes TO buildings")
+# rather than indicating the dataset CONTAINS hazard/exposure data.
+#
+# title_patterns: regex patterns matched against title (case-insensitive)
+# suppress: components to remove when pattern matches
+# keep: components to always retain
+# ---------------------------------------------------------------------------
+loss_dominance:
+  title_patterns:
+    # Loss output metrics
+    - 'annual average loss|\baal\b|average annual loss'
+    - 'probable max(imum)? loss|\bpml\b'
+    - 'loss exceedance|exceedance (probability|curve)|\bep curve\b'
+    # Post-disaster impact assessments
+    - 'damage assessment|post.?disaster assessment|post.?event assessment'
+    - 'rapid damage|building damage (assessment|survey|report)'
+    # Humanitarian impact / affected population reports
+    - 'affected (population|people|person|area) (estimate|report|figure)'
+    - 'displacement (data|figure|report|tracking|monitor)'
+    - '(casualty|fatality|mortality|death) (data|figure|report|count|estimate)'
+    - 'drought.*(key figure|impact|related)'
+    # Damage/loss model output (PDNA, RiskScape, CAPRA, etc.)
+    - 'damaged (building|road|infrastructure|structure|facilit)'
+    - 'regional impact.*(estimated|cyclone|earthquake|flood|hazard)'
+    - '(loss|damage|impact|exposure).*(model output|PDNA output)'
+    - '(PDNA|riskscape).*(model output|output).*(cyclone|earthquake|flood|hazard)'
+    # Economic/insured loss reports
+    - 'economic (loss|impact|damage) (estimate|report|assessment|data)'
+    - 'insured loss|insurance claim'
+  suppress:
+    - hazard
+    - exposure
+  keep:
+    - loss_impact
 
 # ---------------------------------------------------------------------------
 # Organization hints (org name → component score boosts)

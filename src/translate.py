@@ -192,56 +192,72 @@ def map_license(license_str: str, license_config: Optional[Dict[str, Any]] = Non
 def build_attributions(
     fields: Dict[str, Any],
     source_url: str = "",
+    contact_urls: Optional[Dict[str, str]] = None,
 ) -> List[Dict[str, Any]]:
     """Build RDLS attributions array (publisher, creator, contact_point).
 
     Args:
         fields: Common field structure (from extract_hdx_fields or similar).
         source_url: URL to the dataset on the source platform.
+        contact_urls: Optional role->URL mapping from source metadata
+                      (e.g. {"publisher": "https://...", "creator": "https://..."}).
     """
     org_name = fields.get("organization", "")
     maintainer = fields.get("maintainer", "")
     dataset_source = fields.get("dataset_source", "")
+    urls = contact_urls or {}
 
     attributions = []
 
     # Publisher = organization
     if org_name:
+        entity: Dict[str, Any] = {"name": sanitize_text(org_name)}
+        if urls.get("publisher"):
+            entity["url"] = urls["publisher"]
         attributions.append({
             "id": "attribution_publisher",
             "role": "publisher",
-            "entity": {"name": sanitize_text(org_name)},
+            "entity": entity,
         })
 
     # Creator = dataset_source or organization
     creator_name = dataset_source or org_name
     if creator_name:
+        entity = {"name": sanitize_text(creator_name)}
+        if urls.get("creator"):
+            entity["url"] = urls["creator"]
         attributions.append({
             "id": "attribution_creator",
             "role": "creator",
-            "entity": {"name": sanitize_text(creator_name)},
+            "entity": entity,
         })
 
     # Contact point = maintainer or organization
     contact_name = maintainer or org_name
     if contact_name:
-        attr = {
+        entity = {"name": sanitize_text(contact_name)}
+        contact_url = urls.get("contact_point") or source_url
+        if contact_url:
+            entity["url"] = contact_url
+        attributions.append({
             "id": "attribution_contact_point",
             "role": "contact_point",
-            "entity": {"name": sanitize_text(contact_name)},
-        }
-        if source_url:
-            attr["entity"]["url"] = source_url
-        attributions.append(attr)
+            "entity": entity,
+        })
 
     # Ensure minimum 3 attributions
     roles_present = {a["role"] for a in attributions}
     for role in ["publisher", "creator", "contact_point"]:
         if role not in roles_present:
+            entity = {"name": org_name or "Unknown"}
+            if urls.get(role):
+                entity["url"] = urls[role]
+            elif source_url:
+                entity["url"] = source_url
             attributions.append({
                 "id": f"attribution_{role}",
                 "role": role,
-                "entity": {"name": org_name or "Unknown"},
+                "entity": entity,
             })
 
     return attributions
@@ -277,13 +293,24 @@ def build_resources(
         r_id = r.get("id", str(uuid.uuid4())[:8])
         r_name = r.get("name", "") or r.get("description", "") or ""
         r_url = r.get("url", "") or r.get("download_url", "") or ""
+        r_download_url = r.get("_download_url", "") or ""
         r_fmt = r.get("format", "")
         r_desc = r.get("description", "")
 
+        # Source adapter hints (from GeoNode _map_geonode_links, etc.)
+        modality_hint = r.get("_modality_hint", "")
+
         r_fmt_upper = (r_fmt or "").strip().upper()
 
+        # When the source adapter already classified this as a file download
+        # with an explicit format, trust the adapter — don't let service URL
+        # patterns override the format (e.g., GeoNode data links served via
+        # WFS GetFeature URLs with outputFormat=csv/excel/SHAPE-ZIP).
+        if modality_hint == "file_download" and r_fmt_upper:
+            rdls_fmt = map_data_format(r_fmt, r_url, r_name, format_config)
+            modality = "file_download"
         # Check service formats first (GEOSERVICE, API, WEB APP)
-        if r_fmt_upper in service_formats:
+        elif r_fmt_upper in service_formats:
             rdls_fmt, modality = service_formats[r_fmt_upper]
             # Refine using URL patterns (e.g., ArcGIS REST)
             svc = detect_service_url(r_url, service_patterns) if service_patterns else None
@@ -301,16 +328,26 @@ def build_resources(
         if rdls_fmt is None:
             continue  # Skip non-data resources
 
+        # Override modality with source adapter hint if available
+        if modality_hint:
+            modality = modality_hint
+
         resource = {
             "id": f"resource_{r_id[:8]}",
             "title": sanitize_text(r_name) or "Data resource",
+            "description": sanitize_text(r_desc) if r_desc else sanitize_text(r_name) or "Data resource",
             "data_format": rdls_fmt,
             "access_modality": modality,
         }
         if r_url:
-            resource["url"] = r_url
-        if r_desc:
-            resource["description"] = sanitize_text(r_desc)
+            if modality and modality != "file_download":
+                resource["access_url"] = r_url
+                # Source adapter may provide a separate download URL
+                # (e.g., GeoNode OGC geoserver URL alongside layer page)
+                if r_download_url:
+                    resource["download_url"] = r_download_url
+            else:
+                resource["download_url"] = r_url
 
         # Add temporal metadata from dataset-level date range
         temporal_data = {k: v for k, v in temporal.items() if v}
@@ -449,6 +486,7 @@ def build_rdls_record(
         region_map=spatial_config.get("region_to_countries", {}),
         country_fixes=spatial_config.get("country_name_fixes", {}),
         non_country_groups=spatial_config.get("non_country_groups", set()),
+        iso3_table=spatial_config.get("iso3_table"),
     )
 
     # Build source URL
@@ -462,7 +500,8 @@ def build_rdls_record(
         return None
 
     # Build attributions
-    attributions = build_attributions(fields, source_url)
+    contact_urls = fields.get("_contact_urls", {})
+    attributions = build_attributions(fields, source_url, contact_urls)
 
     # Build license
     license_code = map_license(
@@ -471,6 +510,10 @@ def build_rdls_record(
     )
 
     # Generate record ID
+    # If the source adapter provided a _slug_title (original technical title
+    # preserved when a human-readable title replaced it), use that for
+    # slug generation — it's compact and unique across similar records.
+    slug_title = fields.get("_slug_title") or title
     record_id = ds_id  # fallback: raw source ID
     if naming_config:
         from .naming import build_rdls_id
@@ -483,34 +526,83 @@ def build_rdls_record(
             org_name=org_name,
             org_slug=org_slug,
             config=naming_config,
-            title=title,
+            title=slug_title,
         )
-
-    # Assemble record
-    record = {
-        "id": record_id,
-        "title": title,
-        "risk_data_type": risk_data_type,
-        "attributions": attributions,
-        "spatial": spatial,
-        "license": license_code or "Custom",
-        "resources": resources,
-    }
 
     # Optional fields
     notes = sanitize_text(fields.get("notes", ""))
+    details, referenced_by = build_details(fields)
+
+    # Source link (original dataset URL)
+    dataset_url = fields.get("url", "")
+    links = [
+        {
+            "href": "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",
+            "rel": "describedby",
+        }
+    ]
+    if dataset_url:
+        links.append({"href": dataset_url, "rel": "source"})
+
+    # Assemble record in RDLS v0.3 template field order
+    record: Dict[str, Any] = {"id": record_id, "title": title}
     if notes:
         record["description"] = notes
-
-    # Details + referenced_by from caveats/methodology
-    details, referenced_by = build_details(fields)
+    record["risk_data_type"] = risk_data_type
     if details:
         record["details"] = details
-    if referenced_by:
-        record["referenced_by"] = referenced_by
-
+    record["spatial"] = spatial
+    record["license"] = license_code or "Custom"
     license_url = fields.get("license_url", "")
     if license_url:
         record["license_url"] = license_url
+    record["attributions"] = attributions
+    if referenced_by:
+        record["referenced_by"] = referenced_by
+    record["resources"] = resources
+    # HEVL blocks inserted later by integrate_record()
+    record["links"] = links
+
+    # Pass through _slug_title for ID regeneration in integrate_record().
+    # This is stripped before final output by validate_qa.
+    if fields.get("_slug_title"):
+        record["_slug_title"] = fields["_slug_title"]
 
     return record
+
+
+# ---------------------------------------------------------------------------
+# Output formatting
+# ---------------------------------------------------------------------------
+
+# Canonical field order matching rdls_template_v0.3.json
+RDLS_FIELD_ORDER = [
+    "id", "title", "description", "risk_data_type", "version", "purpose",
+    "project", "details", "spatial", "license", "license_url",
+    "attributions", "sources", "referenced_by", "resources",
+    "hazard", "exposure", "vulnerability", "loss", "links",
+]
+
+
+def order_record_fields(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Reorder record fields to match RDLS v0.3 template order.
+
+    Fields not in the canonical order are appended at the end.
+    """
+    ordered: Dict[str, Any] = {}
+    for key in RDLS_FIELD_ORDER:
+        if key in record:
+            ordered[key] = record[key]
+    # Append any extra keys not in the canonical order
+    for key in record:
+        if key not in ordered:
+            ordered[key] = record[key]
+    return ordered
+
+
+def wrap_datasets(record: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap a single RDLS record in the datasets array envelope.
+
+    Returns: {"datasets": [ordered_record]}
+    """
+    return {"datasets": [order_record_fields(record)]}

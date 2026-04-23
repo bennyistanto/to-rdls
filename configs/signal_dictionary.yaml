@@ -189,8 +189,8 @@ exposure_category:
   # Definition: Residential, commercial, industrial and public-service buildings
   buildings:
     patterns:
-      - '\b(building|dwelling)\b'
-      - '\b(house|housing|residential)\b'
+      - '\b(buildings?|dwellings?)\b'
+      - '\b(houses?|housing|residential)\b'
       - '\b(commercial.?building|industrial.?building)\b'
       - '\b(public.?service.?building|governmental.?building)\b'
       - '\b(footprint|building.?stock|floor.?area)\b'
@@ -202,9 +202,9 @@ exposure_category:
   infrastructure:
     patterns:
       # Transport
-      - '\b(infrastructure|road|highway|street)\b'
-      - '\b(bridge|railway|rail.?line|train)\b'
-      - '\b(airport|port|harbor|terminal)\b'
+      - '\b(infrastructure|roads?|highways?|streets?)\b'
+      - '\b(bridges?|railways?|rail.?lines?|trains?)\b'
+      - '\b(airports?|ports?|harbors?|terminals?)\b'
       # Communications
       - '\b(telecom|communication.?tower|cell.?tower)\b'
       - '\b(fibre|fiber.?optic|broadband)\b'
@@ -388,7 +388,7 @@ spatial_scale:
   urban:
     patterns:
       - '\b(city|urban|metropolitan)\b'
-      - '\b(town|settlement|municipality)\b'
+      - '\b(towns?|settlements?|municipalities?)\b'
     confidence: medium
 
 # -----------------------------------------------------------------------------

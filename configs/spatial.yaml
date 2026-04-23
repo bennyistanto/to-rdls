@@ -60,6 +60,17 @@ country_name_fixes:
   "cape verde": CPV
   "micronesia": FSM
   "micronesia (federated states of)": FSM
+  "micronesia, federated states of": FSM
+  # Pacific Island countries
+  "cook islands": COK
+  "samoa": WSM
+  "american samoa": ASM
+  "tuvalu": TUV
+  "marshall islands": MHL
+  "nauru": NRU
+  "niue": NIU
+  "palau": PLW
+  "tokelau": TKL
   "brunei": BRN
   "brunei darussalam": BRN
   "turkiye": TUR
@@ -112,6 +123,22 @@ country_name_fixes:
 non_country_groups:
   - world
   - global
+  # Broad region names from GeoNode (not countries)
+  - asia
+  - east asia
+  - south asia
+  - southeast asia
+  - pacific
+  - australia
+  - oceania
+  - africa
+  - europe
+  - north america
+  - south america
+  - central america
+  - caribbean
+  - middle east
+  - central asia
 
 # ---------------------------------------------------------------------------
 # Region → member ISO3 country codes
