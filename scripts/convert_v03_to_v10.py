@@ -222,9 +222,22 @@ def convert_sources_to_lineage(dataset: dict) -> None:
     converted = []
     for src in sources:
         new_src = {"id": src.get("id", "")}
-        for field in ("name", "url", "type", "license"):
+        for field in ("name", "url", "type"):
             if field in src and not is_empty(src[field]):
                 new_src[field] = src[field]
+        # license on sources: convert code to URL same as dataset-level license
+        src_lic = src.get("license")
+        if src_lic and not is_empty(src_lic):
+            if src_lic.startswith("http"):
+                new_src["license"] = src_lic
+            else:
+                mapped = LICENSE_URL_MAP.get(src_lic)
+                if mapped:
+                    new_src["license"] = mapped
+                elif src_lic.lower() in ("unknown", "unspecified", "n/a"):
+                    pass  # omit unknown licenses rather than flagging
+                else:
+                    new_src["license"] = f"[TODO: replace '{src_lic}' with full license URL]"
         # v0.3 'component' -> v1.0 'used_in'
         component = src.get("component")
         if component and not is_empty(component):
@@ -522,11 +535,29 @@ def convert_loss(dataset: dict) -> None:
         # flat hazard_type + hazard_process -> nested hazard object
         h_type = pop_if(loss_item, "hazard_type")
         h_proc = pop_if(loss_item, "hazard_process")
+        # intensity_measure is REQUIRED on loss.hazard in v1.0 schema (via Hazard.$defs)
+        # v0.3 loss records rarely carried it -- flag for human review if absent
+        existing_hazard = loss_item.get("hazard", {})
+        h_imt = pop_if(loss_item, "intensity_measure")  # may have been on loss_item directly
+        if not h_imt:
+            h_imt = existing_hazard.get("intensity_measure")  # or already nested
+
         if h_type and not is_empty(h_type):
             hazard_obj = {"type": h_type}
             if h_proc and not is_empty(h_proc):
                 hazard_obj["process"] = h_proc
+            if h_imt and not is_empty(h_imt):
+                hazard_obj["intensity_measure"] = h_imt
+            else:
+                hazard_obj["intensity_measure"] = (
+                    f"[TODO: add intensity_measure for hazard type '{h_type}' "
+                    f"(e.g. PGA:g for earthquake, wd:m for flood) - required by v1.0 schema]"
+                )
             loss_item["hazard"] = hazard_obj
+        elif existing_hazard and "intensity_measure" not in existing_hazard:
+            existing_hazard["intensity_measure"] = (
+                "[TODO: add intensity_measure - required by v1.0 schema]"
+            )
 
         # flat quantity_kind/currency in impact_and_losses -> measurement
         ial = loss_item.get("impact_and_losses", {})
@@ -583,6 +614,45 @@ def convert_links(dataset: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Field ordering — canonical v1.0 template order
+# ---------------------------------------------------------------------------
+
+# Top-level field order from rdls_template_v1.0.json.
+# Fields not in this list are appended after "loss" and before "links".
+V10_FIELD_ORDER = [
+    "id", "title", "description", "risk_data_type",
+    "publisher", "version", "purpose", "project", "details",
+    "contact_point", "creator",
+    "spatial", "spatial_resolution", "temporal", "temporal_resolution",
+    "license", "attributions", "lineage", "referenced_by", "resources",
+    "hazard", "exposure", "vulnerability", "loss",
+    "links",
+]
+
+
+def reorder_fields(ds: dict) -> dict:
+    """Return a new dict with keys in V10_FIELD_ORDER.
+
+    Keys in ds but not in V10_FIELD_ORDER are inserted between 'loss' and 'links'
+    so that 'links' is always last and nothing is silently dropped.
+    """
+    known = set(V10_FIELD_ORDER)
+    extra = [k for k in ds if k not in known]
+
+    ordered: dict = {}
+    for key in V10_FIELD_ORDER:
+        if key == "links":
+            # Insert any unknown keys just before links
+            for ek in extra:
+                if ek in ds:
+                    ordered[ek] = ds[ek]
+        if key in ds:
+            ordered[key] = ds[key]
+
+    return ordered
+
+
+# ---------------------------------------------------------------------------
 # Main conversion pipeline
 # ---------------------------------------------------------------------------
 
@@ -606,6 +676,7 @@ def convert_dataset(dataset: dict) -> dict:
     pop_if(ds, "license_url")               # 11. remove v0.3-only field
 
     ds = clean_empty(ds)
+    ds = reorder_fields(ds)                 # 12. enforce canonical v1.0 field order
     return ds
 
 
@@ -658,6 +729,7 @@ def main():
         print("  [ ] multi-format data_format values (split into separate resources)")
         print("  [ ] ZIP resources (use inner format media_type)")
         print("  [ ] unrecognised data_format values")
+        print("  [ ] loss.hazard.intensity_measure missing (required by v1.0 schema)")
         print()
         print("v1.0-only fields not auto-populated (add manually if applicable):")
         print("  [ ] resource.climate (model, scenario, percentile)")
