@@ -3,14 +3,31 @@ RDLS v1.0 Metadata Validator
 =============================
 Three-layer validation for RDLS JSON metadata files:
   Layer 1: JSON Schema validation (structure, types, required fields)
+            Uses Draft7Validator + FormatChecker to match rdl-standard schema draft.
   Layer 2: Codelist validation (values against CSV codelists)
-  Layer 3: Semantic / cross-field validation (activation rules, triplets)
+            Checks closed codelists as errors; open codelists as warnings.
+            Covers: risk_data_type, spatial.scale, spatial.countries, attributions.role,
+            lineage.sources.type, resources.*.climate.scenario, resources.*.spatial.*,
+            hazard event_set fields, exposure category+dimension+asset_type.scheme,
+            vulnerability function fields (all 4 types: approach, relationship,
+            hazard_analysis_type, category, impact.type, impact.modelling, impact.metric,
+            taxonomy, damage_scale_name), loss asset_category, asset_dimension,
+            impact_and_losses fields.
+  Layer 3: Semantic / cross-field validation
+            Rule 1: hazard.type -> valid process values
+            Rule 2: hazard.type -> valid intensity_measure (open, warning only)
+            Rule 3: measurement.quantity_kind -> valid unit
+            Rule 4: spatial.scale -> countries requirement (national/sub-national/urban: >= 1)
+            Rule 5: event_set.analysis_type -> event.occurrence key matches
+            Rule 6: publisher/creator/contact_point/attribution entity must have name + email/url
+            Rule 7: risk_data_type -> corresponding section must be present
+            Rule 8: resource.climate.scenario -> resource.baseline_period should be present
 
 Usage:
     python scripts/validate_v1.0.py <metadata.json> [--schema <schema.json>] [--codelists <dir>]
 
 Defaults:
-    --schema    : schema/rdls_schema_v1.0.json (relative to repo root)
+    --schema    : rdls_schema.json from sibling rdl-standard repo (falls back to schema/rdls_schema_v1.0.json)
     --codelists : ../rdl-standard/schema/codelists (local rdl-standard clone)
 """
 
@@ -163,14 +180,18 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 
 def validate_layer1_schema(data: dict, schema: dict, result: ValidationResult):
-    """Standard JSON Schema validation using jsonschema library."""
+    """Standard JSON Schema validation using jsonschema library.
+
+    Uses Draft7Validator to match the rdl-standard schema (JSON Schema Draft 7).
+    FormatChecker is required for 'date' and 'iri' format validation.
+    """
     try:
-        from jsonschema import Draft202012Validator, FormatChecker
+        from jsonschema import Draft7Validator, FormatChecker
     except ImportError:
         result.warning("schema", "(root)", "jsonschema library not installed — skipping Layer 1. Install with: pip install jsonschema")
         return
 
-    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    validator = Draft7Validator(schema, format_checker=FormatChecker())
     for err in validator.iter_errors(data):
         path = " -> ".join(str(p) for p in err.absolute_path) if err.absolute_path else "(root)"
         result.error("schema", path, err.message[:500])
@@ -211,20 +232,52 @@ CODELIST_CHECKS = [
     # Exposure
     ("exposure.*.category", "exposure_category.csv", "exposure category"),
     ("exposure.*.metrics.*.dimension", "metric_dimension.csv", "metric dimension"),
+    ("exposure.*.asset_type.scheme", "classification_scheme.csv", "asset type classification scheme"),
 
-    # Vulnerability functions
+    # Resource spatial (same rules as dataset.spatial)
+    ("resources.*.spatial.scale", "spatial_scale.csv", "resource spatial scale"),
+    ("resources.*.spatial.countries.*", "country.csv", "resource country code"),
+
+    # Vulnerability functions -- all four types share $ref: Function (same base schema)
+    # impact.type / impact.modelling / impact.metric are NESTED under impact object (v1.0)
+    # Closed codelists: approach, relationship, hazard_analysis_type, category, impact.type, impact.modelling
+    # Open codelists:   impact.metric, taxonomy, damage_scale_name
     ("vulnerability.functions.vulnerability.*.approach", "function_approach.csv", "function approach"),
     ("vulnerability.functions.vulnerability.*.relationship", "relationship_type.csv", "relationship type"),
     ("vulnerability.functions.vulnerability.*.hazard_analysis_type", "analysis_type.csv", "analysis type"),
     ("vulnerability.functions.vulnerability.*.category", "exposure_category.csv", "exposure category"),
-    ("vulnerability.functions.vulnerability.*.impact_type", "impact_type.csv", "impact type"),
-    ("vulnerability.functions.vulnerability.*.impact_modelling", "data_calculation_type.csv", "impact modelling"),
+    ("vulnerability.functions.vulnerability.*.impact.type", "impact_type.csv", "impact type"),
+    ("vulnerability.functions.vulnerability.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
+    ("vulnerability.functions.vulnerability.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.vulnerability.*.taxonomy", "classification_scheme.csv", "taxonomy"),
     ("vulnerability.functions.fragility.*.approach", "function_approach.csv", "function approach"),
     ("vulnerability.functions.fragility.*.relationship", "relationship_type.csv", "relationship type"),
+    ("vulnerability.functions.fragility.*.hazard_analysis_type", "analysis_type.csv", "analysis type"),
+    ("vulnerability.functions.fragility.*.category", "exposure_category.csv", "exposure category"),
+    ("vulnerability.functions.fragility.*.impact.type", "impact_type.csv", "impact type"),
+    ("vulnerability.functions.fragility.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
+    ("vulnerability.functions.fragility.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.fragility.*.taxonomy", "classification_scheme.csv", "taxonomy"),
+    ("vulnerability.functions.fragility.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
+    # damage_to_loss and engineering_demand share same Function base -- all Function fields apply
     ("vulnerability.functions.damage_to_loss.*.approach", "function_approach.csv", "function approach"),
     ("vulnerability.functions.damage_to_loss.*.relationship", "relationship_type.csv", "relationship type"),
+    ("vulnerability.functions.damage_to_loss.*.hazard_analysis_type", "analysis_type.csv", "analysis type"),
+    ("vulnerability.functions.damage_to_loss.*.category", "exposure_category.csv", "exposure category"),
+    ("vulnerability.functions.damage_to_loss.*.impact.type", "impact_type.csv", "impact type"),
+    ("vulnerability.functions.damage_to_loss.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
+    ("vulnerability.functions.damage_to_loss.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.damage_to_loss.*.taxonomy", "classification_scheme.csv", "taxonomy"),
+    ("vulnerability.functions.damage_to_loss.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
     ("vulnerability.functions.engineering_demand.*.approach", "function_approach.csv", "function approach"),
     ("vulnerability.functions.engineering_demand.*.relationship", "relationship_type.csv", "relationship type"),
+    ("vulnerability.functions.engineering_demand.*.hazard_analysis_type", "analysis_type.csv", "analysis type"),
+    ("vulnerability.functions.engineering_demand.*.category", "exposure_category.csv", "exposure category"),
+    ("vulnerability.functions.engineering_demand.*.impact.type", "impact_type.csv", "impact type"),
+    ("vulnerability.functions.engineering_demand.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
+    ("vulnerability.functions.engineering_demand.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.engineering_demand.*.taxonomy", "classification_scheme.csv", "taxonomy"),
+    ("vulnerability.functions.engineering_demand.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
 
     # Loss
     ("loss.losses.*.asset_category", "exposure_category.csv", "asset category"),
@@ -299,7 +352,8 @@ TYPE_TO_PROCESS = {
     "coastal_flood": {"coastal_flood", "storm_surge"},
     "convective_storm": {"tornado", "lightning", "thunderstorm", "hail"},
     "drought": {"agricultural_drought", "hydrological_drought", "meteorological_drought", "socioeconomic_drought"},
-    "earthquake": {"primary_rupture", "secondary_rupture", "ground_motion", "liquefaction", "subsidence_uplift"},
+    # process_type.csv has "rupture" (singular). Schema conditional also uses "rupture".
+    "earthquake": {"rupture", "ground_motion", "liquefaction", "subsidence_uplift"},
     "erosion": {"coastal_erosion", "soil_erosion"},
     "extreme_temperature": {"extreme_cold", "extreme_heat"},
     "flood": {"fluvial_flood", "pluvial_flood", "groundwater_flood", "coastal_flood", "glacial_lake_outburst"},
@@ -400,13 +454,13 @@ def _collect_measurement_objects(data: dict) -> list[tuple[str, dict]]:
             if m:
                 measurements.append((f"exposure[{i}].metrics[{j}].measurement", m))
 
-    # Vulnerability functions
+    # Vulnerability functions -- measurement is nested under impact.measurement (v1.0)
     for func_type in ["vulnerability", "fragility", "damage_to_loss", "engineering_demand"]:
         funcs = data.get("vulnerability", {}).get("functions", {}).get(func_type, [])
         for i, fn in enumerate(funcs):
-            m = fn.get("impact_measurement", {})
+            m = fn.get("impact", {}).get("measurement", {})
             if m:
-                measurements.append((f"vulnerability.functions.{func_type}[{i}].impact_measurement", m))
+                measurements.append((f"vulnerability.functions.{func_type}[{i}].impact.measurement", m))
 
     # Loss
     for i, loss in enumerate(data.get("loss", {}).get("losses", [])):
@@ -475,10 +529,12 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
                         )
 
     # --- RULE 4: scale -> countries ---
-    _check_scale_countries(data, "spatial", result)
+    # Pass the spatial sub-object directly (not the parent dict)
+    if "spatial" in data:
+        _check_scale_countries(data["spatial"], "spatial", result)
     for i, res in enumerate(data.get("resources", [])):
         if "spatial" in res:
-            _check_scale_countries(res, f"resources[{i}].spatial", result)
+            _check_scale_countries(res["spatial"], f"resources[{i}].spatial", result)
 
     # --- RULE 5: analysis_type -> occurrence ---
     for i, es in enumerate(data.get("hazard", {}).get("event_sets", [])):
@@ -539,16 +595,12 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
             )
 
 
-def _check_scale_countries(obj: dict, path_prefix: str, result: ValidationResult):
-    """RULE 4: Validate scale -> countries requirement."""
-    spatial = obj.get("spatial", obj) if "spatial" not in path_prefix else obj
-    if "spatial" in obj and path_prefix.endswith("spatial"):
-        spatial = obj
-    elif "spatial" in obj:
-        spatial = obj["spatial"]
-    else:
-        spatial = obj
+def _check_scale_countries(spatial: dict, path_prefix: str, result: ValidationResult):
+    """RULE 4: Validate scale -> countries requirement.
 
+    Receives the spatial sub-object directly (not the parent dict).
+    path_prefix is used in error messages (e.g. 'spatial' or 'resources[0].spatial').
+    """
     scale = spatial.get("scale")
     countries = spatial.get("countries", [])
 

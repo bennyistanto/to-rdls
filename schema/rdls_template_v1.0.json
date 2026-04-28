@@ -1,5 +1,5 @@
 {
-  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints. Last updated: 2026-04-23 against rdl-standard 1.0-dev branch schema.",
+  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints. Last updated: 2026-04-24 against rdl-standard 1.0-dev branch schema. Fixes: impact_metric codelist corrected (open codelist, not stale enum); exposure.metrics.dimension now includes 'index'; attribution role examples corrected (publisher/creator/contact_point are top-level fields, not roles); impact.metric examples updated to current codelist codes.",
   "_legend": {
     "REQUIRED": "Field must be present",
     "optional": "Field may be omitted",
@@ -205,7 +205,8 @@
         "_req": "optional (array, min 1 item if present)",
         "_item": {
           "id":   "{string}  REQUIRED",
-          "role": "{open:roles.csv — e.g. publisher|creator|contact_point|funder|processor|principal_investigator}  REQUIRED",
+          "role": "{open:roles.csv — e.g. author|funder|processor|principal_investigator|custodian|collaborator|contributor}  REQUIRED",
+          "_role_note": "publisher/creator/contact_point are top-level Entity fields, NOT valid attribution roles. Valid roles from roles.csv include: world_bank_team_lead, resource_provider, custodian, owner, user, distributor, principal_investigator, processor, author, sponsor, co_author, collaborator, editor, mediator, rights_holder, contributor, funder, stakeholder",
           "entity": {
             "_req": "REQUIRED",
             "name":  "{string}  REQUIRED",
@@ -416,7 +417,7 @@
             "_req": "REQUIRED (array, min 1 item)",
             "_item": {
               "id":        "{string}  REQUIRED",
-              "dimension": "{enum:structure|content|product|disruption|population}  REQUIRED",
+              "dimension": "{enum:structure|content|product|disruption|population|index}  REQUIRED",
               "measurement": {
                 "_req": "REQUIRED",
                 "quantity_kind": "{open:quantity_kind.csv — e.g. area|count|currency|dimensionless_ratio|length|mass|mass_per_area|time|volume|energy}  optional",
@@ -461,7 +462,7 @@
                 "_req": "optional — nested Impact object (type/modelling/metric/measurement are sub-fields, NOT top-level on function)",
                 "type":       "{enum:direct|indirect|total}  optional",
                 "modelling":  "{enum:inferred|observed|simulated}  optional",
-                "metric":     "{open:impact_metric.csv — e.g. damage_ratio|mean_damage_ratio|probability|loss_ratio}  optional",
+                "metric":     "{open:impact_metric.csv — e.g. damage_ratio|mean_damage_ratio|probability|loss_ratio_vulnerability|loss_ratio_loss|economic_loss_value|casualty_count}  optional",
                 "measurement": {
                   "_req": "optional",
                   "quantity_kind": "{open:quantity_kind.csv}  optional",
@@ -487,7 +488,7 @@
                 "_req": "optional — nested Impact object",
                 "type":       "{enum:direct|indirect|total}  optional",
                 "modelling":  "{enum:inferred|observed|simulated}  optional",
-                "metric":     "{open:impact_metric.csv}  optional",
+                "metric":     "{open:impact_metric.csv — e.g. damage_ratio|mean_damage_ratio|probability|loss_ratio_vulnerability|loss_ratio_loss|economic_loss_value|casualty_count}  optional",
                 "measurement": {
                   "_req": "optional",
                   "quantity_kind": "{open:quantity_kind.csv}  optional",
@@ -560,7 +561,7 @@
               "_note": "Schema inconsistency: 'required' array lists flat field names (impact_type, impact_modelling, impact_metric, measurement) but 'properties' only defines nested 'impact' + loss_type/approach/frequency_type. Use flat field names as listed here — they are what the JSON Schema validator enforces. The nested 'impact' object is defined in properties but its subfields are not required.",
               "impact_type":      "{enum:direct|indirect|total}  REQUIRED",
               "impact_modelling": "{enum:inferred|observed|simulated}  REQUIRED",
-              "impact_metric":    "{enum:damage_ratio|mean_damage_ratio|probability|damage_index|affected_population|fatalities|injuries|displaced|homeless|non_residential_damage|residential_damage|crop_loss|livestock_loss|infrastructure_damage|economic_loss|insured_loss|business_interruption|downtime_loss|loss_ratio}  REQUIRED",
+              "impact_metric":    "{open:impact_metric.csv — e.g. economic_loss_value|insured_loss_value|loss_ratio_loss|casualty_count|fatality_count|displaced_count|loss_annual_average_value|loss_probable_maximum_value|asset_loss|damage_ratio|downtime_loss|disruption_days}  REQUIRED",
               "measurement": {
                 "_req": "REQUIRED",
                 "quantity_kind": "{open:quantity_kind.csv}  optional",
@@ -577,7 +578,7 @@
 
       "links": [
         {
-          "href": "https://docs.riskdatalibrary.org/en/0__2__0/rdls_schema.json  REQUIRED",
+          "href": "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json  REQUIRED",
           "rel":  "describedby  REQUIRED"
         }
       ]
