@@ -1,21 +1,38 @@
 # RDLS Validate
 
-Validate one or more RDLS records against the RDLS v0.3 JSON Schema.
+Validate one or more RDLS records against the JSON Schema (auto-detects v0.3 or v1.0 from the `links` field).
 
 ## Input
 $ARGUMENTS - path to a JSON file (single record or array) or a directory of JSON files
 
+## Schema detection
+- v1.0: `links[].href` contains `1__0__0` -> use `rdl-standard/schema/rdls_schema.json`
+- v0.3: `links[].href` contains `0__3__0` or no links -> use `schema/rdls_schema_v0.3.json`
+- Codelists for v1.0: load via `from src.codelists import load_codelists_v10` (reads rdl-standard CSVs)
+- Codelists for v0.3: load from `configs/rdls_schema.yaml`
+
+## Known schema quirk (v1.0)
+The local `rdl-standard/schema/rdls_schema.json` has `links.href const: "0__2__0"` - a dev placeholder.
+Our files correctly use `1__0__0`. Patch the schema before validating:
+```python
+href_node = schema["properties"]["links"]["prefixItems"][0]["properties"]["href"]
+if href_node.get("const", "").endswith("0__2__0/rdls_schema.json"):
+    href_node["const"] = "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json"
+```
+
 ## Instructions
 
-1. Locate the RDLS schema. Check these locations in order:
-   - `to-rdls/configs/rdls_schema.yaml` (project schema config)
-   - `{output_dir}/rdls/schema/` or `to-rdls/schema/` (schema directory)
-   - Ask the user if not found
+1. Detect schema version from the record's `links` field. Load appropriate schema.
 
 2. Load and validate each record. For each, check:
    - **Schema compliance**: All required fields present, correct types, valid enum values
-   - **Codelist compliance**: `hazard_type`, `process_type`, `exposure_category`, `risk_data_type` match closed codelists
-   - **Constraint compliance**: process_type matches hazard_type, metric_dimension valid for exposure_category
+   - **Codelist compliance (v1.0)**: validate against live CSV codelists via `src.codelists`
+     - `hazard_type`: `VALID_HAZARD_TYPES`
+     - `exposure[].category`: `VALID_EXPOSURE_CATEGORIES`
+     - `exposure[].metrics[].measurement.unit`: must be in `VALID_UNIT_CODES` (not an abbreviation like `m` or `ha`)
+     - `lineage.sources[].type`: `VALID_SOURCE_TYPES` (dataset|model)
+   - **Codelist compliance (v0.3)**: `hazard_type`, `process_type`, `exposure_category`, `risk_data_type`
+   - **Constraint compliance**: process matches hazard type, metric_dimension valid for exposure_category
    - **Completeness**: Which optional but recommended fields are missing
 
 3. Report results:

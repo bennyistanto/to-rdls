@@ -5,16 +5,39 @@ Includes SchemaContext - a class that bundles all schema-derived lookup
 structures (enum values, field aliases, required fields, allowed properties)
 built once from the JSON schema.
 
-Source-independent - works with any RDLS v0.3 JSON schema.
+Source-independent - works with any RDLS version JSON schema.
+v1.0 codelist utilities (normalise_unit, normalise_source_type, load_codelists_v10)
+are provided here as re-exports from src.codelists (the authoritative source).
 """
 
 import json
 from difflib import get_close_matches
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 from .utils import load_json, load_yaml
-
+from .codelists import (  # re-export v1.0 codelist utilities from src/codelists.py
+    load_codelists_v10,
+    normalise_unit,
+    normalise_source_type,
+    is_valid_unit,
+    get_unit_for_quantity_kind,
+    VALID_UNIT_CODES,
+    VALID_CURRENCY_CODES,
+    VALID_QUANTITY_KINDS,
+    VALID_SOURCE_TYPES,
+    VALID_HAZARD_TYPES,
+    VALID_EXPOSURE_CATEGORIES,
+    VALID_ANALYSIS_TYPES,
+    VALID_IMPACT_TYPES,
+    VALID_RISK_DATA_TYPES,
+    VALID_MEDIA_TYPES,
+    VALID_PROCESS_TYPES,
+    VALID_LOSS_TYPES,
+    VALID_METRIC_DIMENSIONS,
+    VALID_CLIMATE_SCENARIOS,
+    VALID_SPATIAL_SCALES,
+)
 
 # ---------------------------------------------------------------------------
 # Schema loading

@@ -10,7 +10,7 @@
 #   python -m src.hdx_review \
 #     --dist-dir "path/to/rdls/dist" \
 #     --metadata-dir "path/to/dataset_metadata" \
-#     --output-dir output/hdx
+#     --output-dir output/hdx/review
 #
 # Benny Istanto, GOST/DEC Data Group/The World Bank
 
@@ -850,8 +850,8 @@ def main():
         help="Path to dataset_metadata/ folder containing raw HDX JSONs",
     )
     parser.add_argument(
-        "--output-dir", default="output/hdx",
-        help="Output directory for revised records and reports (default: output/hdx)",
+        "--output-dir", default="output/hdx/review",
+        help="Output directory for revised records and reports (default: output/hdx/review)",
     )
     parser.add_argument(
         "--tiers", nargs="+", default=None,

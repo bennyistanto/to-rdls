@@ -7,7 +7,7 @@ names without downloading any data files.
 Usage:
     python -m src.ckan_columns \\
         --metadata-dir path/to/dataset_metadata \\
-        --cache-dir output/column_cache \\
+        --cache-dir output/hdx/column_cache \\
         [--max-datasets 100] [--api-key KEY] [--stats-only]
 """
 
@@ -559,8 +559,8 @@ def main():
         help="Path to HDX dataset_metadata directory",
     )
     parser.add_argument(
-        "--cache-dir", default="output/column_cache",
-        help="Path to column cache directory (default: output/column_cache)",
+        "--cache-dir", default="output/hdx/column_cache",
+        help="Path to column cache directory (default: output/hdx/column_cache)",
     )
     parser.add_argument(
         "--max-datasets", type=int, default=None,

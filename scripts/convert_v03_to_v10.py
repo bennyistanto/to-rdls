@@ -23,6 +23,8 @@ Automatic conversions:
   - date_published YYYY or YYYY-MM -> YYYY-MM-DD
   - links href -> updated to v1.0 URL
   - license_url -> removed
+  - measurement.unit informal abbreviations (m, m2, ha, km, ...) normalised to
+    exact codelist codes from codelists/open/unit_*.csv (e.g. metre, square_metre, hectare)
 
 Fields marked [TODO] in output (require human review):
   - license codes not in the known mapping table
@@ -36,6 +38,12 @@ import re
 import sys
 import copy
 from pathlib import Path
+
+# Add project root to path so src/ package is importable
+_SCRIPT_DIR = Path(__file__).parent
+_PROJECT_ROOT = _SCRIPT_DIR.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -156,6 +164,16 @@ LICENSE_URL_MAP = {
     "PDDL":            "https://opendatacommons.org/licenses/pddl/1-0/",
     # "open" is a placeholder -- treated as CC-BY-4.0 (academic default)
     "open":            "https://creativecommons.org/licenses/by/4.0/",
+    # MIT License (common for open-source model code used as data source)
+    "MIT":             "https://opensource.org/licenses/MIT",
+    "MIT License":     "https://opensource.org/licenses/MIT",
+    # Creative Commons v3
+    "CC-BY-3.0":       "https://creativecommons.org/licenses/by/3.0/",
+    "CC-BY-SA-3.0":    "https://creativecommons.org/licenses/by-sa/3.0/",
+    "CC-BY-NC-3.0":    "https://creativecommons.org/licenses/by-nc/3.0/",
+    # Public domain declarations
+    "Public Domain":   "https://creativecommons.org/publicdomain/zero/1.0/",
+    "public domain":   "https://creativecommons.org/publicdomain/zero/1.0/",
 }
 
 # quantity_kind normalisation -- v0.3 used non-standard values
@@ -165,6 +183,47 @@ QUANTITY_KIND_NORM = {
     "percentage":   "dimensionless_ratio",
     "dimensionless":"dimensionless_ratio",
 }
+
+
+# ---------------------------------------------------------------------------
+# Codelist utilities - imported from src/codelists.py (single source of truth)
+# ---------------------------------------------------------------------------
+from src.codelists import (
+    load_codelists_v10,
+    normalise_unit        as _normalise_unit,
+    normalise_source_type as _normalise_source_type,
+    VALID_UNIT_CODES, VALID_CURRENCY_CODES, VALID_QUANTITY_KINDS,
+    VALID_SOURCE_TYPES, VALID_HAZARD_TYPES, VALID_EXPOSURE_CATEGORIES,
+    VALID_ANALYSIS_TYPES, VALID_IMPACT_TYPES, VALID_RISK_DATA_TYPES,
+    VALID_MEDIA_TYPES,
+)
+
+# Converter-local wrappers add context strings to warnings
+def normalise_unit(unit: str, context: str = "") -> str:
+    result = _normalise_unit(unit)
+    if result == unit and unit and not _is_known_unit(unit):
+        ctx = f" [{context}]" if context else ""
+        print(f"  WARN{ctx}: unit '{unit}' not in any unit_*.csv codelist -- passing through",
+              file=sys.stderr)
+    return result
+
+def _is_known_unit(unit: str) -> bool:
+    """True if unit is a valid code, a normalise-able abbreviation, or a currency code."""
+    from src.codelists import UNIT_NORMALISE
+    return (unit in VALID_UNIT_CODES
+            or unit in UNIT_NORMALISE
+            or unit.lower() in UNIT_NORMALISE
+            or (VALID_CURRENCY_CODES and unit in VALID_CURRENCY_CODES)
+            or (not VALID_CURRENCY_CODES and bool(__import__('re').fullmatch(r'[A-Z]{3}', unit))))
+
+def normalise_source_type(stype: str, context: str = "") -> str:
+    result = _normalise_source_type(stype)
+    if result == stype and stype and VALID_SOURCE_TYPES and stype not in VALID_SOURCE_TYPES:
+        ctx = f" [{context}]" if context else ""
+        valid = ", ".join(sorted(VALID_SOURCE_TYPES))
+        print(f"  WARN{ctx}: source type '{stype}' not in source_type.csv (valid: {valid})",
+              file=sys.stderr)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -222,9 +281,13 @@ def convert_sources_to_lineage(dataset: dict) -> None:
     converted = []
     for src in sources:
         new_src = {"id": src.get("id", "")}
-        for field in ("name", "url", "type"):
+        for field in ("name", "url"):
             if field in src and not is_empty(src[field]):
                 new_src[field] = src[field]
+        if "type" in src and not is_empty(src["type"]):
+            new_src["type"] = normalise_source_type(
+                src["type"], context=f"source {src.get('id', src.get('name', ''))}"
+            )
         # license on sources: convert code to URL same as dataset-level license
         src_lic = src.get("license")
         if src_lic and not is_empty(src_lic):
@@ -234,8 +297,13 @@ def convert_sources_to_lineage(dataset: dict) -> None:
                 mapped = LICENSE_URL_MAP.get(src_lic)
                 if mapped:
                     new_src["license"] = mapped
-                elif src_lic.lower() in ("unknown", "unspecified", "n/a"):
-                    pass  # omit unknown licenses rather than flagging
+                elif src_lic.lower() in (
+                    "unknown", "unspecified", "n/a",
+                    # Ambiguous / non-URL-mappable: omit rather than flag
+                    "open access", "open source", "various", "public",
+                    "proprietary", "varies by country",
+                ) or src_lic.lower().startswith("mixed "):
+                    pass  # omit ambiguous licenses rather than flagging
                 else:
                     new_src["license"] = f"[TODO: replace '{src_lic}' with full license URL]"
         # v0.3 'component' -> v1.0 'used_in'
@@ -334,23 +402,30 @@ def convert_resources(dataset: dict) -> None:
 
 def extract_top_level_entities(dataset: dict) -> None:
     """Extract publisher/creator/contact_point from attributions to top-level fields.
-    Removes those entries from the attributions array (they are not valid role codes).
+
+    The first occurrence of each of these three roles is promoted to a top-level
+    Entity field (publisher, creator, contact_point). Any additional entries with
+    the same role stay in the attributions array so they are not lost.
+    Other roles (funder, collaborator, etc.) always stay in attributions.
     """
     attributions = dataset.get("attributions", [])
-    role_map: dict[str, dict] = {}
+    promoted: set[str] = set()
     remaining = []
 
     for attr in attributions:
         role = attr.get("role", "")
         entity = attr.get("entity", {})
         if role in ("publisher", "creator", "contact_point") and entity:
-            role_map.setdefault(role, copy.deepcopy(entity))
+            if role not in promoted and role not in dataset:
+                # First occurrence of this role: promote to top-level field
+                dataset[role] = copy.deepcopy(entity)
+                promoted.add(role)
+                # Do not add to remaining - it has been lifted to a named field
+            else:
+                # Additional occurrence: keep in attributions
+                remaining.append(attr)
         else:
             remaining.append(attr)
-
-    for role in ("publisher", "creator", "contact_point"):
-        if role in role_map and role not in dataset:
-            dataset[role] = role_map[role]
 
     if remaining:
         dataset["attributions"] = remaining
@@ -413,7 +488,9 @@ def convert_exposure(dataset: dict) -> None:
             if qk and not is_empty(qk):
                 measurement = {"quantity_kind": normalise_quantity_kind(qk)}
                 if currency and not is_empty(currency):
-                    measurement["unit"] = currency
+                    measurement["unit"] = normalise_unit(
+                        currency, context=f"exposure metric {metric.get('id', '')}"
+                    )
                 metric["measurement"] = measurement
 
 
@@ -566,7 +643,9 @@ def convert_loss(dataset: dict) -> None:
         if qk and not is_empty(qk):
             measurement = {"quantity_kind": normalise_quantity_kind(qk)}
             if currency and not is_empty(currency):
-                measurement["unit"] = currency
+                measurement["unit"] = normalise_unit(
+                    currency, context="loss impact_and_losses"
+                )
             ial["measurement"] = measurement
 
         pop_if(loss_item, "lineage")
@@ -723,6 +802,8 @@ def main():
         print("  [x] date_published YYYY/YYYY-MM -> YYYY-MM-DD")
         print("  [x] links href updated to v1.0 schema URL")
         print("  [x] license_url removed")
+        print("  [x] measurement.unit normalised to codelists/open/unit_*.csv codes")
+        print("      (e.g. 'm' -> 'metre', 'm2' -> 'square_metre', 'ha' -> 'hectare')")
         print()
         print("Fields marked [TODO] in output (require human review):")
         print("  [ ] unknown license codes")

@@ -14,8 +14,8 @@ Full pipeline context:
     NB 08-13: HEVL signal analysis & extraction (original notebooks)
 
 Prerequisites:
-    1. Regex review completed: output/hdx/revised/ has 12,594 records
-    2. Column cache populated: output/column_cache/ (~57K files)
+    1. Regex review completed: output/hdx/review/revised/ has 12,594 records
+    2. Column cache populated: output/hdx/column_cache/ (~88K files)
     3. Anthropic API key set: ANTHROPIC_API_KEY environment variable
     4. Python environment: conda activate to-rdls
 
@@ -25,17 +25,17 @@ Usage:
     python notebooks/rdls_hdx_llm_review.py
 
 Inputs:
-    - output/hdx/revised/          (12,594 RDLS JSON from regex review)
-    - output/column_cache/         (CKAN column headers, pre-populated)
+    - output/hdx/review/revised/   (12,594 RDLS JSON from regex review)
+    - output/hdx/column_cache/     (CKAN column headers, pre-populated)
     - HDX metadata dump            (26,246 raw HDX metadata files)
     - RDLS schema v0.3             (for final validation)
 
 Outputs:
-    - output/llm/revised/          (8,491 RDLS-relevant records)
-    - output/llm/not_rdls/         (4,103 non-disaster records)
-    - output/llm/dist/high/        (schema-valid records, final)
-    - output/llm/dist/invalid/     (records with schema errors)
-    - output/llm/reports/          (CSVs, JSONL, summaries)
+    - output/hdx/llm/revised/      (8,491 RDLS-relevant records)
+    - output/hdx/llm/not_rdls/     (4,103 non-disaster records)
+    - output/hdx/llm/dist/high/    (schema-valid records, final)
+    - output/hdx/llm/dist/invalid/ (records with schema errors)
+    - output/hdx/llm/reports/      (CSVs, JSONL, summaries)
 
 Cost: ~$22 for 12,594 records (Claude Haiku 4.5, one-time with caching)
 Time: ~25 min (Phase 1: 3s cached, Phase 3: ~22 min)
@@ -63,12 +63,12 @@ sys.path.insert(0, str(PROJECT_DIR))  # ensure src package is importable
 HDX_CRAWLER_DIR = PROJECT_DIR.parent / "hdx-metadata-crawler"
 
 # Input paths
-DIST_DIR = PROJECT_DIR / "output" / "hdx" / "revised"
+DIST_DIR = PROJECT_DIR / "output" / "hdx" / "review" / "revised"
 METADATA_DIR = HDX_CRAWLER_DIR / "hdx_dataset_metadata_dump" / "dataset_metadata"
 SCHEMA_PATH = HDX_CRAWLER_DIR / "hdx_dataset_metadata_dump" / "rdls" / "schema" / "rdls_schema_v0.3.json"
 
 # Output paths
-OUTPUT_DIR = PROJECT_DIR / "output" / "llm"
+OUTPUT_DIR = PROJECT_DIR / "output" / "hdx" / "llm"
 REVISED_DIR = OUTPUT_DIR / "revised"
 NOT_RDLS_DIR = OUTPUT_DIR / "not_rdls"
 DIST_FINAL_DIR = OUTPUT_DIR / "dist"
@@ -128,7 +128,7 @@ print(f"  LLM cost:   ${result.get('llm_cost', 0):.2f}")
 # health indicators, education, gender stats, general development, or
 # humanitarian operations that don't contain disaster risk data.
 #
-# These are moved to `output/llm/not_rdls/` to keep the main output clean.
+# These are moved to `output/hdx/llm/not_rdls/` to keep the main output clean.
 # Domain breakdown (from full run):
 # - other (2,029): education, economy, gender, general development
 # - health (931): disease surveillance, nutrition, health indicators
@@ -351,8 +351,8 @@ print(f"  After LLM review:")
 print(f"    RDLS-relevant:           {n_revised:>6}")
 print(f"    Not-RDLS (separated):    {n_not_rdls:>6}")
 print(f"  After validation:")
-print(f"    Schema-valid (final):    {n_valid:>6}  -> output/llm/dist/high/")
-print(f"    Schema-invalid:          {n_invalid:>6}  -> output/llm/dist/invalid/")
+print(f"    Schema-valid (final):    {n_valid:>6}  -> output/hdx/llm/dist/high/")
+print(f"    Schema-invalid:          {n_invalid:>6}  -> output/hdx/llm/dist/invalid/")
 print()
 print(f"  Reports:  {REPORTS_DIR}")
 print(f"  Guide:    docs/llm_review_guide.md")
@@ -362,11 +362,11 @@ print("=" * 60)
 # # Notes
 #
 # ## Caching
-# - **Phase 1 cache**: `.phase1_cache_*.pkl` in output/llm/ (~370MB).
+# - **Phase 1 cache**: `.phase1_cache_*.pkl` in output/hdx/llm/ (~370MB).
 #   Delete to force re-triage. Auto-invalidates on different dist_dir.
-# - **LLM response cache**: output/llm/cache/ - keyed by prompt hash.
+# - **LLM response cache**: output/hdx/llm_cache/cache/ - keyed by prompt hash.
 #   Re-runs with same records cost $0. Delete to force re-classification.
-# - **Column cache**: output/column_cache/ - keyed by resource ID.
+# - **Column cache**: output/hdx/column_cache/ - keyed by resource ID.
 #   Persistent across all runs. Only populated via `python -m src.ckan_columns`.
 #
 # ## Cost Breakdown (March 2026 run)

@@ -3,10 +3,10 @@ rdls_hdx_sanitize_validate.py
 =================================
 Post-LLM-review pipeline: rebuild, sanitize, and validate RDLS records.
 
-Rebuilds output/llm/revised/ from:
-- output/hdx/revised/ (source records, 12,594 files)
-- output/llm/reports/review_report.csv (LLM decisions: rename, changes, not-RDLS)
-- output/llm/reports/llm_classifications.jsonl (REMOVE operations for changed records)
+Rebuilds output/hdx/llm/revised/ from:
+- output/hdx/review/revised/ (source records, 12,594 files)
+- output/hdx/llm/reports/review_report.csv (LLM decisions: rename, changes, not-RDLS)
+- output/hdx/llm/reports/llm_classifications.jsonl (REMOVE operations for changed records)
 
 Schema-driven sanitization:
 - Strips empty optional fields (author_names, doi, etc.)
@@ -39,8 +39,8 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 HDX_CRAWLER_DIR = PROJECT_DIR.parent / "hdx-metadata-crawler"
 
-INPUT_DIR = PROJECT_DIR / "output" / "hdx" / "revised"  # original source
-OUTPUT_DIR = PROJECT_DIR / "output" / "llm"
+INPUT_DIR = PROJECT_DIR / "output" / "hdx" / "review" / "revised"  # original source
+OUTPUT_DIR = PROJECT_DIR / "output" / "hdx" / "llm"
 REVISED_DIR = OUTPUT_DIR / "revised"
 NOT_RDLS_DIR = OUTPUT_DIR / "not_rdls"
 DIST_FINAL_DIR = OUTPUT_DIR / "dist"
@@ -126,7 +126,7 @@ print(f"\n{'=' * 60}")
 print("  STEP 3: INDEX SOURCE FILES")
 print("=" * 60)
 
-# Index all input files (output/hdx/revised/**/*.json)
+# Index all input files (output/hdx/review/revised/**/*.json)
 source_files = {}
 for fp in INPUT_DIR.rglob("*.json"):
     source_files[fp.stem] = fp

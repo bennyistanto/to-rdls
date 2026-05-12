@@ -10,7 +10,7 @@ Usage:
     python -m src.llm_review \\
         --dist-dir path/to/rdls/dist \\
         --metadata-dir path/to/dataset_metadata \\
-        --output-dir output/llm \\
+        --output-dir output/hdx/llm \\
         [--config configs/llm_review.yaml] \\
         [--dry-run] [--max-records N]
 """
@@ -94,7 +94,7 @@ class ReviewConfig:
     ckan_base_url: str = "https://data.humdata.org/api/3/action"
     ckan_delay: float = 0.5
     ckan_timeout: float = 15.0
-    column_cache_dir: str = "output/column_cache"
+    column_cache_dir: str = "output/hdx/column_cache"
     max_resources_per_dataset: int = 10
     # Phase 3
     llm_model: str = "claude-haiku-4-5-20251001"
@@ -103,7 +103,7 @@ class ReviewConfig:
     llm_max_concurrent: int = 2
     llm_max_retries: int = 5
     llm_timeout: float = 30.0
-    llm_cache_dir: str = "output/llm_review/cache"
+    llm_cache_dir: str = "output/hdx/llm_cache/cache"
     max_cost_usd: float = 15.0
     cost_per_mtok_input: float = 1.00
     cost_per_mtok_output: float = 5.00
@@ -1429,8 +1429,8 @@ def main():
         help="Path to HDX dataset_metadata directory",
     )
     parser.add_argument(
-        "--output-dir", default="output/llm",
-        help="Output directory (default: output/llm)",
+        "--output-dir", default="output/hdx/llm",
+        help="Output directory (default: output/hdx/llm)",
     )
     parser.add_argument(
         "--config", default="configs/llm_review.yaml",

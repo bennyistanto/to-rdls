@@ -193,11 +193,16 @@ def _check_links(ds, prefix, issues):
             f"First link rel must be 'describedby', got '{links[0].get('rel')}'.",
         ))
 
-    expected_schema_href = "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json"
-    if links[0].get("href") != expected_schema_href:
+    valid_schema_hrefs = {
+        "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",  # v0.3
+        "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json",  # v1.0
+    }
+    href = links[0].get("href", "")
+    if href not in valid_schema_hrefs:
         issues.append(SemanticIssue(
             "warning", f"{prefix}.links[0].href".strip("."),
-            f"First link href should be '{expected_schema_href}'.",
+            f"First link href '{href}' is not a recognised RDLS schema URL. "
+            f"Expected '...0__3__0/rdls_schema.json' (v0.3) or '...1__0__0/rdls_schema.json' (v1.0).",
         ))
 
     # Check all link rel values against IANA

@@ -1,5 +1,5 @@
 {
-  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints. Last updated: 2026-04-24 against rdl-standard 1.0-dev branch schema. Fixes: impact_metric codelist corrected (open codelist, not stale enum); exposure.metrics.dimension now includes 'index'; attribution role examples corrected (publisher/creator/contact_point are top-level fields, not roles); impact.metric examples updated to current codelist codes.",
+  "_comment": "RDLS v1.0 Template — Every field annotated with type, requirement level, and constraints. Last updated: 2026-05-01 against rdl-standard schema (commit c7c969a). Changes: loss._item.disaster_identifiers added (new optional field for GLIDE/EM-DAT event identifiers); links.href validation updated to accept both 0__3__0 and 1__0__0; schema $id fixed to 1__0__0 in upstream. Earlier fixes: impact_metric codelist corrected; exposure.metrics.dimension includes 'index'; attribution role examples corrected.",
   "_legend": {
     "REQUIRED": "Field must be present",
     "optional": "Field may be omitted",
@@ -554,6 +554,16 @@
                 "process": "{depends:trigger.type->process_type.csv}  optional  [RULE 1]"
               }
             },
+            "disaster_identifiers": [
+              {
+                "_req": "optional (array, min 1 item if present) - identifiers for the disaster event this loss relates to",
+                "id":          "{string}  REQUIRED — classification code from the scheme (e.g. GLIDE number, EM-DAT ID)",
+                "scheme":      "{open:classification_scheme.csv — e.g. GLIDE|EMDAT}  optional",
+                "title":       "{string}  optional",
+                "description": "{string}  optional",
+                "uri":         "{format:iri}  optional"
+              }
+            ],
             "asset_category":  "{enum:agriculture|buildings|infrastructure|population|natural_environment|economic_indicator|development_index}  REQUIRED",
             "asset_dimension": "{enum:structure|content|product|disruption|population|index}  REQUIRED",
             "impact_and_losses": {

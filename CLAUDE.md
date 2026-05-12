@@ -12,7 +12,12 @@ Pipeline: **Source Crawl → Filter → Classify → Translate → HEVL Extract 
 to-rdls/
 ├── src/                    # Python modules
 │   ├── utils.py            # Text sanitization, file I/O, nested dict navigation
+│   ├── codelists.py        # v1.0 codelist utilities (AUTHORITATIVE): load_codelists_v10(),
+│   │                       #   normalise_unit(), normalise_source_type(), VALID_* sets.
+│   │                       #   Loaded from rdl-standard/schema/codelists/ CSV files.
+│   │                       #   Import: from src.codelists import normalise_unit
 │   ├── schema.py           # JSON Schema loading, validation, SchemaContext
+│   │                       #   Re-exports all of src/codelists.py for convenience
 │   ├── spatial.py          # Country name→ISO3, region expansion, spatial block
 │   ├── classify.py         # Tag-weighted HEVL classification → Classification
 │   ├── translate.py        # Source metadata → base RDLS record builder
@@ -211,13 +216,32 @@ C:/Users/benny/miniforge3/envs/to-rdls/python.exe mcp_server.py
 
 `build_*_block()` functions must return **only** schema-defined fields. Internal state (like `overall_confidence` on dataclasses) stays on the dataclass — NEVER in dict output.
 
-## RDLS v1.0 (GCA climate data only)
+## RDLS v1.0
 
-v1.0 is used exclusively for GCA climate hazard data. Do NOT apply to other datasets. Do NOT break v0.3.
+v1.0 is used for **all published and converted datasets** (Tomorrow Cities, NISMOD, MDG, Mombasa, and future). Do NOT break the v0.3 pipeline (still used for source ingestion).
 
-Key differences: separate top-level `publisher`/`creator`/`contact_point`, `lineage.sources[].name` (not `title`), `media_type`+`format` (not `data_format`), `climate` field on resources.
+Key differences: separate top-level `publisher`/`creator`/`contact_point`, `lineage.sources[].name` (not `title`), `media_type`+`format` (not `data_format`), `measurement.unit` codelist codes, `climate` field on resources.
+
+**Unit values**: always use exact codelist codes from `src/codelists.py:normalise_unit()`.
+Common codes: `square_metre`, `hectare`, `metre`, `kilometre`, `kilogram`, `kilowatt_hour`.
+NEVER use abbreviations (`m2`, `ha`, `m`) directly — they are not codelist codes.
 
 Full v1.0 spec → `.claude/v1.0-reference.md`
+
+### CRITICAL: Post-conversion enrichment (run after EVERY v0.3 -> v1.0 conversion)
+
+```bash
+C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/post_convert_enrich.py "output/<collection>/**/*.json"
+```
+
+Applies automatically: `unit=count` for qk=count, GED4ALL URI fix, remove invalid `scheme="Custom"`,
+remove Commercial licenses, `intensity_measure=wd:m` for flood losses, GED4ALL scheme restoration.
+
+Then manually fix what the script flags: `asset_type.id` (must be per-item, not scheme name),
+`title`, `description`, `scheme` (GED4ALL where fits, absent otherwise), `uri`.
+
+Full checklist with media_type rules, backup convention, validation steps:
+`.claude/v1.0-reference.md` section "Post-conversion checklist"
 
 ## CRITICAL: Metadata record validation requirement
 
