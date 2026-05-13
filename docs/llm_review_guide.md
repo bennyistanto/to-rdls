@@ -84,7 +84,7 @@ Fetches actual column headers from HDX for each resource. Creates `.json` (has c
 ```cmd
 cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
 
-conda run -n climate python -m src.ckan_columns ^
+conda run -n climate python -m src.sources.ckan_columns ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --cache-dir output/column_cache ^
   --max-datasets 10
@@ -93,7 +93,7 @@ conda run -n climate python -m src.ckan_columns ^
 **Full run (~48+ hours):**
 
 ```cmd
-conda run -n climate python -m src.ckan_columns ^
+conda run -n climate python -m src.sources.ckan_columns ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --cache-dir output/column_cache ^
   --api-key YOUR_HDX_36_CHAR_UUID
@@ -102,7 +102,7 @@ conda run -n climate python -m src.ckan_columns ^
 **Check cache stats (no fetching):**
 
 ```cmd
-conda run -n climate python -m src.ckan_columns ^
+conda run -n climate python -m src.sources.ckan_columns ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --cache-dir output/column_cache ^
   --stats-only
@@ -140,7 +140,7 @@ The `.env` file is already in `.gitignore` - your key won't be committed.
 **Method C: CLI argument (per-command):**
 
 ```cmd
-conda run -n to-rdls python -m src.llm_review ... --api-key sk-ant-api03-YOUR-KEY-HERE
+conda run -n to-rdls python -m src.sources.hdx_llm_review ... --api-key sk-ant-api03-YOUR-KEY-HERE
 ```
 
 ---
@@ -154,7 +154,7 @@ Runs signal triage to see bucket distribution and cost estimate. No LLM calls, n
 ```cmd
 cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
 
-conda run -n to-rdls python -m src.llm_review ^
+conda run -n to-rdls python -m src.sources.hdx_llm_review ^
   --dist-dir output/hdx/revised ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --output-dir output/llm ^
@@ -165,7 +165,7 @@ conda run -n to-rdls python -m src.llm_review ^
 **Dry-run on all 12,594 records (~10 min):**
 
 ```cmd
-conda run -n to-rdls python -m src.llm_review ^
+conda run -n to-rdls python -m src.sources.hdx_llm_review ^
   --dist-dir output/hdx/revised ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --output-dir output/llm ^
@@ -195,7 +195,7 @@ First real LLM run. Verifies everything works end-to-end.
 ```cmd
 cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
 
-conda run -n to-rdls python -m src.llm_review ^
+conda run -n to-rdls python -m src.sources.hdx_llm_review ^
   --dist-dir output/hdx/revised ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --output-dir output/llm ^
@@ -224,7 +224,7 @@ Once pilot looks good, run on all records.
 ```cmd
 cd C:\Users\benny\OneDrive\Documents\Github\to-rdls
 
-conda run -n to-rdls python -m src.llm_review ^
+conda run -n to-rdls python -m src.sources.hdx_llm_review ^
   --dist-dir output/hdx/revised ^
   --metadata-dir "C:\Users\benny\OneDrive\Documents\Github\hdx-metadata-crawler\hdx_dataset_metadata_dump\dataset_metadata" ^
   --output-dir output/llm

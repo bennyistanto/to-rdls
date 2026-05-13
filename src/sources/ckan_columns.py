@@ -5,7 +5,7 @@ Parses fs_check_info (CSV/XLSX) and shape_info (GeoJSON/SHP) to extract column
 names without downloading any data files.
 
 Usage:
-    python -m src.ckan_columns \\
+    python -m src.sources.ckan_columns \\
         --metadata-dir path/to/dataset_metadata \\
         --cache-dir output/hdx/column_cache \\
         [--max-datasets 100] [--api-key KEY] [--stats-only]

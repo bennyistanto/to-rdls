@@ -1,7 +1,7 @@
 """
-RDLS v1.0 Metadata Validator
-=============================
-Three-layer validation for RDLS JSON metadata files:
+RDLS v1.0 three-layer post-generation audit validator.
+
+Checks schema-valid records against all layers of correctness:
   Layer 1: JSON Schema validation (structure, types, required fields)
             Uses Draft7Validator + FormatChecker to match rdl-standard schema draft.
   Layer 2: Codelist validation (values against CSV codelists)
@@ -23,18 +23,14 @@ Three-layer validation for RDLS JSON metadata files:
             Rule 7: risk_data_type -> corresponding section must be present
             Rule 8: resource.climate.scenario -> resource.baseline_period should be present
 
-Usage:
-    python scripts/validate_v1.0.py <metadata.json> [--schema <schema.json>] [--codelists <dir>]
+Used for post-generation auditing (scripts/validate_records.py).
+For pipeline-time QA during record generation, see src/validate.py.
 
-Defaults:
-    --schema    : rdls_schema.json from sibling rdl-standard repo (falls back to schema/rdls_schema_v1.0.json)
-    --codelists : ../rdl-standard/schema/codelists (local rdl-standard clone)
+Public API:
+    from src.audit import validate, CodelistRegistry, ValidationResult
 """
 
-import argparse
 import csv
-import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -668,92 +664,3 @@ def validate(data: dict, schema: dict, registry: CodelistRegistry) -> Validation
     print(f"  {l3_errors} errors, {l3_warnings} warnings found")
 
     return result
-
-
-def main():
-    parser = argparse.ArgumentParser(description="RDLS v1.0 Metadata Validator")
-    parser.add_argument("metadata", help="Path to RDLS JSON metadata file")
-    parser.add_argument("--schema", default=None, help="Path to RDLS v1.0 JSON schema file")
-    parser.add_argument("--codelists", default=None, help="Path to codelists directory (with closed/ and open/ subdirs)")
-    args = parser.parse_args()
-
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-
-    # Resolve schema path
-    # Priority: --schema arg → rdl-standard sibling repo → local snapshot
-    schema_dir = repo_root / "schema"
-    if args.schema:
-        schema_path = Path(args.schema)
-    else:
-        rdl_standard_schema = repo_root.parent / "rdl-standard" / "schema" / "rdls_schema.json"
-        if rdl_standard_schema.exists():
-            schema_path = rdl_standard_schema
-        else:
-            schema_path = schema_dir / "rdls_schema_v1.0.json"
-    if not schema_path.exists():
-        print(f"ERROR: Schema file not found: {schema_path}")
-        sys.exit(1)
-
-    # Resolve codelists path
-    if args.codelists:
-        codelists_dir = Path(args.codelists)
-    else:
-        # Try local rdl-standard clone first (sibling of repo root)
-        rdl_standard = repo_root.parent / "rdl-standard" / "schema" / "codelists"
-        if rdl_standard.exists():
-            codelists_dir = rdl_standard
-        else:
-            # Fallback to schema/codelists in this repo
-            codelists_dir = schema_dir / "codelists"
-
-    if not codelists_dir.exists():
-        print(f"WARNING: Codelists directory not found: {codelists_dir}")
-        print("  Layer 2 and parts of Layer 3 will be skipped.")
-        print(f"  Clone rdl-standard repo or specify --codelists path")
-
-    # Load files
-    metadata_path = Path(args.metadata)
-    if not metadata_path.exists():
-        print(f"ERROR: Metadata file not found: {metadata_path}")
-        sys.exit(1)
-
-    print(f"Validating: {metadata_path.name}")
-    print(f"Schema:     {schema_path.name}")
-    print(f"Codelists:  {codelists_dir}")
-    print()
-
-    with open(schema_path, encoding="utf-8") as f:
-        schema = json.load(f)
-
-    with open(metadata_path, encoding="utf-8") as f:
-        raw = json.load(f)
-
-    # Handle both wrapped {"datasets": [...]} and unwrapped formats
-    if "datasets" in raw and isinstance(raw["datasets"], list):
-        datasets = raw["datasets"]
-        print(f"Found {len(datasets)} dataset(s) in wrapper\n")
-    else:
-        datasets = [raw]
-        print("Single dataset (unwrapped)\n")
-
-    registry = CodelistRegistry(codelists_dir)
-
-    all_valid = True
-    for i, dataset in enumerate(datasets):
-        if len(datasets) > 1:
-            print(f"\n{'#'*70}")
-            print(f"Dataset {i+1}: {dataset.get('id', '(no id)')}")
-            print(f"{'#'*70}")
-
-        result = validate(dataset, schema, registry)
-        print(result.summary())
-
-        if not result.is_valid:
-            all_valid = False
-
-    sys.exit(0 if all_valid else 1)
-
-
-if __name__ == "__main__":
-    main()

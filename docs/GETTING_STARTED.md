@@ -127,9 +127,19 @@ Options:
 - `--hash` - Include SHA256 checksums
 - `--no-zip` - Skip ZIP inspection
 
-### Metadata Validator (Notebook)
+### Metadata Validator (CLI)
 
-Open `notebooks/rdls_validate_metadata.ipynb` in Jupyter for interactive validation of RDLS JSON records with auto-fix suggestions.
+Validate RDLS JSON records from the command line:
+
+```bash
+# v1.0 records (3-layer: schema + codelist + semantic)
+python scripts/validate_records.py output/hdx/v1.0/dist/high/my_record.json
+
+# v0.3 records (semantic validation)
+python scripts/validate_records_v03.py output/rdls/my_record.json
+```
+
+For interactive validation with auto-fix suggestions, open `notebooks/rdls_validate_metadata.ipynb` in Jupyter.
 
 ### MCP Server
 
@@ -161,7 +171,7 @@ Or configure in `.mcp.json` for Claude Code:
 Generate RDLS loss records from UNDRR DesInventar national disaster loss databases:
 
 ```bash
-python notebooks/rdls_desinventar_01_generate_records.py
+python scripts/rdls_desinventar_01_generate_records.py
 ```
 
 Output: per-country loss records in `output/desinventar/metadata/`.
@@ -172,11 +182,11 @@ Generate RDLS hazard+exposure records for all countries using the NISMOD ICRA te
 
 ```bash
 # One-time setup: generate country bounding boxes and GeoNames lookup
-python notebooks/rdls_nismod_00a_generate_country_bbox.py
-python notebooks/rdls_nismod_00b_generate_geonames_lookup.py
+python scripts/rdls_nismod_00a_generate_country_bbox.py
+python scripts/rdls_nismod_00b_generate_geonames_lookup.py
 
 # Generate records
-python notebooks/rdls_nismod_01_generate_icra_records.py
+python scripts/rdls_nismod_01_generate_icra_records.py
 ```
 
 Output: per-country NISMOD ICRA records in `output/nismod_icra/`.

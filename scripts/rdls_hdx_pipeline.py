@@ -13,7 +13,7 @@ Full pipeline context:
 
 Prerequisites:
     1. Column cache populated: output/hdx/column_cache/ (~88K files)
-       (populate with: python -m src.ckan_columns --metadata-dir ... --stats-only
+       (populate with: python -m src.sources.ckan_columns --metadata-dir ... --stats-only
         to verify, or run the ckan_columns crawler if cache is missing)
     2. Anthropic API key: ANTHROPIC_API_KEY environment variable
     3. Python environment: to-rdls conda env
@@ -120,7 +120,7 @@ from src.utils import load_json, load_yaml
 from src.schema import validate_record
 from src.naming import load_naming_config
 from src.spatial import load_spatial_config
-from src.ckan_columns import ColumnCache, load_columns_for_uuid
+from src.sources.ckan_columns import ColumnCache, load_columns_for_uuid
 from src.llm_classify import (
     V10Config,
     LLMCacheV10,

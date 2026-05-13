@@ -89,7 +89,7 @@ print(f"Output:     {OUTPUT_DIR}")
 # %% [markdown]
 # # Step 1: Run LLM Review Pipeline (4 phases)
 #
-# This calls `src.llm_review.run_llm_review()` which orchestrates:
+# This calls `src.sources.hdx_llm_review.run_llm_review()` which orchestrates:
 # - **Phase 1**: Signal triage - regex-based HEVL assessment, buckets records
 #   into Confident (skip LLM), Borderline, No-signal, and Validation sample.
 #   Cached after first run (~3s on subsequent runs vs ~190s fresh).
@@ -99,7 +99,7 @@ print(f"Output:     {OUTPUT_DIR}")
 # - **Phase 4**: Merge - applies LLM decisions, writes revised JSONs.
 
 # %%
-from src.llm_review_v03 import run_llm_review, load_review_config
+from src.sources.hdx_llm_review import run_llm_review, load_review_config
 
 config = load_review_config()
 
@@ -367,7 +367,7 @@ print("=" * 60)
 # - **LLM response cache**: output/hdx/llm_cache/cache/ - keyed by prompt hash.
 #   Re-runs with same records cost $0. Delete to force re-classification.
 # - **Column cache**: output/hdx/column_cache/ - keyed by resource ID.
-#   Persistent across all runs. Only populated via `python -m src.ckan_columns`.
+#   Persistent across all runs. Only populated via `python -m src.sources.ckan_columns`.
 #
 # ## Cost Breakdown (March 2026 run)
 # - Phase 1 (triage): FREE

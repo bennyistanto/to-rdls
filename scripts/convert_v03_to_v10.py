@@ -849,7 +849,7 @@ def main():
     else:
         print("\nNo [TODO] items - output may be ready for validation.")
 
-    print(f"\nNext step: python scripts/validate_v1.0.py {result_path}")
+    print(f"\nNext step: python scripts/validate_records.py {result_path}")
 
 
 if __name__ == "__main__":

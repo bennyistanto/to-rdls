@@ -1,5 +1,5 @@
 # LLM-Assisted HEVL Review Configuration
-# Used by: python -m src.llm_review
+# Used by: python -m src.sources.hdx_llm_review
 version: "1.0"
 
 # Phase 1: Signal triage thresholds

@@ -99,7 +99,7 @@ The regex pipeline classifies based on metadata keywords only. When a title says
 
 ## Schema Validation and Auto-Fix
 
-The validation engine (`src/validate_qa.py`) validates records against the RDLS v0.3 JSON Schema and applies a 5-pass auto-fix engine before scoring confidence and distributing to quality tiers.
+The validation engine (`src/validate.py`) validates records against the RDLS v0.3 JSON Schema and applies a 5-pass auto-fix engine before scoring confidence and distributing to quality tiers.
 
 ### 5-Pass Auto-Fix Engine
 

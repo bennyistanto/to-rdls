@@ -564,7 +564,7 @@ def build_rdls_record(
     record["links"] = links
 
     # Pass through _slug_title for ID regeneration in integrate_record().
-    # This is stripped before final output by validate_qa.
+    # This is stripped before final output by validate.
     if fields.get("_slug_title"):
         record["_slug_title"] = fields["_slug_title"]
 

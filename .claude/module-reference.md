@@ -7,15 +7,15 @@ Complete reference for all modules, their public API, key internals, and inter-d
 ```
 utils.py ← (all modules)
 spatial.py ← translate.py, translate_v03.py, naming.py
-schema.py ← validate_qa.py
-codelists.py ← translate.py, extract.py, validate_v10.py
+schema.py ← validate.py
+codelists.py ← translate.py, extract.py, audit.py
 naming.py ← integrate.py, translate.py, translate_v03.py
 
 --- v1.0 pipeline (canonical) ---
 llm_classify.py ← (v1.0 pipeline entry - single-phase LLM; uses sources/ckan_columns.py)
 translate.py ← (v1.0 base record builder)
 extract.py ← (v1.0 HEVL block builders)
-validate_v10.py ← (v1.0 3-layer audit: schema + codelist + semantic)
+audit.py ← (v1.0 3-layer audit: schema + codelist + semantic)
 
 --- v0.3 pipeline (legacy) ---
 classify.py ← (v0.3 pipeline entry - tag/keyword scoring)
@@ -27,7 +27,8 @@ validate_v03.py ← (v0.3 semantic validation logic)
 
 --- shared pipeline ---
 integrate.py ← (HEVL merge - used by both pipelines)
-validate_qa.py ← (pipeline-time autofix + scoring - used by both pipelines)
+validate.py ← (pipeline-time autofix + scoring - used by both pipelines)
+enrich.py ← (post-conversion mechanical fixes - used by validate_records.py --enrich)
 
 --- standalone tools ---
 inventory.py ← (no to-rdls dependencies, stdlib only)
@@ -240,7 +241,7 @@ sources/hdx_llm_review.py ← sources/hdx_review, sources/ckan_columns, naming, 
 - `extract_iso3_from_spatial(spatial)` → list of ISO3 codes
 - `extract_org_from_attributions(attributions)` → publisher org name
 
-## validate_qa.py - Validation & QA
+## validate.py - Pipeline-time Validation & QA
 
 **Classes**:
 - `ScoredRecord(record, validation_status, error_count, fix_count, warnings, composite_confidence, auto_fixed)`
@@ -396,10 +397,9 @@ All scripts use `Path(__file__).parent.parent` to locate project root.
 | `rdls_desinventar_01_generate_records.py` | DesInventar loss record generation |
 | `rdls_nismod_00a/00b_*.py` | NISMOD preprocessing (country bbox, GeoNames) |
 | `rdls_nismod_01_generate_icra_records.py` | NISMOD ICRA record generation |
-| `validate_records.py` | v1.0 three-layer validation CLI (wraps src/validate_v10.py) |
+| `validate_records.py` | v1.0 three-layer validation CLI (wraps src/audit.py); `--enrich` flag runs post-conversion fixes (wraps src/enrich.py) |
 | `validate_records_v03.py` | v0.3 semantic validation CLI (wraps src/validate_v03.py) |
 | `convert_v03_to_v10.py` | Schema version conversion |
-| `post_convert_enrich.py` | Post-conversion enrichment + validation |
 
 **notebooks/** - interactive Jupyter notebooks only (.ipynb)
 
@@ -451,7 +451,7 @@ FastMCP-based server exposing review and validation tools for Claude-assisted wo
 
 ---
 
-## hdx_review.py - HDX second-pass HEVL review
+## sources/hdx_review.py - HDX second-pass HEVL review
 
 Re-analyzes RDLS JSON files using improved signal matching (column detection, resource-name signals) and cross-references with original HDX metadata.
 
@@ -472,7 +472,7 @@ Re-analyzes RDLS JSON files using improved signal matching (column detection, re
 
 ---
 
-## ckan_columns.py - CKAN column header fetcher
+## sources/ckan_columns.py - CKAN column header fetcher
 
 Fetches actual column headers from HDX resources via CKAN resource_show API without downloading data files.
 
@@ -496,7 +496,7 @@ Fetches actual column headers from HDX resources via CKAN resource_show API with
 
 ---
 
-## llm_review.py - LLM-assisted HEVL classification pipeline
+## sources/hdx_llm_review.py - LLM-assisted HEVL classification pipeline
 
 4-phase pipeline solving content-blind over-classification (Problem 7).
 
@@ -516,9 +516,9 @@ Fetches actual column headers from HDX resources via CKAN resource_show API with
 3. LLM classification: `_phase3_llm()` - Claude Haiku with structured prompt, cost guardrails
 4. Merge + write: `_phase4_merge()` - apply LLM decisions, rebuild IDs, separate not-RDLS, validate
 
-**Dependencies**: `hdx_review.py`, `ckan_columns.py`, `naming.py`, `utils.py`
+**Dependencies**: `sources/hdx_review.py`, `sources/ckan_columns.py`, `naming.py`, `utils.py`
 
-**Config**: `configs/llm_review.yaml`
+**Config**: `configs/sources/hdx_llm_review.yaml`
 
 ---
 
@@ -549,22 +549,22 @@ ExposureExtraction(categories, metrics, taxonomy_hint, currency, overall_confide
 FunctionExtraction(function_type, approach, relationship, hazard_primary, impact_type, impact_metric, quantity_kind, confidence)
 LossEntryExtraction(loss_signal_type, hazard_type, impact_metric, loss_frequency_type, currency, reference_year, is_insured)
 
-# validate_qa.py
+# validate.py
 ScoredRecord(record, validation_status, error_count, fix_count, warnings, composite_confidence, auto_fixed)
 
 # review.py
 _PipelineResult(groups, inspections, stats, rows, intermediate_summary)
 
-# llm_review.py
+# sources/hdx_llm_review.py
 LLMClassification(rdls_id, is_rdls_relevant, components, component_reasoning, overall_reasoning, confidence, domain_category, llm_model, prompt_hash, token_usage)
 ReviewConfig(confident_score_min, max_components_for_confident, validation_sample_pct, ckan_*, llm_*, max_cost_usd, llm_overrides_signals, disagreement_confidence_min)
 TriageBucket(confident, borderline, no_signal, validation_sample)
 
-# hdx_review.py
+# sources/hdx_review.py
 ReviewableRecord(filepath, record, rdls_id, hdx_uuid, current_rdt, current_blocks, dist_tier)
 HEVLAssessment(rdls_id, old_components, new_components, changes, evidence, confidence)
 
-# ckan_columns.py
+# sources/ckan_columns.py
 ColumnInfo(resource_id, resource_name, format, columns, column_types, hxl_tags, sheet_name, n_rows, n_cols, source)
 ColumnCache(cache_dir) - disk-backed cache: {resource_id}.json or {resource_id}.none sentinel
 ```
@@ -598,7 +598,7 @@ ColumnCache(cache_dir) - disk-backed cache: {resource_id}.json or {resource_id}.
 
 ---
 
-## Validation & QA (validate_qa.py)
+## Pipeline-time Validation & QA (validate.py)
 
 5-pass autofix engine:
 1. Codelist fuzzy matching (case-insensitive, substring, fuzzy)
@@ -613,7 +613,7 @@ Distribution tiers: high (≥0.8 valid), medium (≥0.5 valid), low (<0.5 valid)
 
 ---
 
-## LLM-Assisted Review (llm_review.py)
+## LLM-Assisted Review (sources/hdx_llm_review.py)
 
 Solves the content-blind over-classification problem (Problem 7).
 
@@ -625,10 +625,10 @@ Solves the content-blind over-classification problem (Problem 7).
 
 Production results (12,594 HDX records): $21.98, 22 min. 3,443 reclassified, 4,103 separated as non-RDLS. 8,822 RDLS-relevant → 6,132 valid, 2,690 blocked by `occurrence:{}` schema gap.
 
-### HDX review (hdx_review.py)
+### HDX review (sources/hdx_review.py)
 Second-pass HEVL review using improved signal matching (column detection, resource-name signals). Functions: `build_hdx_index()`, `assess_hevl()`, `revise_record()`, `_scan_dist_tiers()`.
 
-### CKAN columns (ckan_columns.py)
+### CKAN columns (sources/ckan_columns.py)
 Fetches column headers from HDX resources via CKAN resource_show API. Parses `fs_check_info` (CSV/XLSX) and `shape_info` (GeoJSON/SHP). Disk-backed `ColumnCache` with sentinel files for resources without columns.
 
 ---

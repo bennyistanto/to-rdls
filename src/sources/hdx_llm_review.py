@@ -7,7 +7,7 @@
   Phase 4: Validation + merge
 
 Usage:
-    python -m src.llm_review \\
+    python -m src.sources.hdx_llm_review \\
         --dist-dir path/to/rdls/dist \\
         --metadata-dir path/to/dataset_metadata \\
         --output-dir output/hdx/llm \\
@@ -43,13 +43,13 @@ from .hdx_review import (
     load_rdls_record,
     revise_record,
 )
-from .naming import (
+from ..naming import (
     build_rdls_id_with_collision,
     encode_component_types,
     load_naming_config,
     parse_rdls_id,
 )
-from .utils import load_json, load_yaml, write_json, sort_rdt_hevl, reorder_record_keys
+from ..utils import load_json, load_yaml, write_json, sort_rdt_hevl, reorder_record_keys
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ def load_review_config(
 ) -> ReviewConfig:
     """Load LLM review config from YAML, with defaults fallback."""
     if yaml_path is None:
-        yaml_path = Path(__file__).resolve().parent.parent / "configs" / "llm_review_v03.yaml"
+        yaml_path = Path(__file__).resolve().parent.parent.parent / "configs" / "sources" / "hdx_llm_review.yaml"
     if yaml_path.exists():
         return ReviewConfig.from_yaml(yaml_path)
     return ReviewConfig()
@@ -1433,8 +1433,8 @@ def main():
         help="Output directory (default: output/hdx/llm)",
     )
     parser.add_argument(
-        "--config", default="configs/llm_review.yaml",
-        help="Config YAML path (default: configs/llm_review.yaml)",
+        "--config", default="configs/sources/hdx_llm_review.yaml",
+        help="Config YAML path (default: configs/sources/hdx_llm_review.yaml)",
     )
     parser.add_argument(
         "--dry-run", action="store_true",

@@ -42,8 +42,8 @@ to-rdls/
 │   ├── extract_exposure.py       # [v0.3] Exposure block extraction (3-tier cascade)
 │   ├── extract_vulnloss.py       # [v0.3] Vulnerability + loss extraction
 │   ├── integrate.py              # Shared: HEVL merge, risk_data_type reconciliation
-│   ├── validate_qa.py            # Pipeline-time: autofix, confidence scoring, distribution
-│   ├── validate_v10.py           # v1.0: 3-layer audit validator (schema + codelists + semantic)
+│   ├── validate.py               # Pipeline-time: autofix, confidence scoring, distribution
+│   ├── audit.py                  # v1.0: 3-layer audit validator (schema + codelists + semantic)
 │   ├── validate_v03.py           # v0.3: semantic validation logic
 │   ├── inventory.py              # Standalone: folder/ZIP inventory generator (stdlib only)
 │   ├── review.py                 # Standalone: file inspection, HEVL classification, gap analysis
@@ -79,10 +79,9 @@ to-rdls/
 │   ├── rdls_geonode_pipeline.py        # GeoNode v0.3 pipeline
 │   ├── rdls_desinventar_01_*.py        # DesInventar loss record generation
 │   ├── rdls_nismod_*.py                # NISMOD ICRA record generation
-│   ├── validate_records.py             # v1.0 three-layer validation CLI
+│   ├── validate_records.py             # v1.0: 3-layer audit CLI + --enrich post-conversion mode
 │   ├── validate_records_v03.py         # v0.3 semantic validation CLI
-│   ├── convert_v03_to_v10.py           # Schema version conversion
-│   └── post_convert_enrich.py          # Post-conversion enrichment + validation
+│   └── convert_v03_to_v10.py          # Schema version conversion
 │
 ├── notebooks/                    # Interactive Jupyter notebooks only
 │   ├── rdls_validate_metadata.ipynb    # Interactive metadata validator

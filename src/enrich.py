@@ -1,15 +1,10 @@
 """
-Post-conversion enrichment for RDLS v1.0 JSON files.
+Post-conversion enrichment fixes for RDLS v1.0 JSON records.
 
-Run this on EVERY newly converted file before considering the conversion done.
-Applies all mechanical fixes established during the batch conversion sessions.
+Applies mechanical fixes established during batch conversion sessions.
+Run on every newly converted file before considering the conversion done.
 
-Usage:
-    python scripts/post_convert_enrich.py "output/new-collection/**/*.json"
-    python scripts/post_convert_enrich.py output/some/file.json
-    python scripts/post_convert_enrich.py output/new-collection/  # all *.json in folder
-
-What this script fixes automatically:
+What this fixes automatically:
     1. unit=count   - measurement.unit="count" where quantity_kind="count" and unit absent
     2. URI fix      - broken GED4ALL gemproducts URL (404) replaced with wiki URL
     3. scheme fix   - invalid scheme="Custom" removed (not a valid classification_scheme.csv code)
@@ -18,7 +13,7 @@ What this script fixes automatically:
     6. format fix   - removes resource.format when resource.media_type is present (never both);
                       adds resource.conforms_to URI when access_modality is OGC_API/STAC/WMS/WFS/WCS
 
-What still requires manual work per dataset (printed as warnings):
+What still requires manual work per dataset (returned as warnings):
     - asset_type.id = "GED4ALL" or "Custom" -> needs meaningful per-item identifier
     - asset_type with no id at all
     - asset_type with no title
@@ -44,33 +39,23 @@ NOTE on GED4ALL scheme - NOT automated here:
 media_type vs format rule (Fix 6 - automated):
     media_type and format are mutually exclusive. When media_type is present,
     format is automatically removed. When media_type is absent, format is kept.
-    If format has no IANA media type code, keep format and leave media_type absent.
-    Common IANA codes: GeoTIFF=image/tiff;application=geotiff,
-                       SHP=application/x-shapefile, GPKG=application/geopackage+sqlite3,
-                       GDB=application/x-filegdb
 
 conforms_to rule (Fix 6 - automated):
     When access_modality is OGC_API/STAC/WMS/WFS/WCS, conforms_to is set from the
-    conforms_to.csv codelist. Mapping used:
-        OGC_API -> http://www.opengis.net/doc/IS/ogcapi-features-1/1.0.1
-        STAC    -> https://api.stacspec.org/v1.0.0/
-        WMS     -> http://www.opengis.net/def/serviceType/ogc/wms
-        WFS     -> http://www.opengis.net/def/serviceType/ogc/wfs
-        WCS     -> http://www.opengis.net/def/serviceType/ogc/wcs
-    Resources already having conforms_to are left unchanged.
+    conforms_to.csv codelist.
 
-Backup/rename convention (must be done BEFORE running this script):
-    Original v0.3 -> <stem>_v03.json (backup)
-    v1.0 takes the original filename (no _v10 or _rev suffix)
-
-See also: .claude/v1.0-reference.md#post-conversion-checklist for the full checklist.
+Public API:
+    from src.enrich import fix_file, resolve_files
 """
 
 import json
-import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-PROJECT_ROOT = Path(__file__).parent.parent
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 OLD_GED4ALL_URI = "https://www.globalquakemodel.org/gemproducts/ged4all"
 NEW_GED4ALL_URI = "https://wiki.openstreetmap.org/wiki/GED4ALL"
@@ -80,7 +65,6 @@ COMMERCIAL_LICENSE = "Commercial"
 
 # Fix 6: conforms_to URIs keyed by access_modality value (from conforms_to.csv)
 # Only access modalities that map to a formal OGC/STAC standard are listed here.
-# REST, API, file_download, download_page, dashboard have no standard URI.
 CONFORMS_TO_MAP = {
     "OGC_API": "http://www.opengis.net/doc/IS/ogcapi-features-1/1.0.1",
     "STAC":    "https://api.stacspec.org/v1.0.0/",
@@ -89,8 +73,19 @@ CONFORMS_TO_MAP = {
     "WCS":     "http://www.opengis.net/def/serviceType/ogc/wcs",
 }
 
-def fix_file(path: Path) -> dict:
-    """Apply all mechanical enrichment fixes. Returns dict with counts of changes."""
+
+# ---------------------------------------------------------------------------
+# Core enrichment logic
+# ---------------------------------------------------------------------------
+
+def fix_file(path: Path) -> Dict[str, Any]:
+    """Apply all mechanical enrichment fixes to one JSON file (in place).
+
+    Returns dict with:
+        counts  - per-fix change counts
+        warnings - list of manual-attention messages
+        changed  - bool, whether the file was modified
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
     counts = {
         "unit_count": 0,
@@ -102,7 +97,7 @@ def fix_file(path: Path) -> dict:
         "conforms_to_added": 0,
     }
     changed = False
-    warnings = []
+    warnings: List[str] = []
 
     datasets = data if isinstance(data, list) else data.get("datasets", [])
     for ds in datasets:
@@ -129,10 +124,9 @@ def fix_file(path: Path) -> dict:
                     counts["scheme_custom_removed"] += 1
                     changed = True
 
-                # Warnings for items still needing manual attention
-                # GED4ALL scheme is NOT auto-set here: generic IDs (exposure_buildings,
+                # Warnings for items still needing manual attention.
+                # GED4ALL scheme is NOT auto-set: generic IDs (exposure_buildings,
                 # exposure_population) appear in both GED4ALL and custom-taxonomy datasets.
-                # Always assign scheme in the dataset-specific enrichment script.
                 at_id = at.get("id")
                 if at_id in ("GED4ALL", "Custom", None):
                     warnings.append(
@@ -144,13 +138,12 @@ def fix_file(path: Path) -> dict:
                 if not at.get("description"):
                     warnings.append(f"  exposure.{eid}: asset_type.description missing")
             elif exp.get("category"):
-                # exposure has no asset_type at all
                 warnings.append(
                     f"  exposure.{eid}: no asset_type object - "
                     f"needs id/title/description/scheme"
                 )
 
-            # Fix unit=count for qk=count metrics
+            # Fix 1: unit=count for qk=count metrics
             for m in exp.get("metrics", []):
                 meas = m.get("measurement")
                 if isinstance(meas, dict):
@@ -169,10 +162,8 @@ def fix_file(path: Path) -> dict:
                 counts["license_removed"] += 1
                 changed = True
 
-        # Fix 5: set wd:m on flood/coastal_flood losses with TODO intensity_measure
-        # NOTE: only fires when IM is a TODO string - never when IM is simply absent.
-        # Observational/empirical loss datasets (e.g. DesInventar) legitimately have
-        # no IM - do NOT add wd:m to them.
+        # Fix 5: set wd:m on flood/coastal_flood losses with TODO intensity_measure.
+        # Only fires when IM is a TODO string - never when IM is simply absent.
         for loss in ds.get("loss", {}).get("losses", []):
             if not isinstance(loss, dict):
                 continue
@@ -194,7 +185,7 @@ def fix_file(path: Path) -> dict:
             if not isinstance(r, dict):
                 continue
 
-            # Remove format when media_type is present (they are mutually exclusive)
+            # Remove format when media_type is present (mutually exclusive)
             if "media_type" in r and "format" in r:
                 del r["format"]
                 counts["format_removed"] += 1
@@ -213,21 +204,30 @@ def fix_file(path: Path) -> dict:
     return {"counts": counts, "warnings": warnings, "changed": changed}
 
 
-def resolve_files(args: list[str]) -> list[Path]:
-    """Resolve CLI args to a list of JSON paths, excluding _v03 backups."""
-    files = []
-    root = PROJECT_ROOT
+def resolve_files(args: List[str], project_root: Optional[Path] = None) -> List[Path]:
+    """Resolve CLI args (file paths, directories, glob patterns) to JSON paths.
+
+    Excludes _v03 backup files automatically.
+
+    Args:
+        args: List of path strings, directory paths, or glob patterns.
+        project_root: Base directory for resolving relative paths. Defaults to cwd.
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    files: List[Path] = []
     for arg in args:
         p = Path(arg)
         if not p.is_absolute():
-            p = root / p
+            p = project_root / arg
         if p.is_dir():
             files.extend(
                 f for f in sorted(p.glob("*.json")) if "_v03" not in f.name
             )
         elif "*" in str(arg) or "?" in str(arg):
             files.extend(
-                f for f in sorted(root.glob(arg)) if "_v03" not in f.name
+                f for f in sorted(project_root.glob(arg)) if "_v03" not in f.name
             )
         elif p.exists():
             if "_v03" not in p.name:
@@ -235,86 +235,3 @@ def resolve_files(args: list[str]) -> list[Path]:
         else:
             print(f"WARNING: not found: {arg}")
     return files
-
-
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
-
-    files = resolve_files(sys.argv[1:])
-    if not files:
-        print("No matching files found.")
-        sys.exit(1)
-
-    print(f"\n=== Post-conversion enrichment: {len(files)} file(s) ===\n")
-
-    total = {k: 0 for k in ("unit_count", "uri_fix", "scheme_custom_removed",
-                             "license_removed", "im_fix", "format_removed",
-                             "conforms_to_added")}
-    all_warnings = []
-
-    for path in files:
-        try:
-            result = fix_file(path)
-        except Exception as e:
-            print(f"  ERROR {path.name}: {e}")
-            continue
-
-        c = result["counts"]
-        parts = []
-        if c["unit_count"]:
-            parts.append(f"unit=count x{c['unit_count']}")
-        if c["uri_fix"]:
-            parts.append(f"URI x{c['uri_fix']}")
-        if c["scheme_custom_removed"]:
-            parts.append(f"Custom-removed x{c['scheme_custom_removed']}")
-        if c["license_removed"]:
-            parts.append(f"license-removed x{c['license_removed']}")
-        if c["im_fix"]:
-            parts.append(f"IM=wd:m x{c['im_fix']}")
-        if c["format_removed"]:
-            parts.append(f"format-removed x{c['format_removed']}")
-        if c["conforms_to_added"]:
-            parts.append(f"conforms_to x{c['conforms_to_added']}")
-        status = ", ".join(parts) if parts else "no changes needed"
-        print(f"  {path.name}: {status}")
-
-        for k in total:
-            total[k] += c[k]
-
-        if result["warnings"]:
-            all_warnings.append((path.name, result["warnings"]))
-
-    print(f"\nTotal: unit_count={total['unit_count']} uri={total['uri_fix']} "
-          f"custom-removed={total['scheme_custom_removed']} license={total['license_removed']} "
-          f"im={total['im_fix']} format-removed={total['format_removed']} "
-          f"conforms_to={total['conforms_to_added']}")
-
-    if all_warnings:
-        print("\n=== Manual attention required ===\n")
-        for fname, warns in all_warnings:
-            print(f"  {fname}:")
-            for w in warns:
-                print(w)
-        print(
-            "\nFor each item above, create a dataset-specific enrichment script in temp/\n"
-            "following the pattern in temp/enrich_wbgufra_asset_type.py.\n"
-            "See .claude/v1.0-reference.md -> Post-conversion checklist for the full guide."
-        )
-    else:
-        print("\nNo manual fixes needed for asset_type fields.")
-
-    # Reminder for checks that cannot be automated
-    print("\n=== Reminders (manual checks always required) ===")
-    print("  [ ] asset_type: id/title/description/scheme/uri -> dataset-specific enrichment script")
-    print("  [ ] GED4ALL scheme: set in specific script (NOT auto-detected by this script)")
-    print("  [ ] media_type: if format has no IANA code, keep format and leave media_type absent")
-    print("      Check rdl-standard/schema/codelists/open/media_type.csv for available codes")
-    print("  [ ] conforms_to: OGC_API maps to Features 1.0.1 - override if resource is Coverages/Tiles")
-    print("  [ ] Backup/rename: original v0.3 -> <stem>_v03.json, v1.0 keeps original name")
-    print("  [ ] Layer 1 validation: python scripts/validate_v1.0.py <file>")
-
-
-if __name__ == "__main__":
-    main()

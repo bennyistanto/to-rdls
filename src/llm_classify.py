@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .ckan_columns import ColumnInfo
+from .sources.ckan_columns import ColumnInfo
 from .utils import load_yaml
 
 

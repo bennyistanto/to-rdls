@@ -13,7 +13,7 @@ All pipeline behavior is driven by YAML configuration files in `configs/`. No pa
 | `rdls_schema.yaml` | RDLS codelists (hazard_type, process_type, etc.) | `schema` |
 | `classification.yaml` | Scoring weights, thresholds, tag/keyword/org rules | `classify` |
 | `naming.yaml` | Record ID format, component codes, org abbreviations | `naming` |
-| `pipeline.yaml` | Runtime thresholds, output modes, distribution tiers | `validate_qa` |
+| `pipeline.yaml` | Runtime thresholds, output modes, distribution tiers | `validate` |
 | `format_mapping.yaml` | Data format aliases, skip list, service URL patterns | `translate` |
 | `license_mapping.yaml` | License string to RDLS license code | `translate` |
 | `spatial.yaml` | Region-to-countries mapping, country name fixes | `spatial` |

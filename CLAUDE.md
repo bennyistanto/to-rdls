@@ -31,9 +31,10 @@ to-rdls/
 │   ├── extract_vulnloss.py # [v0.3] Vulnerability + Loss extractors
 │   ├── integrate.py        # Merge HEVL blocks into base record (shared)
 │   ├── naming.py           # Structured ID: rdls_{type}-{iso3}{org}_{slug}
-│   ├── validate_qa.py      # Pipeline-time: 5-pass autofix, confidence scoring, distribution
-│   ├── validate_v10.py     # v1.0: 3-layer audit validator (schema + codelists + semantic)
+│   ├── validate.py         # Pipeline-time: 5-pass autofix, confidence scoring, distribution
+│   ├── audit.py            # v1.0: 3-layer audit validator (schema + codelists + semantic)
 │   ├── validate_v03.py     # v0.3: semantic validation logic
+│   ├── enrich.py           # Post-conversion enrichment fixes (unit, URI, license, format)
 │   ├── inventory.py        # Delivery folder/ZIP inventory (standalone, stdlib only)
 │   ├── zipaccess.py        # ZIP member extraction with temp-file context managers
 │   ├── review.py           # Automated data review: inspect, HEVL classify, gap analysis
@@ -196,8 +197,8 @@ C:/Users/benny/miniforge3/envs/to-rdls/python.exe mcp_server.py
 
 ### Validation architecture
 - `schema.py:validate_record()` validates a **single unwrapped record** — NEVER wrap before validating
-- `notebooks/rdls_validate_semantic.py` — Layer 2 semantic validation (open codelists, cross-field)
-- `validate_qa.py:validate_and_score()` runs validate_record() then applies 5-pass autofix
+- `scripts/validate_records_v03.py` — Layer 2 semantic validation CLI (wraps `src/validate_v03.py`)
+- `validate.py:validate_and_score()` runs validate_record() then applies 5-pass autofix
 
 ## Common schema pitfalls
 
@@ -240,7 +241,7 @@ Full v1.0 spec → `.claude/v1.0-reference.md`
 ### CRITICAL: Post-conversion enrichment (run after EVERY v0.3 -> v1.0 conversion)
 
 ```bash
-C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/post_convert_enrich.py "output/<collection>/**/*.json"
+C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records.py --enrich "output/<collection>/**/*.json"
 ```
 
 Applies automatically: `unit=count` for qk=count, GED4ALL URI fix, remove invalid `scheme="Custom"`,
@@ -270,7 +271,7 @@ assert is_valid, errors
 
 ### Layer 2 — Semantic validation
 ```bash
-C:/Users/benny/miniforge3/envs/to-rdls/python.exe notebooks/rdls_validate_semantic.py path/to/record.json schema/rdls_schema_v0.3.json
+C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records_v03.py path/to/record.json
 ```
 Required output: `PASSED` (zero errors). Every record must include:
 ```python
@@ -295,5 +296,5 @@ Each record saved as `{record_id}.json` wrapped with `{"datasets": [{...}]}`. Ne
 ### CRITICAL: Do NOT break working pipeline code
 - **NEVER change field names in `build_hazard_block()`, `build_loss_block()`, `build_exposure_block()`, or `build_vulnerability_block()`** without verifying against the schema field name mapping table. Wrong field names = silent validation failures across ALL sources.
 - **NEVER modify `schema.py:validate_record()` validation logic.**
-- **Core modules are source-independent** (`extract_*.py`, `translate.py`, `integrate.py`, `validate_qa.py`, `schema.py`) — changes affect HDX, GeoNode, and all other sources. Test against baseline 12 datasets before and after.
+- **Core modules are source-independent** (`extract_*.py`, `translate.py`, `integrate.py`, `validate.py`, `schema.py`) — changes affect HDX, GeoNode, and all other sources. Test against baseline 12 datasets before and after.
 - **Source adapters are the ONLY source-specific code** — new source quirks go in the adapter's `extract_*_fields()`, not in core pipeline modules.

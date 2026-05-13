@@ -7,7 +7,7 @@
 # Flags and fixes HEVL misclassifications, writes revised JSONs.
 #
 # Usage:
-#   python -m src.hdx_review \
+#   python -m src.sources.hdx_review \
 #     --dist-dir "path/to/rdls/dist" \
 #     --metadata-dir "path/to/dataset_metadata" \
 #     --output-dir output/hdx/review
@@ -32,8 +32,8 @@ from urllib.parse import unquote, urlparse
 # Ensure src/ is importable when run as module
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from .utils import load_json, write_json, normalize_text, sort_rdt_hevl
-from .review import (
+from ..utils import load_json, write_json, normalize_text, sort_rdt_hevl
+from ..review import (
     _match_signals,
     _match_column_signals,
     load_review_config,
@@ -43,7 +43,7 @@ from .review import (
     LOSS_SIGNALS,
     COLUMN_DETECTION,
 )
-from .integrate import merge_hevl_into_record, determine_risk_data_types
+from ..integrate import merge_hevl_into_record, determine_risk_data_types
 
 
 # ---------------------------------------------------------------------------

@@ -264,7 +264,7 @@ Builds structured record IDs in the format `rdls_{types}-{iso3}{org}_{titleslug}
 
 ## Validation
 
-### `validate_qa.py` - Schema validation, auto-fix, confidence scoring, distribution
+### `validate.py` - Schema validation, auto-fix, confidence scoring, distribution
 
 Validates records against the RDLS v0.3 JSON Schema, applies a 5-pass auto-fix engine, computes confidence scores, and distributes records to quality tiers.
 
@@ -427,7 +427,7 @@ Full LLM-assisted HEVL classification: Phase 1 (signal triage), Phase 2 (column 
 | `LLMClassification` | `rdls_id`, `is_rdls_relevant`, `components` (dict), `component_reasoning` (dict), `overall_reasoning`, `confidence`, `domain_category`, `llm_model`, `prompt_hash`, `token_usage` |
 | `TriageBucket` | `confident`, `borderline`, `no_signal` (lists of rdls_ids) |
 
-**Dependencies:** `hdx_review`, `ckan_columns`, `naming`, `validate_qa`, `utils`, anthropic (external)
+**Dependencies:** `sources/hdx_review`, `sources/ckan_columns`, `naming`, `validate`, `utils`, anthropic (external)
 
 ---
 

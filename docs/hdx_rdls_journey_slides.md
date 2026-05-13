@@ -1271,7 +1271,7 @@ The shift from hybrid to LLM-first was enabled by cost, not capability. Haiku pr
 ### Downstream
 
 4. **Semantic validation (Layer 2)**
-   - Run `rdls_validate_semantic.py` across all records
+   - Run `scripts/validate_records_v03.py` across all records
    - Catch open-codelist and cross-field errors
    - Fix any systematic patterns found
 

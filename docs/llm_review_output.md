@@ -83,7 +83,7 @@ Of 12,594 records, **3,511 (27.9%)** were modified:
 <summary>Click to view full console output ($21.98, 7,761 records, ~22 min)</summary>
 
 ```
-❯ python -m src.llm_review --dist-dir output/hdx/revised --metadata-dir "..." --output-dir output/llm
+❯ python -m src.sources.hdx_llm_review --dist-dir output/hdx/revised --metadata-dir "..." --output-dir output/llm
 [Phase 1] Loading from cache...
   12594 records loaded from cache
   Confident:    5087 (skip LLM)

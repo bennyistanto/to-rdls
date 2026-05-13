@@ -1,9 +1,16 @@
 """
-Validation and QA for RDLS records.
+Pipeline-time validation and QA for RDLS records.
 
 Handles JSON Schema validation, business-rule checking, schema-driven
-auto-fix (5-pass engine), composite confidence scoring, tiered distribution,
-and report generation. Source-independent.
+auto-fix (5-pass engine), composite confidence scoring, tiered
+distribution, and report generation. Source-independent.
+
+Used during record generation (both v0.3 and v1.0 pipelines).
+For post-generation 3-layer audit validation, see src/audit.py.
+
+Public API:
+    from src.validate import validate_and_score, distribute_records
+    from src.validate import AutoFixer, compute_composite_confidence
 """
 
 import copy

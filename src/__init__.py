@@ -27,7 +27,7 @@ Usage from notebooks or scripts:
     from src.extract_exposure import ExposureExtractor
     from src.extract_vulnloss import VulnerabilityExtractor, LossExtractor
     from src.integrate import integrate_record
-    from src.validate_qa import validate_and_score, distribute_records
+    from src.validate import validate_and_score, distribute_records
     from src.sources.hdx import HDXClient, extract_hdx_fields
     from src.inventory import inventory_folder, InventoryConfig
 """
@@ -97,7 +97,7 @@ from .naming import (
     slugify_title,
 )
 from .integrate import integrate_record, merge_hevl_into_record, append_provenance
-from .validate_qa import (
+from .validate import (
     compute_composite_confidence,
     validate_and_score,
     distribute_records,

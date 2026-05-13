@@ -455,7 +455,12 @@
       "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe notebooks/rdls_hdx_v10.py --max-datasets 100)",
       "Bash(grep --line-buffered -E \"=====|PROCESSING|COMPLETE|ERROR|ABORT|high|med|inv|rdls|cost|\\\\$|Summary|Output locations|invalid|failed|Elapsed\")",
       "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe -m pip install python-pptx --quiet)",
-      "Bash(py -c \"import pptx; print\\(pptx.__version__\\)\")"
+      "Bash(py -c \"import pptx; print\\(pptx.__version__\\)\")",
+      "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records.py --help)",
+      "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records_v03.py --help)",
+      "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records.py \"output/hdx/v1.0/dist/high/rdls_el-aia_hdxapi_hdxhapianguilla_2017.json\")",
+      "Bash(C:/Users/benny/miniforge3/envs/to-rdls/python.exe scripts/validate_records_v03.py \"output/vulnerability-datasets/metadata/rdls_vln-chl_etris_tsunamivulnerability.json\")",
+      "Bash(Get-Content \"C:\\\\TEMP\\\\claude\\\\C--Users-benny-OneDrive-Documents-Github-to-rdls\\\\a3a110f8-06e0-4491-8bf3-594abc713f4d\\\\tasks\\\\bdcicz7u8.output\")"
     ]
   }
 }

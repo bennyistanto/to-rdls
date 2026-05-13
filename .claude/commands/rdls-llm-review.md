@@ -15,18 +15,18 @@ $ARGUMENTS - options: `--dist-dir PATH`, `--metadata-dir PATH`, `--output-dir PA
    - HDX dataset metadata JSONs in `--metadata-dir`
    - Column cache in `output/column_cache/` (optional but saves time)
 
-2. Review config at `configs/llm_review.yaml`:
+2. Review config at `configs/sources/hdx_llm_review.yaml`:
    - `llm.max_cost_usd` - cost guardrail (default $15)
    - `llm.model` - must be `claude-haiku-4-5-20251001`
    - `merge.llm_overrides_signals` - whether LLM wins on disagreement
 
 3. Run the pipeline:
    ```bash
-   python -m src.llm_review \
+   python -m src.sources.hdx_llm_review \
      --dist-dir path/to/rdls/dist \
      --metadata-dir path/to/dataset_metadata \
      --output-dir output/llm \
-     --config configs/llm_review.yaml
+     --config configs/sources/hdx_llm_review.yaml
    ```
 
 4. For testing, use `--dry-run` (no LLM calls) or `--max-records N` (limit)

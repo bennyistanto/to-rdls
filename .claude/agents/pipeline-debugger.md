@@ -19,10 +19,10 @@ Use Read to inspect records, configs, and source code. Use Grep to search for pa
 7. **Vulnerability extraction** (`extract_vulnloss.VulnerabilityExtractor.extract()`)
 8. **Loss extraction** (`extract_vulnloss.LossExtractor.extract()`)
 9. **Integration** (`integrate.integrate_record()`) → merged record
-10. **Validation & QA** (`validate_qa.validate_and_score()`) → ScoredRecord
+10. **Validation & QA** (`validate.validate_and_score()`) → ScoredRecord
 11. **HDX review** (`hdx_review.assess_hevl()`) → HEVLAssessment (re-scores with column signals)
 12. **Column enrichment** (`ckan_columns.load_columns_for_uuid()`) → ColumnInfo
-13. **LLM classification** (`llm_review.run_llm_review()`) → LLMClassification (4-phase)
+13. **LLM classification** (`sources/hdx_llm_review.run_llm_review()`) → LLMClassification (4-phase)
 14. **ID rebuild** (`llm_review._rebuild_id_for_new_rdt()`) → renamed IDs if reclassified
 
 ## Debugging approach

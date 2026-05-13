@@ -22,7 +22,7 @@ $ARGUMENTS - config filename or topic (e.g., "signal_dictionary", "naming", "val
    - `translate.py` → format_mapping.yaml, license_mapping.yaml, spatial.yaml
    - `naming.py` → naming.yaml
    - `schema.py` → rdls_schema.yaml, rdls_schema_v0.3.json
-   - `validate_qa.py` → rdls_schema.yaml, rdls_defaults.yaml
+   - `validate.py` → rdls_schema.yaml, rdls_defaults.yaml
    - `spatial.py` → spatial.yaml
    - `sources/hdx.py` → sources/hdx.yaml
    - `integrate.py` → naming.yaml (via naming module)

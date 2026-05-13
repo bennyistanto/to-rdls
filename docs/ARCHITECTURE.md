@@ -69,8 +69,8 @@ Source API ──► Source Adapter ──► Common Fields ──► Classifica
 | HEVL Extraction | `extract_hazard.py`, `extract_exposure.py`, `extract_vulnloss.py` | Pattern-match metadata text against signal dictionary to populate component blocks |
 | Integration | `integrate.py` | Merge HEVL blocks into base record, reconcile `risk_data_type`, validate component combinations |
 | Naming | `naming.py` | Generate structured record IDs: `rdls_{types}-{iso3}{org}_{titleslug}` with collision detection |
-| Validation | `validate_qa.py`, `schema.py` | JSON Schema validation, business rules, 5-pass auto-fix, confidence scoring |
-| Distribution | `validate_qa.py` | Route records to tiered output folders (high/medium/low x valid/invalid) |
+| Validation | `validate.py`, `schema.py` | JSON Schema validation, business rules, 5-pass auto-fix, confidence scoring |
+| Distribution | `validate.py` | Route records to tiered output folders (high/medium/low x valid/invalid) |
 
 ---
 
@@ -134,7 +134,7 @@ Grouped by pipeline phase. Arrows show `import` relationships between `src/` mod
 │                                                              │
 │  schema.py ────────► utils (load_json, load_yaml)           │
 │                                                              │
-│  validate_qa.py ───► schema (SchemaContext, validate_record)│
+│  validate.py ──────► schema (SchemaContext, validate_record)│
 │                  ──► utils (load_json, load_yaml, write_json│
 │                        navigate_path, remove_at_path,        │
 │                        set_at_path)                          │
@@ -267,7 +267,7 @@ out false positives (e.g., "flood" in "blood flood bank" contexts).
 
 ## 6. Validation Engine
 
-### 5-Pass Auto-Fix (`AutoFixer` in `validate_qa.py`)
+### 5-Pass Auto-Fix (`AutoFixer` in `validate.py`)
 
 | Pass | Name | Action |
 |------|------|--------|
@@ -301,7 +301,7 @@ validity:
 - **JSON Schema validation** (`schema.py`): `SchemaContext` bundles all
   schema-derived lookups (enum values, field aliases, required fields, allowed
   properties) built once from the RDLS v0.3 JSON Schema.
-- **Business rules** (`validate_qa.py`): attribution role coverage, schema link
+- **Business rules** (`validate.py`): attribution role coverage, schema link
   presence, component consistency checks beyond what JSON Schema can express.
 
 ---

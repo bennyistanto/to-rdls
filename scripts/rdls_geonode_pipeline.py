@@ -82,7 +82,7 @@ from src.extract_vulnloss import (
     build_vulnerability_block, build_loss_block,
 )
 from src.integrate import integrate_record
-from src.validate_qa import validate_and_score, distribute_records
+from src.validate import validate_and_score, distribute_records
 
 
 def portal_dir(portal_name: str, stage: str) -> Path:

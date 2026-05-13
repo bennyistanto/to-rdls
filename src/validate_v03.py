@@ -1,28 +1,22 @@
 """
-RDLS Semantic Validator
-=======================
+RDLS v0.3 Semantic Validation
+==============================
 Complements jsonschema validation by checking semantic rules that
 jsonschema cannot enforce (open codelist values, single-value fields,
 IANA link relations, cross-field consistency).
 
-Lesson learned: jsonschema only validates data TYPES (string, array, etc.)
-and closed enums. It does NOT catch:
+Catches issues jsonschema misses:
   - Multi-value strings where single value is intended (e.g., "PGA:g; SA:g")
   - Invalid open codelist values (any string passes type check)
   - Non-standard IANA link relation types
   - Cross-field logical inconsistencies
 
-Usage:
-  python notebooks/validate_rdls_semantic.py <rdls_json_file> [schema_file]
-
-If schema_file is not provided, defaults to schema/rdls_schema_v0.3.json
+Public API:
+    from src.validate_v03 import validate_semantic, SemanticIssue
 """
 
-import json
-import sys
-import os
 import re
-from pathlib import Path
+from typing import List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -51,14 +45,13 @@ IANA_LINK_RELATIONS = {
 }
 
 # Intensity measure format: "MEASURE:UNIT" (single value)
-# From schema's intensity_measure_definitions keys
 IM_PATTERN = re.compile(r"^[A-Za-z0-9_()]+:[A-Za-z0-9²/\-]+$")
 
 # Known quantity_kind values (QUDT + schema suggestions)
 KNOWN_QUANTITY_KINDS = {
-    "area", "count", "monetary", "length", "time",  # schema suggestions
-    "fraction", "ratio", "dimensionless_ratio",       # common for vulnerability
-    "probability", "percentage", "rate",               # other common kinds
+    "area", "count", "monetary", "length", "time",
+    "fraction", "ratio", "dimensionless_ratio",
+    "probability", "percentage", "rate",
 }
 
 # Access modality closed codelist
@@ -68,10 +61,14 @@ VALID_ACCESS_MODALITY = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Result class
+# ---------------------------------------------------------------------------
+
 class SemanticIssue:
     """Represents a semantic validation finding."""
 
-    def __init__(self, severity, path, message, suggestion=None):
+    def __init__(self, severity: str, path: str, message: str, suggestion: Optional[str] = None):
         self.severity = severity  # "error", "warning", "info"
         self.path = path
         self.message = message
@@ -85,9 +82,13 @@ class SemanticIssue:
         return s
 
 
-def validate_semantic(record, schema=None):
-    """Run all semantic checks on an RDLS record. Returns list of SemanticIssue."""
-    issues = []
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def validate_semantic(record: dict, schema: Optional[dict] = None) -> List[SemanticIssue]:
+    """Run all semantic checks on an RDLS v0.3 record. Returns list of SemanticIssue."""
+    issues: List[SemanticIssue] = []
 
     # Support both wrapped {datasets: [...]} and unwrapped format
     if "datasets" in record:
@@ -102,43 +103,30 @@ def validate_semantic(record, schema=None):
     return issues
 
 
-def _check_dataset(ds, prefix, issues, schema):
-    """Check a single dataset record."""
+# ---------------------------------------------------------------------------
+# Internal checkers
+# ---------------------------------------------------------------------------
 
-    # --- 1. Single-value string fields with separators ---
+def _check_dataset(ds: dict, prefix: str, issues: List[SemanticIssue], schema):
     _check_single_value_strings(ds, prefix, issues)
-
-    # --- 2. Link relation types ---
     _check_links(ds, prefix, issues)
-
-    # --- 3. Open codelist values ---
     _check_open_codelists(ds, prefix, issues)
-
-    # --- 4. Cross-field consistency ---
     _check_cross_field(ds, prefix, issues)
-
-    # --- 5. Resource field conventions ---
     _check_resources(ds, prefix, issues)
-
-    # --- 6. Attribution completeness ---
     _check_attributions(ds, prefix, issues)
 
 
-def _check_single_value_strings(ds, prefix, issues):
+def _check_single_value_strings(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check that single-value string fields don't contain multiple values."""
-
     separators = [";", "|", " / ", " , "]
 
-    # Collect all intensity_measure values from all function types
     vuln = ds.get("vulnerability", {})
     funcs = vuln.get("functions", {})
 
     for func_type in ["vulnerability", "fragility", "damage_to_loss", "engineering_demand"]:
         for j, fn in enumerate(funcs.get(func_type, [])):
             path = f"{prefix}.vulnerability.functions.{func_type}[{j}]".strip(".")
-            fn_id = fn.get("id", "?")
 
-            # Check intensity_measure
             im = fn.get("intensity_measure", "")
             if im:
                 for sep in separators:
@@ -150,8 +138,6 @@ def _check_single_value_strings(ds, prefix, issues):
                             "Use one primary IM and document others in analysis_details."
                         ))
                         break
-
-                # Check format matches MEASURE:UNIT pattern
                 if not IM_PATTERN.match(im):
                     issues.append(SemanticIssue(
                         "warning", f"{path}.intensity_measure",
@@ -159,7 +145,6 @@ def _check_single_value_strings(ds, prefix, issues):
                         "Check intensity_measure_definitions in schema for valid codes."
                     ))
 
-            # Check other string fields that should be single values
             for field in ["approach", "relationship", "category", "taxonomy",
                           "impact_type", "impact_modelling", "impact_metric"]:
                 val = fn.get(field, "")
@@ -174,9 +159,8 @@ def _check_single_value_strings(ds, prefix, issues):
                             break
 
 
-def _check_links(ds, prefix, issues):
+def _check_links(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check link relation types against IANA registry."""
-
     links = ds.get("links", [])
 
     if not links:
@@ -186,7 +170,6 @@ def _check_links(ds, prefix, issues):
         ))
         return
 
-    # First link must be describedby
     if links[0].get("rel") != "describedby":
         issues.append(SemanticIssue(
             "error", f"{prefix}.links[0].rel".strip("."),
@@ -194,8 +177,8 @@ def _check_links(ds, prefix, issues):
         ))
 
     valid_schema_hrefs = {
-        "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",  # v0.3
-        "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json",  # v1.0
+        "https://docs.riskdatalibrary.org/en/0__3__0/rdls_schema.json",
+        "https://docs.riskdatalibrary.org/en/1__0__0/rdls_schema.json",
     }
     href = links[0].get("href", "")
     if href not in valid_schema_hrefs:
@@ -205,21 +188,18 @@ def _check_links(ds, prefix, issues):
             f"Expected '...0__3__0/rdls_schema.json' (v0.3) or '...1__0__0/rdls_schema.json' (v1.0).",
         ))
 
-    # Check all link rel values against IANA
     for i, link in enumerate(links):
         rel = link.get("rel", "")
         if rel and rel not in IANA_LINK_RELATIONS:
             issues.append(SemanticIssue(
                 "warning", f"{prefix}.links[{i}].rel".strip("."),
                 f"'{rel}' is not a standard IANA link relation type.",
-                "See https://www.iana.org/assignments/link-relations/ for valid values. "
-                "Common ones: 'related', 'source', 'cite-as', 'alternate', 'describedby'."
+                "See https://www.iana.org/assignments/link-relations/ for valid values."
             ))
 
 
-def _check_open_codelists(ds, prefix, issues):
+def _check_open_codelists(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check open codelist values for common mistakes."""
-
     vuln = ds.get("vulnerability", {})
     funcs = vuln.get("functions", {})
 
@@ -227,18 +207,14 @@ def _check_open_codelists(ds, prefix, issues):
         for j, fn in enumerate(funcs.get(func_type, [])):
             path = f"{prefix}.vulnerability.functions.{func_type}[{j}]".strip(".")
 
-            # quantity_kind
             qk = fn.get("quantity_kind", "")
             if qk and qk not in KNOWN_QUANTITY_KINDS:
                 issues.append(SemanticIssue(
                     "info", f"{path}.quantity_kind",
                     f"'{qk}' is not in common quantity_kind values.",
-                    f"Schema suggestions: area, count, monetary, length, time. "
-                    f"For dimensionless ratios: 'fraction' or 'ratio'. "
-                    f"See QUDT Quantity Kind Vocabulary for other values."
+                    f"Schema suggestions: area, count, monetary, length, time."
                 ))
 
-            # Check intensity_measure against schema's known definitions
             im = fn.get("intensity_measure", "")
             if im and ":" not in im:
                 issues.append(SemanticIssue(
@@ -247,9 +223,8 @@ def _check_open_codelists(ds, prefix, issues):
                 ))
 
 
-def _check_cross_field(ds, prefix, issues):
+def _check_cross_field(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check cross-field logical consistency."""
-
     vuln = ds.get("vulnerability", {})
     funcs = vuln.get("functions", {})
 
@@ -257,25 +232,22 @@ def _check_cross_field(ds, prefix, issues):
         for j, fn in enumerate(funcs.get(func_type, [])):
             path = f"{prefix}.vulnerability.functions.{func_type}[{j}]".strip(".")
 
-            # Fragility functions should typically use 'probability' as impact_metric
             if func_type == "fragility" and fn.get("impact_metric") not in ("probability", "damage_index"):
                 issues.append(SemanticIssue(
                     "info", f"{path}.impact_metric",
-                    f"Fragility function using '{fn.get('impact_metric')}' — "
+                    f"Fragility function using '{fn.get('impact_metric')}' - "
                     f"fragility functions typically use 'probability' (exceedance probability).",
                 ))
 
-            # Damage-to-loss with 'discrete' relationship should typically be 'empirical' or 'judgement'
             if (func_type == "damage_to_loss" and
                 fn.get("relationship") == "discrete" and
                 fn.get("approach") not in ("empirical", "judgement")):
                 issues.append(SemanticIssue(
                     "info", f"{path}",
-                    f"Discrete damage-to-loss function with '{fn.get('approach')}' approach — "
+                    f"Discrete damage-to-loss function with '{fn.get('approach')}' approach - "
                     f"discrete relationships are typically empirical or judgement-based.",
                 ))
 
-            # damage_states_names should be array, not string
             dsn = fn.get("damage_states_names")
             if dsn is not None and isinstance(dsn, str):
                 issues.append(SemanticIssue(
@@ -284,7 +256,6 @@ def _check_cross_field(ds, prefix, issues):
                     'Use ["DS1", "DS2", "DS3", "DS4"] instead of "DS1, DS2, DS3, DS4".'
                 ))
 
-    # Check spatial bbox format [west, south, east, north]
     bbox = ds.get("spatial", {}).get("bbox", [])
     if bbox and len(bbox) == 4:
         west, south, east, north = bbox
@@ -300,13 +271,11 @@ def _check_cross_field(ds, prefix, issues):
             ))
 
 
-def _check_resources(ds, prefix, issues):
+def _check_resources(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check resource field conventions."""
-
     for i, r in enumerate(ds.get("resources", [])):
         path = f"{prefix}.resources[{i}]".strip(".")
 
-        # Check for legacy field names
         if "format" in r and "data_format" not in r:
             issues.append(SemanticIssue(
                 "error", f"{path}",
@@ -321,7 +290,6 @@ def _check_resources(ds, prefix, issues):
                 "Use 'download_url' for direct downloads, 'access_url' for access pages."
             ))
 
-        # Check access_modality
         am = r.get("access_modality", "")
         if am and am not in VALID_ACCESS_MODALITY:
             issues.append(SemanticIssue(
@@ -331,14 +299,9 @@ def _check_resources(ds, prefix, issues):
             ))
 
 
-def _check_attributions(ds, prefix, issues):
+def _check_attributions(ds: dict, prefix: str, issues: List[SemanticIssue]):
     """Check attribution completeness."""
-
-    attributions = ds.get("attributions", [])
-    roles = {a.get("role") for a in attributions}
-
-    # Entity must have name + (email or url)
-    for i, attr in enumerate(attributions):
+    for i, attr in enumerate(ds.get("attributions", [])):
         path = f"{prefix}.attributions[{i}]".strip(".")
         entity = attr.get("entity", {})
         if entity and "email" not in entity and "url" not in entity:
@@ -346,53 +309,3 @@ def _check_attributions(ds, prefix, issues):
                 "error", f"{path}.entity",
                 f"Entity '{entity.get('name', '?')}' must have either 'email' or 'url'.",
             ))
-
-
-def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: python {sys.argv[0]} <rdls_json_file> [schema_file]")
-        sys.exit(1)
-
-    json_file = sys.argv[1]
-    schema_file = sys.argv[2] if len(sys.argv) > 2 else None
-
-    # Load record
-    with open(json_file, encoding="utf-8") as f:
-        record = json.load(f)
-
-    # Load schema if provided
-    schema = None
-    if schema_file:
-        with open(schema_file, encoding="utf-8") as f:
-            schema = json.load(f)
-
-    print(f"Semantic validation: {os.path.basename(json_file)}")
-    print("=" * 60)
-
-    issues = validate_semantic(record, schema)
-
-    if not issues:
-        print("\nSemantic validation: PASSED (0 issues)")
-    else:
-        errors = [i for i in issues if i.severity == "error"]
-        warnings = [i for i in issues if i.severity == "warning"]
-        infos = [i for i in issues if i.severity == "info"]
-
-        print(f"\nFound {len(issues)} issue(s): "
-              f"{len(errors)} error(s), {len(warnings)} warning(s), {len(infos)} info(s)\n")
-
-        for issue in issues:
-            print(issue)
-            print()
-
-        if errors:
-            print("FAILED — errors must be fixed before submission.")
-            sys.exit(1)
-        else:
-            print("PASSED with warnings/info — review recommended.")
-
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
