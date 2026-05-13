@@ -28,10 +28,10 @@ Step 3: Validate & Distribute (offline, ~2 min)
 
 | Script | Step | Description |
 |--------|------|-------------|
-| `src/ckan_columns.py` | 1 | Fetch column headers from HDX CKAN API |
-| `src/llm_review.py` | 2-5 | LLM review pipeline (triage → classify → merge) |
-| `notebooks/rdls_hdx_llm_review.py` | 5-7 | Automated: full run + not-RDLS separation + validation |
-| `notebooks/rdls_hdx_08_sanitize_validate.py` | 8 | Rebuild, sanitize, and validate all records (optional) |
+| `src/sources/ckan_columns.py` | 1 | Fetch column headers from HDX CKAN API |
+| `src/sources/hdx_llm_review.py` | 2-5 | LLM review pipeline (triage → classify → merge) |
+| `scripts/rdls_hdx_llm_review.py` | 5-7 | Automated: full run + not-RDLS separation + validation |
+| `scripts/rdls_hdx_sanitize_validate.py` | 8 | Rebuild, sanitize, and validate all records (optional) |
 
 ---
 

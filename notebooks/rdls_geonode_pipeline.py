@@ -71,7 +71,7 @@ from src.sources.geonode import (
     extract_geonode_fields,
 )
 from src.classify import classify_dataset
-from src.translate import build_rdls_record, load_format_config, load_license_config
+from src.translate_v03 import build_rdls_record, load_format_config, load_license_config
 from src.spatial import (
     load_spatial_config, build_iso3_table_from_naming, country_name_to_iso3,
 )

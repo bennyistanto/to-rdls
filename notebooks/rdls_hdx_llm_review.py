@@ -99,7 +99,7 @@ print(f"Output:     {OUTPUT_DIR}")
 # - **Phase 4**: Merge - applies LLM decisions, writes revised JSONs.
 
 # %%
-from src.llm_review import run_llm_review, load_review_config
+from src.llm_review_v03 import run_llm_review, load_review_config
 
 config = load_review_config()
 

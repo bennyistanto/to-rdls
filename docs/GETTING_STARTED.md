@@ -65,13 +65,13 @@ Alternatively, add `sys.path.insert(0, "path/to/to-rdls")` at the top of your sc
 
 ## Running the HDX Pipeline
 
-The HDX pipeline processes metadata from the Humanitarian Data Exchange into RDLS v0.3 JSON records. The pipeline runs as a sequence of notebook scripts.
+The HDX pipeline processes metadata from the Humanitarian Data Exchange into RDLS v1.0 JSON records using the LLM-first pipeline (`scripts/rdls_hdx_pipeline.py`). A legacy v0.3 pipeline also exists for GeoNode, DesInventar, and NISMOD sources.
 
 ### Step 1: Prepare inputs
 
 You need:
 - HDX dataset metadata (from hdx-metadata-crawler or CKAN API dump)
-- RDLS v0.3 JSON Schema (in `schema/rdls_schema_v0.3.json`)
+- RDLS v1.0 JSON Schema (in `rdl-standard/schema/rdls_schema.json`) or v0.3 (in `schema/rdls_schema_v0.3.json`)
 
 ### Step 2: Run the pipeline scripts
 
@@ -79,7 +79,7 @@ You need:
 # Classification, translation, HEVL extraction, integration, validation
 # (These correspond to hdx-metadata-crawler notebooks 06-13,
 #  now implemented as src/ modules)
-python notebooks/rdls_hdx_sanitize_validate.py
+python scripts/rdls_hdx_sanitize_validate.py
 ```
 
 ### Step 3: Run LLM review (optional)
@@ -91,7 +91,7 @@ The LLM review pipeline reclassifies borderline records using Claude Haiku:
 export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Run 4-phase pipeline
-python notebooks/rdls_hdx_llm_review.py
+python scripts/rdls_hdx_llm_review.py
 ```
 
 This will:
@@ -105,7 +105,7 @@ See [llm_review_guide.md](llm_review_guide.md) for detailed step-by-step instruc
 ### Step 4: Validate and distribute
 
 ```bash
-python notebooks/rdls_hdx_sanitize_validate.py
+python scripts/rdls_hdx_sanitize_validate.py
 ```
 
 This sanitizes schema violations, renames files per updated risk_data_type, and distributes to `output/llm/dist/high/` (valid) and `output/llm/dist/invalid/` (needs fixes).

@@ -6,25 +6,42 @@ Complete reference for all modules, their public API, key internals, and inter-d
 
 ```
 utils.py ← (all modules)
-spatial.py ← translate.py, naming.py
+spatial.py ← translate.py, translate_v03.py, naming.py
 schema.py ← validate_qa.py
-naming.py ← integrate.py, translate.py
-classify.py ← (pipeline entry)
-translate.py ← (pipeline)
-extract_hazard.py ← (pipeline)
-extract_exposure.py ← (pipeline)
-extract_vulnloss.py ← (pipeline)
-integrate.py ← (pipeline)
-validate_qa.py ← (pipeline exit)
-inventory.py ← (standalone - no to-rdls dependencies, stdlib only)
-review.py ← inventory.py, configs/review_knowledge.yaml (YAML-driven patterns; requires geospatial env)
-sources/hdx.py ← (source adapter - reference implementation)
-sources/geonode.py ← (source adapter - implemented; title humanization, region ISO3 extraction)
+codelists.py ← translate.py, extract.py, validate_v10.py
+naming.py ← integrate.py, translate.py, translate_v03.py
+
+--- v1.0 pipeline (canonical) ---
+llm_classify.py ← (v1.0 pipeline entry - single-phase LLM; uses sources/ckan_columns.py)
+translate.py ← (v1.0 base record builder)
+extract.py ← (v1.0 HEVL block builders)
+validate_v10.py ← (v1.0 3-layer audit: schema + codelist + semantic)
+
+--- v0.3 pipeline (legacy) ---
+classify.py ← (v0.3 pipeline entry - tag/keyword scoring)
+translate_v03.py ← (v0.3 record builder)
+extract_hazard.py ← (v0.3 pipeline)
+extract_exposure.py ← (v0.3 pipeline)
+extract_vulnloss.py ← (v0.3 pipeline)
+validate_v03.py ← (v0.3 semantic validation logic)
+
+--- shared pipeline ---
+integrate.py ← (HEVL merge - used by both pipelines)
+validate_qa.py ← (pipeline-time autofix + scoring - used by both pipelines)
+
+--- standalone tools ---
+inventory.py ← (no to-rdls dependencies, stdlib only)
+review.py ← inventory.py, configs/review_knowledge.yaml (requires geospatial env)
 zipaccess.py ← review.py (ZIP member inspection)
-hdx_review.py ← llm_review.py (HEVL re-scoring)
-ckan_columns.py ← llm_review.py (column enrichment)
-llm_review.py ← (LLM pipeline entry - uses hdx_review, ckan_columns, naming, utils)
 __main__.py ← inventory.py (CLI entry)
+
+--- sources/ (all source-specific code) ---
+sources/hdx.py ← (HDX/CKAN source adapter - reference implementation)
+sources/geonode.py ← (GeoNode source adapter)
+sources/ckan_columns.py ← (CKAN column fetcher; used by llm_classify.py + sources/hdx_llm_review.py)
+sources/hdx_review.py ← utils, review, integrate (HDX HEVL re-scoring)
+sources/hdx_llm_review.py ← sources/hdx_review, sources/ckan_columns, naming, utils
+                            (v0.3 4-phase LLM pipeline entry; config: configs/sources/hdx_llm_review.yaml)
 ```
 
 ## utils.py - Text & I/O utilities
@@ -91,7 +108,18 @@ __main__.py ← inventory.py (CLI entry)
 - `enforce_component_deps(components, rules)` → enforce V/L require H or E
 - Thresholds: high≥7, medium≥4, candidate≥5
 
-## translate.py - Record builder
+## translate.py - v1.0 record builder (canonical)
+
+- `build_entity(name, url, email)` → entity dict with anyOf (url or email)
+- `build_resources_v10(hdx_resources)` → RDLS v1.0 resources array (media_type + format)
+- `build_base_record_v10(fields, classification, spatial_config)` → base RDLS v1.0 record
+- `order_record_fields_v10(record)` → field-ordered dict for clean JSON output
+- `wrap_datasets_v10(record)` → `{"datasets": [record]}` wrapper
+- `map_license_url(license_title, license_id, license_url)` → SPDX URL
+- `map_media_type(data_format)` → IANA media type string
+- `parse_hdx_date(date_str)` → ISO date string
+
+## translate_v03.py - v0.3 record builder (legacy)
 
 - `load_format_config(yaml_path)`, `load_license_config(yaml_path)`
 - `detect_service_url(url, patterns)` → (data_format, access_modality)
@@ -100,7 +128,8 @@ __main__.py ← inventory.py (CLI entry)
 - `map_license(license_str, config)` → RDLS license code
 - `build_attributions(fields, source_url)` → attributions array
 - `build_resources(fields, format_config)` → resources array
-- `build_rdls_record(fields, components, ...)` → base RDLS record
+- `build_rdls_record(fields, components, ...)` → base RDLS v0.3 record
+- `wrap_datasets(record)` → `{"datasets": [record]}` wrapper
 
 ## extract_hazard.py - Hazard extraction
 
@@ -302,43 +331,83 @@ All HEVL signal patterns, file filtering rules, model software definitions, nami
 
 **CLI**: `python -m src.review /path/to/folder [-o OUTPUT_DIR] [--max-inspect 30] [-q]`
 
-## Source adapters (sources/)
+## sources/ - Source adapters and HDX pipeline extensions
 
-Each source adapter follows the same pattern: Config → Client → normalize → extract_fields → common dict.
-New sources should follow the HDX adapter as reference implementation.
+All source-specific code lives in `src/sources/`. Rule: if a module only makes sense
+for one data source, it belongs here. General pipeline modules stay in `src/` root.
 
-### sources/hdx.py - Reference implementation (HDX/CKAN)
+### sources/hdx.py - HDX/CKAN source adapter (reference implementation)
 
 - `HDXCrawlerConfig.from_yaml(yaml_path)`
 - `HDXClient(config)` - rate-limited HTTP client with retry
 - `iter_datasets(client, config, query)` → generator of dataset dicts
 - `download_dataset_metadata(client, config, id)` → (metadata, source)
 - `normalize_dataset_record(raw)` → unwrapped record
-- `extract_hdx_fields(ds)` → common field dict (the interface other adapters must match)
+- `extract_hdx_fields(ds)` → common field dict (the interface all adapters must match)
 - `detect_osm(ds, markers, threshold)` → OSMDetectionResult
 
-### sources/geonode.py - Stub (template for new adapters)
+### sources/geonode.py - GeoNode source adapter
 
 - `GeoNodeConfig` dataclass with `from_yaml()`
-- `GeoNodeClient` - not yet implemented
-- `normalize_geonode_record(raw)` → stub
-- `extract_geonode_fields(ds)` → must return same common field dict as HDX adapter
+- `normalize_geonode_record(raw)` → normalized record
+- `extract_geonode_fields(ds)` → common field dict (same shape as HDX adapter)
 
-### Common field dict (interface contract)
+### sources/ckan_columns.py - CKAN column header fetcher
+
+- `ColumnCache(cache_dir)` - disk-backed cache for column headers
+- `ColumnInfo(uuid, resource_id, columns, fetch_time, error)` dataclass
+- `fetch_resource_columns(resource_id, timeout)` → list of column names
+- `load_columns_for_uuid(dataset_uuid, cache)` → list of ColumnInfo
+
+### sources/hdx_review.py - HDX second-pass HEVL review
+
+- `ReviewableRecord` dataclass - RDLS record + HDX metadata + column info
+- `HEVLAssessment` dataclass - scored HEVL components with evidence
+- `assess_hevl(record, column_data)` → HEVLAssessment
+- `build_hdx_index(records)` → lookup dict for HDX cross-referencing
+- `_init_extractors()` - lazy init of v0.3 extractors
+
+### sources/hdx_llm_review.py - HDX v0.3 LLM pipeline (4-phase)
+Config: `configs/sources/hdx_llm_review.yaml`
+
+- `ReviewConfig` dataclass - loaded from YAML (model, thresholds, cost cap, rate limits)
+- `load_review_config(yaml_path)` → ReviewConfig
+- `TriageBucket(SKIP, ACCEPT, LLM)` enum
+- `triage_records(records, config)` → bucketed records
+- `build_classification_prompt(record, columns)` → (system, user) tuple
+- `parse_llm_response(response_text)` → LLMClassification
+- `run_llm_review(records, config, ...)` → reviewed records
+
+### Common field dict (interface contract for source adapters)
 All source adapters must produce a dict with these keys:
 `id`, `name`, `title`, `notes`, `methodology`, `organization`, `org_name`, `org_description`, `license_title`, `license_url`, `groups`, `tags`, `resources`, `dataset_date`, `dataset_source`, `maintainer`, `url`
 
-## Notebooks (to-rdls/notebooks/)
+## scripts/ and notebooks/
 
-| Notebook | Purpose | Type |
-|---|---|---|
-| `rdls_nismod_00a_generate_country_bbox.py` | Generate country bounding boxes from Natural Earth | Preprocessing |
-| `rdls_nismod_00b_generate_geonames_lookup.py` | Build GeoNames country ID lookup table | Preprocessing |
-| `rdls_nismod_01_generate_icra_records.py` | Generate NISMOD ICRA RDLS records from template | Generator |
-| `rdls_desinventar_01_generate_records.py` | Generate RDLS loss records from DesInventar data | Generator |
-| `rdls_ind_gobs_csv2gpkg.ipynb` | Convert India GOBS CSV exposure data to GeoPackage | Converter |
-| `rdls_data_inventory_contents.ipynb` | Thin wrapper for `src/inventory.py` - interactive delivery inventory | QA |
-| `rdls_validate_metadata.ipynb` | Validate RDLS records against schema | QA |
+**scripts/** - executable entry points. One file = one runnable action.
+All scripts use `Path(__file__).parent.parent` to locate project root.
+
+| Script | Purpose |
+|--------|---------|
+| `rdls_hdx_pipeline.py` | v1.0 LLM-first HDX pipeline (canonical) |
+| `rdls_hdx_llm_review.py` | v0.3 HDX LLM review pipeline (4 phases) |
+| `rdls_hdx_sanitize_validate.py` | Post-LLM sanitization + validation |
+| `rdls_geonode_pipeline.py` | GeoNode v0.3 pipeline |
+| `rdls_desinventar_01_generate_records.py` | DesInventar loss record generation |
+| `rdls_nismod_00a/00b_*.py` | NISMOD preprocessing (country bbox, GeoNames) |
+| `rdls_nismod_01_generate_icra_records.py` | NISMOD ICRA record generation |
+| `validate_records.py` | v1.0 three-layer validation CLI (wraps src/validate_v10.py) |
+| `validate_records_v03.py` | v0.3 semantic validation CLI (wraps src/validate_v03.py) |
+| `convert_v03_to_v10.py` | Schema version conversion |
+| `post_convert_enrich.py` | Post-conversion enrichment + validation |
+
+**notebooks/** - interactive Jupyter notebooks only (.ipynb)
+
+| Notebook | Purpose |
+|----------|---------|
+| `rdls_validate_metadata.ipynb` | Interactive metadata validator |
+| `rdls_data_inventory_contents.ipynb` | Interactive delivery inventory |
+| `rdls_ind_gobs_csv2gpkg.ipynb` | India GOBS CSV → GeoPackage converter |
 
 ## Documentation (to-rdls/docs/)
 

@@ -103,7 +103,27 @@ Scores datasets against tag weights, keyword patterns, and organization hints to
 
 ## Translation
 
-### `translate.py` - RDLS record builder
+### `translate.py` - v1.0 record builder (canonical)
+
+Builds base RDLS v1.0 records for the LLM-first HDX pipeline. Handles entity construction, resource assembly with media_type, license URL mapping, and field ordering.
+
+**Key Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `build_base_record_v10()` | Assemble complete base RDLS v1.0 record (entities, resources, spatial, temporal) |
+| `build_resources_v10()` | Build v1.0 resources array with media_type + format fields |
+| `build_entity()` | Build entity dict satisfying anyOf(url, email) |
+| `map_license_url()` | Map license title/id to SPDX URL |
+| `map_media_type()` | Map data format to IANA media type |
+| `order_record_fields_v10()` | Field-order dict for clean JSON output |
+| `wrap_datasets_v10()` | Wrap record in `{"datasets": [...]}` |
+
+**Dependencies:** `utils`, `spatial`, `codelists`
+
+---
+
+### `translate_v03.py` - v0.3 record builder (legacy)
 
 Translates source metadata into base RDLS v0.3 records. Handles format mapping, license mapping, attribution building, resource assembly, and temporal annotation.
 
@@ -117,7 +137,8 @@ Translates source metadata into base RDLS v0.3 records. Handles format mapping, 
 | `infer_format_from_name()` | Infer data format from filename keywords |
 | `map_data_format()` | Translate source format to RDLS `data_format` |
 | `map_license()` | Translate license string to RDLS license code |
-| `build_rdls_record()` | Assemble complete base RDLS record (format, license, attributions, resources, temporal) |
+| `build_rdls_record()` | Assemble complete base RDLS v0.3 record (format, license, attributions, resources, temporal) |
+| `wrap_datasets()` | Wrap record in `{"datasets": [...]}` |
 
 **Dependencies:** `utils`, `spatial`
 

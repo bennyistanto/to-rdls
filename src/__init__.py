@@ -1,8 +1,9 @@
 """
-to-rdls: Modular RDLS v0.3 metadata transformation toolkit.
+to-rdls: Modular RDLS metadata transformation toolkit.
 
-Transform metadata from various sources (HDX, GeoNode, etc.) into
-Risk Data Library Standard (RDLS) v0.3 JSON records.
+Supports two pipeline generations:
+  v1.0 (canonical): LLM-first single-phase pipeline for HDX -> RDLS v1.0 records.
+  v0.3 (legacy):    Regex + LLM hybrid pipeline for HDX/GeoNode -> RDLS v0.3 records.
 
 This is NOT a Python package. It's a set of scripts and configs
 designed to be copied alongside your project.
@@ -11,11 +12,17 @@ Usage from notebooks or scripts:
     import sys
     sys.path.insert(0, "path/to/to-rdls")
 
+    # v1.0 pipeline (canonical)
+    from src.llm_classify import classify_v10, V10Config
+    from src.translate import build_rdls_record_v10
+    from src.extract import integrate_hevl_v10
+
+    # v0.3 pipeline (legacy)
     from src.utils import sanitize_text, load_json, write_json
     from src.spatial import country_name_to_iso3, infer_spatial
     from src.schema import validate_record, load_codelists
     from src.classify import classify_dataset, Classification
-    from src.translate import build_rdls_record, map_data_format
+    from src.translate_v03 import build_rdls_record, map_data_format
     from src.extract_hazard import HazardExtractor
     from src.extract_exposure import ExposureExtractor
     from src.extract_vulnloss import VulnerabilityExtractor, LossExtractor
@@ -59,7 +66,7 @@ from .classify import (
     load_exclusion_patterns,
 )
 
-from .translate import (
+from .translate_v03 import (
     build_rdls_record,
     map_data_format,
     map_license,

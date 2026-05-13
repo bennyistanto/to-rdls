@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .schema import SchemaContext, validate_record
-from .translate import wrap_datasets
+from .translate_v03 import wrap_datasets
 from .utils import (
     load_json,
     load_yaml,

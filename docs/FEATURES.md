@@ -1,6 +1,6 @@
 # Features
 
-to-rdls is a modular toolkit for transforming metadata from multiple sources into RDLS v0.3 JSON records. This document describes what the toolkit can do today.
+to-rdls is a modular toolkit for transforming metadata from multiple sources into RDLS v0.3 or v1.0 JSON records. This document describes what the toolkit can do today.
 
 ---
 
@@ -59,7 +59,7 @@ Extraction uses tiered authority levels to control false positives:
 
 ## LLM-Assisted Classification
 
-The pipeline includes a 4-phase LLM review system (`src/llm_review.py`) that solves the content-blind over-classification problem (Problem 7).
+The v0.3 pipeline includes a 4-phase LLM review system (`src/sources/hdx_llm_review.py`) that solves the content-blind over-classification problem (Problem 7).
 
 ### The Problem
 
@@ -70,7 +70,7 @@ The regex pipeline classifies based on metadata keywords only. When a title says
 | Phase | What It Does | Cost |
 |-------|-------------|------|
 | **Phase 1: Signal Triage** | Re-score all records using existing regex. Bucket into confident / borderline / no_signal. | Free (cached regex) |
-| **Phase 2: Column Enrichment** | Fetch actual column headers from CKAN API via `src/ckan_columns.py`. Add as LLM context. | Free (cached, ~48h first build) |
+| **Phase 2: Column Enrichment** | Fetch actual column headers from CKAN API via `src/sources/ckan_columns.py`. Add as LLM context. | Free (cached, ~48h first build) |
 | **Phase 3: LLM Classification** | Send borderline + no_signal records to Claude Haiku 4.5 with strict RDLS component definitions. | ~$22 for 12,594 records |
 | **Phase 4: Merge and Rename** | Apply LLM decisions, rebuild record IDs when risk_data_type changes, validate, distribute. | Free |
 

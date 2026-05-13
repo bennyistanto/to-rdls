@@ -2,9 +2,11 @@
 
 ## Project overview
 
-A source-independent toolkit for transforming dataset metadata from any data catalog into RDLS (Risk Data Library Standard) v0.3 schema. Sources: HDX, GeoNode, CKAN, World Bank Data Catalog, and others. Maintained under GFDRR/World Bank's Digital Earth team. License: MPL-2.0.
+A source-independent toolkit for transforming dataset metadata from any data catalog into RDLS (Risk Data Library Standard) v0.3 and v1.0 schemas. Sources: HDX, GeoNode, CKAN, World Bank Data Catalog, and others. Maintained under GFDRR/World Bank's Digital Earth team. License: MPL-2.0.
 
-Pipeline: **Source Crawl → Filter → Classify → Translate → HEVL Extract → Integrate → Validate → Distribute**
+Two pipeline generations: **v1.0 (canonical)** - LLM-first single-phase pipeline for HDX datasets. **v0.3 (legacy)** - Regex + LLM hybrid pipeline for HDX/GeoNode/DesInventar/NISMOD.
+
+v0.3 pipeline: **Source Crawl → Filter → Classify → Translate → HEVL Extract → Integrate → Validate → Distribute**
 
 ## Architecture
 
@@ -19,27 +21,33 @@ to-rdls/
 │   ├── schema.py           # JSON Schema loading, validation, SchemaContext
 │   │                       #   Re-exports all of src/codelists.py for convenience
 │   ├── spatial.py          # Country name→ISO3, region expansion, spatial block
-│   ├── classify.py         # Tag-weighted HEVL classification → Classification
-│   ├── translate.py        # Source metadata → base RDLS record builder
-│   ├── extract_hazard.py   # 2-tier cascade → HazardExtraction
-│   ├── extract_exposure.py # 3-tier cascade → ExposureExtraction
-│   ├── extract_vulnloss.py # Vulnerability + Loss extractors
-│   ├── integrate.py        # Merge HEVL blocks into base record
+│   ├── classify.py         # [v0.3] Tag-weighted HEVL classification → Classification
+│   ├── translate.py        # [v1.0] Base record builder (entities, resources, ordering)
+│   ├── translate_v03.py    # [v0.3] Source metadata → base RDLS v0.3 record builder
+│   ├── llm_classify.py     # [v1.0] LLM-first classify + HEVL extract (single phase)
+│   ├── extract.py          # [v1.0] HEVL block builders from LLM response
+│   ├── extract_hazard.py   # [v0.3] 2-tier cascade → HazardExtraction
+│   ├── extract_exposure.py # [v0.3] 3-tier cascade → ExposureExtraction
+│   ├── extract_vulnloss.py # [v0.3] Vulnerability + Loss extractors
+│   ├── integrate.py        # Merge HEVL blocks into base record (shared)
 │   ├── naming.py           # Structured ID: rdls_{type}-{iso3}{org}_{slug}
-│   ├── validate_qa.py      # 5-pass autofix, confidence scoring, distribution
+│   ├── validate_qa.py      # Pipeline-time: 5-pass autofix, confidence scoring, distribution
+│   ├── validate_v10.py     # v1.0: 3-layer audit validator (schema + codelists + semantic)
+│   ├── validate_v03.py     # v0.3: semantic validation logic
 │   ├── inventory.py        # Delivery folder/ZIP inventory (standalone, stdlib only)
 │   ├── zipaccess.py        # ZIP member extraction with temp-file context managers
 │   ├── review.py           # Automated data review: inspect, HEVL classify, gap analysis
-│   ├── hdx_review.py       # HDX second-pass HEVL review with column detection
-│   ├── ckan_columns.py     # CKAN column header fetcher with disk-backed cache
-│   ├── llm_review.py       # LLM-assisted 4-phase HEVL classification pipeline
 │   ├── __main__.py         # CLI entry: python -m src /path/to/folder
-│   └── sources/
+│   └── sources/            # All source-specific code (adapters + HDX pipeline extensions)
 │       ├── hdx.py          # HDX/CKAN source adapter (reference implementation)
-│       └── geonode.py      # GeoNode source adapter (implemented)
-├── configs/                # 15 YAML config files (see below)
-├── schema/                 # RDLS v0.3 JSON Schema + template
-└── notebooks/              # Pipeline notebooks + generators
+│       ├── hdx_review.py   # HDX second-pass HEVL review with column detection
+│       ├── hdx_llm_review.py # [v0.3] HDX 4-phase LLM classification pipeline
+│       ├── ckan_columns.py # CKAN column header fetcher with disk-backed cache
+│       └── geonode.py      # GeoNode source adapter
+├── configs/                # Pipeline YAML configs at root; source-specific in configs/sources/
+├── schema/                 # RDLS v0.3 and v1.0 JSON Schemas + templates
+├── scripts/                # Executable entry points (thin wrappers, one file = one action)
+└── notebooks/              # Interactive Jupyter notebooks only (.ipynb)
 ```
 
 Data flow: `source adapter → extract_fields() → classify → translate → HEVL extract → integrate → validate_and_score → distribute_records`
@@ -61,16 +69,17 @@ Full dataclasses, extraction cascade details, and LLM pipeline → see `.claude/
 | `pipeline.yaml` | Runtime settings | thresholds, output paths |
 | `sources/geonode.yaml` | GeoNode adapter config | title_humanize, category_tag_map, skip_link_types |
 | `sources/hdx.yaml` | HDX adapter config | rate limiting, field paths, OSM markers |
-| `llm_review.yaml` | LLM review settings | phase thresholds, model, cost cap, rate limits |
+| `llm_review.yaml` | v1.0 LLM pipeline config | model, thresholds, cost cap, rate limits |
+| `sources/hdx_llm_review.yaml` | v0.3 HDX LLM review settings | 4-phase thresholds, model, cost cap |
 
 ## Schema
 
-**v0.3** (all sources): `schema/rdls_schema_v0.3.json` + `schema/rdls_template_v0.3.json` — **consult template before writing any field**
-
-**v1.0** (GCA climate data only):
+**v1.0** (canonical - HDX pipeline + all published/converted datasets):
 - Schema (authoritative): `C:\Users\benny\OneDrive\Documents\Github\rdl-standard\schema\rdls_schema.json` — regularly synced; prefer over local snapshot
 - Template: `schema/rdls_template_v1.0.json` — annotated, no template in rdl-standard
 - Codelists: `C:\Users\benny\OneDrive\Documents\Github\rdl-standard\schema\codelists\`
+
+**v0.3** (legacy - GeoNode, DesInventar, NISMOD): `schema/rdls_schema_v0.3.json` + `schema/rdls_template_v0.3.json` — **consult template before writing any field**
 
 ### Required dataset fields
 `id`, `title`, `risk_data_type`, `attributions` (publisher+creator+contact_point), `spatial`, `license`, `resources` (id+title+description+data_format)

@@ -315,6 +315,6 @@ At USD 123 for the full 26,246-dataset corpus, the economic barrier that origina
 ---
 
 *Source code: https://github.com/bennyistanto/to-rdls*
-*Technical reference (architecture, module details): `docs/llm_first_pipeline_v10.md`*
+*Technical reference (architecture, module details): `docs/llm_pipeline_architecture.md`*
 *Predecessor pipeline (regex + hybrid): `docs/llm_assisted_metadata_classification.md`*
 *RDLS standard: https://docs.riskdatalibrary.org*

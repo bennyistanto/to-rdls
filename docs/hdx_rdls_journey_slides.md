@@ -1302,7 +1302,7 @@ The shift from hybrid to LLM-first was enabled by cost, not capability. Haiku pr
 
 - Source code: `github.com/bennyistanto/to-rdls`
 - v0.3 hybrid pipeline: `docs/llm_assisted_metadata_classification.md`
-- v1.0 LLM-first pipeline: `docs/llm_first_pipeline_v10.md`
+- v1.0 LLM-first pipeline: `docs/llm_pipeline_architecture.md`
 - RDLS standard: `docs.riskdatalibrary.org`
 
 <br>

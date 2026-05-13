@@ -1,7 +1,9 @@
-# to-rdls: RDLS v0.3 Metadata Transformation Toolkit
+# to-rdls: RDLS Metadata Transformation Toolkit
 
 Transform metadata from various sources (HDX, GeoNode, etc.) into
-[Risk Data Library Standard (RDLS)](https://docs.riskdatalibrary.org/) v0.3 JSON records.
+[Risk Data Library Standard (RDLS)](https://docs.riskdatalibrary.org/) v0.3 or v1.0 JSON records.
+
+> **Two pipeline generations** - v1.0 (canonical): LLM-first single-phase pipeline for HDX datasets, producing RDLS v1.0 records. v0.3 (legacy): Regex + LLM hybrid pipeline for HDX/GeoNode/DesInventar/NISMOD, producing RDLS v0.3 records. See [Pipeline Architecture](docs/llm_pipeline_architecture.md) for details.
 
 ## Overview
 
@@ -11,9 +13,10 @@ It is **not** a Python package &mdash; it is a portable folder of scripts and YA
 
 ## Key Capabilities
 
-- **Multi-source metadata transformation** &mdash; HDX (complete), DesInventar, NISMOD ICRA, GeoNode (stub)
-- **HEVL extraction pipeline** &mdash; Regex-based signal detection with 2/3-tier cascades for Hazard, Exposure, Vulnerability, and Loss
-- **LLM-assisted classification** &mdash; 4-phase pipeline solving content-blind over-classification via Claude Haiku
+- **Multi-source metadata transformation** &mdash; HDX (complete), DesInventar, NISMOD ICRA, GeoNode
+- **LLM-first pipeline (v1.0)** &mdash; Single-phase Claude Haiku call classifying + extracting all HEVL components in one pass, producing RDLS v1.0 records
+- **HEVL extraction pipeline (v0.3)** &mdash; Regex-based signal detection with 2/3-tier cascades for Hazard, Exposure, Vulnerability, and Loss
+- **LLM-assisted classification (v0.3)** &mdash; 4-phase pipeline solving content-blind over-classification via Claude Haiku
 - **Schema validation and auto-fix** &mdash; 5-pass engine with confidence scoring and tiered distribution
 - **Data inventory and review** &mdash; Folder/ZIP inspection with automated HEVL classification and gap analysis
 - **MCP server** &mdash; 5 tools for Claude-assisted data review and metadata creation workflows
@@ -24,29 +27,35 @@ It is **not** a Python package &mdash; it is a portable folder of scripts and YA
 
 ```
 to-rdls/
-├── src/                          # Python modules (20 files)
+├── src/                          # Importable library (no argparse, no side effects)
 │   ├── utils.py                  # Text processing, file I/O, slug generation
-│   ├── spatial.py                # Country/region -> ISO3, spatial block inference
+│   ├── codelists.py              # v1.0 codelist utilities: normalise_unit(), VALID_* sets
 │   ├── schema.py                 # RDLS schema loading, validation, SchemaContext
-│   ├── classify.py               # Dataset classification (tag/keyword/org scoring)
-│   ├── translate.py              # RDLS record builder (format, license, attributions)
-│   ├── extract_hazard.py         # Hazard block extraction (2-tier cascade)
-│   ├── extract_exposure.py       # Exposure block extraction (3-tier cascade)
-│   ├── extract_vulnloss.py       # Vulnerability + Loss extraction
-│   ├── integrate.py              # HEVL merge, risk_data_type reconciliation
+│   ├── spatial.py                # Country/region -> ISO3, spatial block inference
 │   ├── naming.py                 # RDLS ID + filename generation, collision detection
-│   ├── validate_qa.py            # Validation, auto-fix, confidence scoring, distribution
-│   ├── inventory.py              # Folder/ZIP inventory generator (stdlib only)
-│   ├── review.py                 # File inspection, HEVL classification, gap analysis
-│   ├── zipaccess.py              # ZIP member extraction (supports nested ZIPs)
-│   ├── hdx_review.py             # Second-pass HEVL review (RDLS + HDX cross-ref)
-│   ├── ckan_columns.py           # CKAN column header fetcher with disk cache
-│   ├── llm_review.py             # 4-phase LLM classification pipeline
-│   └── sources/
+│   ├── classify.py               # [v0.3] Dataset classification (tag/keyword/org scoring)
+│   ├── translate.py              # [v1.0] Base record builder (entities, resources, ordering)
+│   ├── translate_v03.py          # [v0.3] Base record builder (format, license, attributions)
+│   ├── llm_classify.py           # [v1.0] LLM-first classify + HEVL extract (single phase)
+│   ├── extract.py                # [v1.0] HEVL block builders from LLM response
+│   ├── extract_hazard.py         # [v0.3] Hazard block extraction (2-tier cascade)
+│   ├── extract_exposure.py       # [v0.3] Exposure block extraction (3-tier cascade)
+│   ├── extract_vulnloss.py       # [v0.3] Vulnerability + loss extraction
+│   ├── integrate.py              # Shared: HEVL merge, risk_data_type reconciliation
+│   ├── validate_qa.py            # Pipeline-time: autofix, confidence scoring, distribution
+│   ├── validate_v10.py           # v1.0: 3-layer audit validator (schema + codelists + semantic)
+│   ├── validate_v03.py           # v0.3: semantic validation logic
+│   ├── inventory.py              # Standalone: folder/ZIP inventory generator (stdlib only)
+│   ├── review.py                 # Standalone: file inspection, HEVL classification, gap analysis
+│   ├── zipaccess.py              # Standalone: ZIP member extraction (supports nested ZIPs)
+│   └── sources/                  # Source-specific code (adapters + HDX pipeline extensions)
 │       ├── hdx.py                # HDX: CKAN API client, OSM detection, field extraction
-│       └── geonode.py            # GeoNode: stub for future implementation
+│       ├── hdx_review.py         # HDX: second-pass HEVL review (RDLS + HDX cross-ref)
+│       ├── hdx_llm_review.py     # HDX [v0.3]: 4-phase LLM classification pipeline
+│       ├── ckan_columns.py       # CKAN: column header fetcher with disk cache
+│       └── geonode.py            # GeoNode: source adapter
 │
-├── configs/                      # YAML configuration files (14 files)
+├── configs/                      # YAML configuration files (pipeline configs at root)
 │   ├── signal_dictionary.yaml    # HEVL extraction patterns (regex -> RDLS codelist)
 │   ├── rdls_defaults.yaml        # Default mappings, constraint tables
 │   ├── rdls_schema.yaml          # RDLS codelists (hazard_type, process_type, etc.)
@@ -56,21 +65,30 @@ to-rdls/
 │   ├── format_mapping.yaml       # Data format aliases, skip list, service URL patterns
 │   ├── license_mapping.yaml      # License string -> RDLS license code
 │   ├── spatial.yaml              # Region->countries, country name fixes
-│   ├── llm_review.yaml           # LLM model, phase thresholds, cost guardrails
+│   ├── llm_review.yaml           # v1.0 LLM pipeline config (model, thresholds, cost cap)
 │   ├── review_knowledge.yaml     # File inspection patterns for review module
-│   └── sources/
+│   └── sources/                  # Source-specific configs (mirrors src/sources/)
 │       ├── hdx.yaml              # HDX-specific (API, OSM markers, format overrides)
-│       └── geonode.yaml          # GeoNode-specific (stub)
+│       ├── hdx_llm_review.yaml   # HDX [v0.3] LLM review config (4-phase thresholds)
+│       └── geonode.yaml          # GeoNode-specific
 │
-├── notebooks/                    # Pipeline scripts and interactive notebooks
-│   ├── rdls_hdx_llm_review.py          # LLM review pipeline (4 phases)
+├── scripts/                      # Executable entry points (thin wrappers over src/)
+│   ├── rdls_hdx_pipeline.py            # v1.0 LLM-first pipeline (canonical)
+│   ├── rdls_hdx_llm_review.py          # v0.3 LLM review pipeline (4 phases)
 │   ├── rdls_hdx_sanitize_validate.py   # Post-LLM sanitization and validation
+│   ├── rdls_geonode_pipeline.py        # GeoNode v0.3 pipeline
 │   ├── rdls_desinventar_01_*.py        # DesInventar loss record generation
-│   ├── rdls_nismod_01_*.py             # NISMOD ICRA record generation
+│   ├── rdls_nismod_*.py                # NISMOD ICRA record generation
+│   ├── validate_records.py             # v1.0 three-layer validation CLI
+│   ├── validate_records_v03.py         # v0.3 semantic validation CLI
+│   ├── convert_v03_to_v10.py           # Schema version conversion
+│   └── post_convert_enrich.py          # Post-conversion enrichment + validation
+│
+├── notebooks/                    # Interactive Jupyter notebooks only
 │   ├── rdls_validate_metadata.ipynb    # Interactive metadata validator
 │   └── rdls_data_inventory_contents.ipynb  # Data inventory notebook
 │
-├── schema/                       # RDLS v0.3 JSON Schema
+├── schema/                       # RDLS v0.3 and v1.0 JSON Schemas
 ├── mcp_server.py                 # MCP server (5 tools for Claude workflows)
 ├── environment.yml               # Conda environment (Python 3.12, geospatial stack)
 └── requirements.txt              # Pip dependencies
@@ -86,7 +104,8 @@ to-rdls/
 | [Module Reference](docs/MODULE_REFERENCE.md) | Each src/ module: purpose, functions, dataclasses |
 | [Config Reference](docs/CONFIG_REFERENCE.md) | Each YAML config: structure, fields, how to modify |
 | [Limitations and Roadmap](docs/LIMITATIONS_AND_ROADMAP.md) | Current gaps, pending work, near-term roadmap |
-| [LLM Review Guide](docs/llm_review_guide.md) | Operations guide for the LLM classification pipeline |
+| [Pipeline Architecture](docs/llm_pipeline_architecture.md) | LLM-first v1.0 pipeline: design, prompt structure, results |
+| [LLM Review Guide](docs/llm_review_guide.md) | Operations guide for the v0.3 LLM classification pipeline |
 | [LLM Review Output](docs/llm_review_output.md) | Results, not-RDLS categorization, prefix distribution, report interpretation |
 | [DELTA vs RDLS Comparison](docs/delta_vs_rdls_system_comparison.md) | System-level comparison with UNDRR DELTA |
 
@@ -102,7 +121,7 @@ sys.path.insert(0, str(Path("to-rdls")))
 from src.utils import load_json, load_yaml
 from src.spatial import load_spatial_config
 from src.schema import load_rdls_schema, validate_record
-from src.translate import build_rdls_record, load_format_config, load_license_config
+from src.translate_v03 import build_rdls_record, load_format_config, load_license_config
 from src.extract_hazard import HazardExtractor, build_hazard_block
 from src.sources.hdx import extract_hdx_fields, normalize_dataset_record
 

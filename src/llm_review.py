@@ -163,7 +163,7 @@ def load_review_config(
 ) -> ReviewConfig:
     """Load LLM review config from YAML, with defaults fallback."""
     if yaml_path is None:
-        yaml_path = Path(__file__).resolve().parent.parent / "configs" / "llm_review.yaml"
+        yaml_path = Path(__file__).resolve().parent.parent / "configs" / "llm_review_v03.yaml"
     if yaml_path.exists():
         return ReviewConfig.from_yaml(yaml_path)
     return ReviewConfig()

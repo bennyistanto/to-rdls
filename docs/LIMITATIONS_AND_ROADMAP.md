@@ -97,10 +97,10 @@ UNDRR's DELTA system is an operational disaster tracking database with 40+ table
 
 ### Near-Term
 
-1. **Port notebooks 01-05** to modular `src/` code, completing the HDX pipeline migration
-2. **Resolve `occurrence: {}` schema constraint** - either relax `minProperties` in the RDLS schema or make `occurrence` optional. This unblocks ~4,493 records.
+1. ~~**Port notebooks 01-05** to modular `src/` code~~ - DONE: v1.0 LLM-first pipeline (`src/llm_classify.py`, `src/translate.py`, `src/extract.py`) replaces the entire classify-translate-extract chain for HDX
+2. **Resolve `occurrence: {}` schema constraint** - either relax `minProperties` in the RDLS schema or make `occurrence` optional
 3. **Re-run DesInventar and NISMOD scripts** with corrected naming convention
-4. **Fix `schema.py` double-wrapping bug** - `validate_record()` wraps records in `{"datasets": [...]}` when they're already wrapped
+4. ~~**Fix `schema.py` double-wrapping bug**~~ - DONE: `validate_record()` now validates unwrapped records
 
 ### Medium-Term
 
@@ -108,9 +108,9 @@ UNDRR's DELTA system is an operational disaster tracking database with 40+ table
 6. **Automated test suite** - Unit tests for classify, translate, extract, integrate, validate modules
 7. **DELTA adapter** - When example data becomes available
 8. **Data inventory workflow validation** - Test the MCP + LLM metadata writing approach end-to-end
+9. ~~**Column enrichment for non-HDX sources**~~ - v1.0 LLM pipeline is source-agnostic; extend `llm_classify.py` to other catalog adapters
 
 ### Long-Term
 
-9. **Dedicated repository** - Move to-rdls to its own standalone repository
-10. **JKAN catalog enhancements** - Collapsible loss record display for datasets with many entries (see [jkan_issue_loss_display.md](jkan_issue_loss_display.md))
-11. **Column enrichment for non-HDX sources** - Extend the LLM review column enrichment strategy beyond CKAN API
+10. **Dedicated repository** - Move to-rdls to its own standalone repository
+11. **JKAN catalog enhancements** - Collapsible loss record display for datasets with many entries (see [jkan_issue_loss_display.md](jkan_issue_loss_display.md))

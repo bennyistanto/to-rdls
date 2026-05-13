@@ -1,6 +1,6 @@
 # to-rdls Architecture
 
-Technical architecture reference for the RDLS v0.3 metadata transformation toolkit.
+Technical architecture reference for the RDLS metadata transformation toolkit (v0.3 and v1.0 pipelines).
 
 ---
 

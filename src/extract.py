@@ -1,6 +1,6 @@
 """v1.0 HEVL block builders.
 
-Takes V10Classification output from llm_classify_v10.py and constructs minimal
+Takes V10Classification output from llm_classify.py and constructs minimal
 but schema-valid RDLS v1.0 HEVL blocks (hazard, exposure, vulnerability, loss).
 
 Design:

@@ -4,13 +4,13 @@ Single-phase pipeline: Claude Haiku classifies AND extracts simultaneously.
 No regex pre-screening. Reads raw HDX JSONs directly.
 
 Output: V10Classification dataclass with all fields needed to build a
-schema-valid v1.0 record via translate_v10 + extract_v10.
+schema-valid v1.0 record via translate + extract.
 
 Cache: prompt-hash-keyed JSON files in output/hdx/v1.0/cache/.
        New cache - separate from old output/hdx/llm_cache/ (different prompt).
 
 Usage:
-    from src.llm_classify_v10 import classify_v10, V10Config, LLMCacheV10
+    from src.llm_classify import classify_v10, V10Config, LLMCacheV10
 """
 
 from __future__ import annotations

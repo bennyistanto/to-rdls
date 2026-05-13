@@ -1,6 +1,6 @@
 """
-rdls_hdx_v10.py - LLM-First HDX -> RDLS v1.0 Pipeline
-=======================================================
+rdls_hdx_pipeline.py - LLM-First HDX -> RDLS v1.0 Pipeline
+============================================================
 
 Direct single-phase pipeline: raw HDX JSON -> LLM classify+extract -> RDLS v1.0 record.
 No regex pre-screening. One LLM call per dataset does both classification
@@ -21,7 +21,7 @@ Prerequisites:
 Usage:
     cd C:\\\\Users\\\\benny\\\\OneDrive\\\\Documents\\\\Github\\\\to-rdls
     set ANTHROPIC_API_KEY=sk-ant-...
-    C:/Users/benny/miniforge3/envs/to-rdls/python.exe notebooks/rdls_hdx_v10.py
+    C:/Users/benny/miniforge3/envs/to-rdls/python.exe notebooks/rdls_hdx_pipeline.py
 
     Optional args:
     --max-datasets 100    process only first N datasets (testing)
@@ -32,7 +32,7 @@ Inputs:
     - hdx-metadata-crawler/hdx_dataset_metadata_dump/dataset_metadata/  (26,246 files)
     - output/hdx/column_cache/    (CKAN column headers, pre-populated)
     - rdl-standard/schema/rdls_schema.json    (v1.0 JSON schema, authoritative)
-    - configs/llm_review_v10.yaml    (pipeline settings)
+    - configs/llm_review.yaml    (pipeline settings)
 
 Outputs:
     - output/hdx/v1.0/dist/high/      confidence >= 0.7, schema-valid
@@ -72,7 +72,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 HDX_CRAWLER_DIR = PROJECT_DIR.parent / "hdx-metadata-crawler"
 METADATA_DIR = HDX_CRAWLER_DIR / "hdx_dataset_metadata_dump" / "dataset_metadata"
 SCHEMA_PATH = PROJECT_DIR.parent / "rdl-standard" / "schema" / "rdls_schema.json"
-CONFIG_PATH = PROJECT_DIR / "configs" / "llm_review_v10.yaml"
+CONFIG_PATH = PROJECT_DIR / "configs" / "llm_review.yaml"
 
 # --- Load .env if present (avoids needing to set ANTHROPIC_API_KEY in the shell) ---
 try:
@@ -121,18 +121,18 @@ from src.schema import validate_record
 from src.naming import load_naming_config
 from src.spatial import load_spatial_config
 from src.ckan_columns import ColumnCache, load_columns_for_uuid
-from src.llm_classify_v10 import (
+from src.llm_classify import (
     V10Config,
     LLMCacheV10,
     CostTracker,
     classify_v10,
 )
-from src.translate_v10 import (
+from src.translate import (
     build_base_record_v10,
     wrap_datasets_v10,
     order_record_fields_v10,
 )
-from src.extract_v10 import integrate_hevl_v10
+from src.extract import integrate_hevl_v10
 
 # Load pipeline config
 raw_cfg = load_yaml(CONFIG_PATH)
