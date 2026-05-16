@@ -122,8 +122,8 @@ python scripts/validate_records.py <metadata.json>
 - **`_NON_ISO3_REGION_CODES`**: GeoNode uses 3-letter region codes (PAC, GLO, ASI, EAS, SEA, AFR, NAF, WAF, EAF, CAF, SAF, EUR, CAM, SAM, NAM, CAR, MDE) that look like ISO3 but aren't — always filter them
 - **`_slug_title`**: When humanizing titles, the original technical code (e.g., `CK_EQ_HazardMap_03_100_MRP`) must be preserved as `_slug_title` for unique ID generation; the humanized title is only for display. Strip `_slug_title` in `integrate.py` before final output — verify it never leaks to JSON files
 - **`distribute_records()` doesn't clean stale files** — always clear `07_validated/` before re-run; stale reclassified files (e.g., old `rdls_hl-*` after fix to `rdls_lss-*`) must be deleted manually
-- **`volcanic_eruption` not valid in v0.3** — use `ashfall` for general Pacific volcanic hazard
-- **`process_type` in v0.3 schema**: `ash_fall` (not `ashfall`), `lava_flow` (not `lava`) — check exact values
+- **`volcanic_eruption` not a valid process** in either v0.3 or v1.0 — use `ashfall` for general volcanic hazard
+- **Volcanic process values** (same in both v0.3 and v1.0): `ashfall`, `volcano_ballistics`, `lahar`, `lava`, `pyroclastic_flow`, `volcano_gas_aerosols`
 
 ### Hazard Type Mapping Decisions
 | Variable | hazard.type | hazard.process | IMT | Rationale |

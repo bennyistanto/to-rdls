@@ -73,18 +73,18 @@ HTML, PNG, JPEG, JPG, GIF, EMF, SVG, RAR, QGIS, ESRI ARCMAP PROJECT FILE, MXD, A
 |---|---|---|
 | FLOOD | flood | fluvial_flood |
 | FLASH FLOOD | flood | pluvial_flood |
-| LANDSLIDE | landslide | landslide |
+| LANDSLIDE | landslide | landslide_general |
 | EARTHQUAKE | earthquake | ground_motion |
 | DROUGHT | drought | meteorological_drought |
 | FOREST FIRE | wildfire | wildfire |
-| AVALANCHE | landslide | debris_flow |
+| AVALANCHE | landslide | snow_avalanche |
 | SURGE | coastal_flood | storm_surge |
 | HEAT WAVE | extreme_temperature | extreme_heat |
 | COLD WAVE | extreme_temperature | extreme_cold |
 | TSUNAMI | tsunami | tsunami |
 
 **Medium confidence (17):**
-RAINS→flood, STORM→convective_storm, WINDSTORM→strong_wind, CYCLONE/TYPHOON/HURRICANE→convective_storm+tropical_cyclone, VOLCANIC ERUPTION→volcanic, MUDSLIDE/ROCKSLIDE→landslide, COASTAL FLOOD→coastal_flood, and others.
+RAINS→flood, STORM→strong_wind/extratropical_cyclone, WINDSTORM→strong_wind/extratropical_cyclone, CYCLONE/TYPHOON/HURRICANE→strong_wind/tropical_cyclone, VOLCANIC ERUPTION→volcanic/ashfall, MUDSLIDE→landslide/landslide_mudflow, ROCKSLIDE→landslide/landslide_rockslide, COASTAL FLOOD→coastal_flood, and others.
 
 **Not mappable (20):** EPIDEMIC, PLAGUE, ACCIDENT, CONTAMINATION, EXPLOSION, FOG, BIOLOGICAL, FAMINE, etc. (set to null)
 

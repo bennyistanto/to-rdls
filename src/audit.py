@@ -5,7 +5,9 @@ Checks schema-valid records against all layers of correctness:
   Layer 1: JSON Schema validation (structure, types, required fields)
             Uses Draft7Validator + FormatChecker to match rdl-standard schema draft.
   Layer 2: Codelist validation (values against CSV codelists)
-            Checks closed codelists as errors; open codelists as warnings.
+            Closed codelists: error if value absent.
+            Open codelists: silent if value matches _VALID_CODE_PATTERN (well-formed custom code);
+            warning only for malformed values (spaces, leading digit, unexpected chars).
             Covers: risk_data_type, spatial.scale, spatial.countries, attributions.role,
             lineage.sources.type, resources.*.climate.scenario, resources.*.spatial.*,
             hazard event_set fields, exposure category+dimension+asset_type.scheme,
@@ -15,7 +17,7 @@ Checks schema-valid records against all layers of correctness:
             impact_and_losses fields.
   Layer 3: Semantic / cross-field validation
             Rule 1: hazard.type -> valid process values
-            Rule 2: hazard.type -> valid intensity_measure (open, warning only)
+            Rule 2: hazard.type -> valid intensity_measure (open; warn only if not identifier:unit format)
             Rule 3: measurement.quantity_kind -> valid unit
             Rule 4: spatial.scale -> countries requirement (national/sub-national/urban: >= 1)
             Rule 5: event_set.analysis_type -> event.occurrence key matches
@@ -31,8 +33,24 @@ Public API:
 """
 
 import csv
+import re
 from pathlib import Path
 from typing import Any
+
+# ---------------------------------------------------------------------------
+# Format patterns for open codelist validation
+# ---------------------------------------------------------------------------
+
+# A well-formed codelist code: starts with a letter, contains only alphanumeric,
+# underscores, colons, hyphens, dots, parentheses, slashes. No spaces. Not purely numeric.
+# Matches: "FAPAR:-", "rfh:mm", "wd:m", "PGA:g", "my_custom_value", "RRI"
+# Rejects: "buildings damaged" (space), "123" (purely numeric), "" (empty)
+_VALID_CODE_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_:()\-./]*$")
+
+# A well-formed IMT value must follow identifier:unit format (colon separator required).
+# Matches: "FAPAR:-", "rfh:mm", "wd:m", "PGA:g", "MMI:-", "Sd(T):cm"
+# Rejects: "fluvial_flood" (no colon), "buildings damaged" (space), "bad value"
+_VALID_IMT_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9()._\-]*:[A-Za-z0-9/_().\-]+$")
 
 # ---------------------------------------------------------------------------
 # Codelist loader
@@ -325,12 +343,17 @@ def validate_layer2_codelists(data: dict, registry: CodelistRegistry, result: Va
                 continue
             if value not in codes:
                 if is_open:
-                    result.warning(
-                        "codelist", path,
-                        f"Value '{value}' not in open codelist {codelist_name} for {description}. "
-                        f"Custom values allowed but verify it's intentional.",
-                        allowed=codes,
-                    )
+                    # For open codelists: only warn if the value looks malformed.
+                    # Well-formed custom codes (e.g. "FAPAR:-", "rfh:mm", "MY_METRIC")
+                    # are silently accepted — they are intentional extensions.
+                    if not _VALID_CODE_PATTERN.match(value):
+                        result.warning(
+                            "codelist", path,
+                            f"Value '{value}' not in open codelist {codelist_name} for {description} "
+                            f"and has an unexpected format (spaces, leading digit, or special chars). "
+                            f"Verify it's intentional.",
+                            allowed=codes,
+                        )
                 else:
                     result.error(
                         "codelist", path,
@@ -484,21 +507,26 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
                 )
 
     # --- RULE 2: type -> intensity_measure ---
-    # Checks both per-type imt_*.csv AND master IMT.csv (with Hazard column filter)
+    # Checks both per-type imt_*.csv AND master IMT.csv (with Hazard column filter).
+    # IMT codelists are always open. A value not in the codelist is only warned about
+    # if it also fails the IMT format check (identifier:unit, e.g. "FAPAR:-", "rfh:mm").
+    # Well-formed custom IMTs are silently accepted as intentional extensions.
     for path, h in _collect_hazard_objects(data):
         htype = h.get("type")
         imt = h.get("intensity_measure")
         if htype and imt:
             combined_codes = registry.get_imt_codes_for_type(htype)
             if combined_codes and imt not in combined_codes:
-                # IMT codelists are always open, so this is a warning
-                codelist_name = TYPE_TO_IMT_CODELIST.get(htype, "IMT.csv")
-                result.warning(
-                    "semantic", f"{path}.intensity_measure",
-                    f"Intensity measure '{imt}' not in {codelist_name} or IMT.csv for type '{htype}'. "
-                    f"Open codelist — custom values allowed but verify.",
-                    allowed=combined_codes,
-                )
+                if not _VALID_IMT_PATTERN.match(imt):
+                    # Malformed IMT (no colon, spaces, etc.) — likely a classification error
+                    codelist_name = TYPE_TO_IMT_CODELIST.get(htype, "IMT.csv")
+                    result.warning(
+                        "semantic", f"{path}.intensity_measure",
+                        f"Intensity measure '{imt}' not in {codelist_name} or IMT.csv for type '{htype}' "
+                        f"and does not follow identifier:unit format. "
+                        f"Open codelist — verify it's intentional.",
+                        allowed=combined_codes,
+                    )
 
     # --- RULE 3: quantity_kind -> unit ---
     for path, m in _collect_measurement_objects(data):
@@ -511,12 +539,15 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
                 codes, _ = registry.load(codelist_name)
                 if codes and unit not in codes:
                     if is_open:
-                        result.warning(
-                            "semantic", f"{path}.unit",
-                            f"Unit '{unit}' not in {codelist_name} for quantity_kind '{qk}'. "
-                            f"Open codelist — custom values allowed but verify.",
-                            allowed=codes,
-                        )
+                        # Only warn if the unit value looks malformed
+                        if not _VALID_CODE_PATTERN.match(unit):
+                            result.warning(
+                                "semantic", f"{path}.unit",
+                                f"Unit '{unit}' not in {codelist_name} for quantity_kind '{qk}' "
+                                f"and has an unexpected format. "
+                                f"Open codelist — verify it's intentional.",
+                                allowed=codes,
+                            )
                     else:
                         result.error(
                             "semantic", f"{path}.unit",

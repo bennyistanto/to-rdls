@@ -106,15 +106,15 @@ DEFAULT_QUANTITY_KIND: Dict[str, str] = {
     "development_index":   "count",
 }
 
-# Default impact_metric per LLM-supplied metric or category fallback
+# Default impact_metric per category — all values MUST be in impact_metric.csv open codelist
 _LOSS_METRIC_FALLBACK: Dict[str, str] = {
-    "buildings":   "buildings_damaged_count",
-    "population":  "affected_count",
-    "infrastructure": "asset_loss",
-    "agriculture": "economic_loss_value",
+    "buildings":          "asset_loss",          # number of structures damaged/destroyed
+    "population":         "exposure_to_hazard",  # people in hazard-prone areas
+    "infrastructure":     "asset_loss",
+    "agriculture":        "economic_loss_value",
     "natural_environment": "asset_loss",
     "economic_indicator": "economic_loss_value",
-    "development_index": "affected_count",
+    "development_index":  "exposure_to_hazard",
 }
 
 # Valid impact_type values (closed codelist from schema)
@@ -376,10 +376,10 @@ def build_loss_block(
         raw_cat = loss_item.get("asset_category", "")
         asset_category = raw_cat if raw_cat in _VALID_EXPOSURE_CATS else "buildings"
 
-        # Impact metric
+        # Impact metric — must be from open codelist; fallback uses correct codelist values
         impact_metric = (
             loss_item.get("impact_metric")
-            or _LOSS_METRIC_FALLBACK.get(asset_category, "affected_count")
+            or _LOSS_METRIC_FALLBACK.get(asset_category, "exposure_to_hazard")
         )
 
         # Impact type (direct / indirect / total)
@@ -413,12 +413,24 @@ def build_loss_block(
 
         asset_dim = DEFAULT_DIMENSION.get(asset_category, "structure")
 
+        # Hazard process: from loss_item, else fall back to hazard_info, else per-type default
+        haz_process = (
+            loss_item.get("hazard_process")
+            or loss_item.get("process")
+            or (hazard_info or {}).get("process")
+            or DEFAULT_PROCESS.get(haz_type)
+        )
+
+        haz_obj: Dict[str, Any] = {
+            "type": haz_type,
+            "intensity_measure": imt,
+        }
+        if haz_process:
+            haz_obj["process"] = haz_process
+
         loss_entry: Dict[str, Any] = {
             "id": f"loss_{len(losses) + 1}",
-            "hazard": {
-                "type": haz_type,
-                "intensity_measure": imt,
-            },
+            "hazard": haz_obj,
             "asset_category": asset_category,
             "asset_dimension": asset_dim,
             "impact_and_losses": {

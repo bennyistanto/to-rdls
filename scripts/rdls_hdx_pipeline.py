@@ -471,6 +471,8 @@ for i, json_path in enumerate(all_json_files):
             llm_scale=clf.spatial_scale,
             llm_contributing_sources=clf.contributing_sources,
             llm_lineage_description=clf.lineage_description,
+            llm_spatial_resolution=clf.spatial_resolution,
+            llm_temporal_resolution=clf.temporal_resolution,
             naming_config=naming_config,
             spatial_config=spatial_config,
         )

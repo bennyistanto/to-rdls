@@ -327,6 +327,162 @@ def map_license_url(license_title: str, license_id: str = "", license_url: str =
 
 
 # ---------------------------------------------------------------------------
+# Geographic title prefix helpers
+# Prepend country/region name to titles that lack geographic context so that
+# standalone records are unambiguous (e.g. "Natural disaster incidents 2013"
+# becomes "Afghanistan - Natural disaster incidents 2013").
+# ---------------------------------------------------------------------------
+
+# Explicit display names that differ from the ISO formal codelist title.
+# Covers ambiguous base names (Congo), long formal names (GBR, USA), and
+# "(the X of Y)" style entries where the base alone is unclear.
+_GEO_DISPLAY_NAME_OVERRIDES: Dict[str, str] = {
+    "COD": "DR Congo",
+    "COG": "Republic of Congo",
+    "PRK": "North Korea",
+    "KOR": "South Korea",
+    "GBR": "United Kingdom",
+    "USA": "United States",
+    "RUS": "Russia",
+    "IRN": "Iran",
+    "LAO": "Laos",
+    "FSM": "Micronesia",
+    "MDA": "Moldova",
+    "BOL": "Bolivia",
+    "VEN": "Venezuela",
+    "TWN": "Taiwan",
+    "FLK": "Falkland Islands",
+    "MAF": "Saint Martin",
+    "SXM": "Sint Maarten",
+    "VGB": "British Virgin Islands",
+    "VIR": "US Virgin Islands",
+    "UMI": "US Minor Outlying Islands",
+}
+
+# Extra lowercase keywords per ISO3 used during title detection only.
+# These cover common abbreviations and alternative forms that appear in HDX titles
+# but would not match any variant of the formal codelist name.
+_GEO_EXTRA_VARIANTS: Dict[str, List[str]] = {
+    "COD": ["drc", "congo", "democratic republic"],
+    "COG": ["congo"],
+    "PRK": ["north korea", "dprk"],
+    "KOR": ["south korea"],
+    "GBR": ["united kingdom", "britain", "england"],
+    "USA": ["united states", "u.s."],
+    "RUS": ["russia"],
+    "IRN": ["iran"],
+    "LAO": ["laos", "lao"],
+    "FSM": ["micronesia"],
+    "MDA": ["moldova"],
+    "BOL": ["bolivia"],
+    "VEN": ["venezuela"],
+    "TWN": ["taiwan"],
+    # Common short forms that differ from the formal codelist name
+    "SYR": ["syria"],                     # "Syrian Arab Republic" -> "Syria"
+    "VNM": ["vietnam"],                   # "Viet Nam" -> "Vietnam"
+    "MKD": ["north macedonia", "macedonia"],  # "Republic of North Macedonia"
+    "TUR": ["türkiye", "turkiye"],        # country now uses "Türkiye" in titles
+    "TZA": [],                            # "Tanzania" already in variants via auto-cleanup
+    "KHM": [],                            # "Cambodia" already clean
+}
+
+# ISO3 -> formal name (loaded once from codelists CSV at first use).
+_ISO3_FORMAL: Optional[Dict[str, str]] = None
+
+
+def _load_iso3_formal() -> Dict[str, str]:
+    """Load ISO3 -> formal country name from the rdl-standard codelists CSV."""
+    global _ISO3_FORMAL
+    if _ISO3_FORMAL is not None:
+        return _ISO3_FORMAL
+    import csv as _csv
+    # Look in standard location relative to this module's tree
+    candidates = [
+        Path(__file__).resolve().parent.parent / "rdl-standard" / "schema" / "codelists" / "closed" / "country.csv",
+        Path(__file__).resolve().parent.parent.parent / "rdl-standard" / "schema" / "codelists" / "closed" / "country.csv",
+    ]
+    for p in candidates:
+        if p.exists():
+            with p.open(encoding="utf-8") as fh:
+                _ISO3_FORMAL = {r["Code"]: r["Title"] for r in _csv.DictReader(fh)}
+            return _ISO3_FORMAL
+    _ISO3_FORMAL = {}
+    return _ISO3_FORMAL
+
+
+def _geo_display_name(iso3: str) -> str:
+    """Return a clean display name for an ISO3 code, suitable for use in a title prefix."""
+    if iso3 in _GEO_DISPLAY_NAME_OVERRIDES:
+        return _GEO_DISPLAY_NAME_OVERRIDES[iso3]
+    formal = _load_iso3_formal().get(iso3, "")
+    if not formal:
+        return iso3
+    # Auto-clean simple trailing "(the)" artifact: "Bahamas (the)" -> "Bahamas"
+    cleaned = re.sub(r"\s*\(the\)\s*$", "", formal).strip()
+    return cleaned
+
+
+def _geo_name_variants(iso3: str) -> List[str]:
+    """Return lowercase variants of a country's name used for title presence detection."""
+    formal = _load_iso3_formal().get(iso3, "")
+    display = _geo_display_name(iso3)
+    seen: set = set()
+    variants: List[str] = []
+    candidates = [
+        display.lower(),
+        formal.lower(),
+        # Base name before any parenthetical
+        re.split(r"\s*\(", formal)[0].strip().lower(),
+        # Formal name with trailing "(the)" stripped
+        re.sub(r"\s*\(the\)\s*$", "", formal).strip().lower(),
+    ] + _GEO_EXTRA_VARIANTS.get(iso3, [])
+    for v in candidates:
+        v = v.strip()
+        if v and v not in seen:
+            seen.add(v)
+            variants.append(v)
+    return variants
+
+
+def geo_prefix_title(title: str, countries: List[str], scale: str) -> str:
+    """Prepend geographic context to a title if not already present.
+
+    Only applied for national / sub-national / urban scale records with 1-3
+    countries. Records with 4+ countries are left unchanged (too many to list).
+    If any country name variant is already found in the title, no change is made.
+
+    Examples:
+        "Natural disaster incidents 2013", ["AFG"], "national"
+            -> "Afghanistan - Natural disaster incidents 2013"
+        "Damage assessment, Sulawesi", ["IDN"], "national"
+            -> unchanged (Indonesia already implied by "Sulawesi")
+              wait - "Sulawesi" is not a country name variant so it WOULD get prefixed.
+              But that is correct behaviour - "Indonesia - Damage assessment, Sulawesi"
+              makes the dataset unambiguous.
+    """
+    if scale not in ("national", "sub-national", "urban"):
+        return title
+    if not countries or len(countries) > 3:
+        return title
+
+    title_lower = title.lower()
+
+    # Check if ANY country's name is already embedded in the title
+    for iso3 in countries:
+        if any(v in title_lower for v in _geo_name_variants(iso3)):
+            return title  # already has geographic context
+
+    # Build the prefix from display names
+    display_names = [_geo_display_name(c) for c in countries if c]
+    display_names = [d for d in display_names if d]
+    if not display_names:
+        return title
+
+    prefix = ", ".join(display_names)
+    return f"{prefix} - {title}"
+
+
+# ---------------------------------------------------------------------------
 # Media type mapping
 # ---------------------------------------------------------------------------
 
@@ -525,6 +681,8 @@ def build_base_record_v10(
     llm_scale: Optional[str] = None,
     llm_contributing_sources: Optional[List[Dict[str, Any]]] = None,
     llm_lineage_description: Optional[str] = None,
+    llm_spatial_resolution: Optional[str] = None,
+    llm_temporal_resolution: Optional[str] = None,
     naming_config: Optional[Dict[str, Any]] = None,
     spatial_config: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
@@ -645,10 +803,12 @@ def build_base_record_v10(
     dataset_source = sanitize_text(hdx_meta.get("dataset_source", "") or "") or org_name
     hdx_url = f"https://data.humdata.org/dataset/{hdx_meta.get('name', ds_id)}"
 
-    # publisher / creator / contact_point all use the publishing org.
+    # publisher: always HDX as the portal/catalogue operator.
+    # creator: the data-owning organisation that uploaded to HDX (org_name).
+    # contact_point: same data-owning organisation with direct dataset link.
     # dataset_source (often a long concatenation of contributing orgs) is
     # broken out into attributions (role=collaborator) and lineage.sources below.
-    publisher = build_entity(org_name, url=org_url or hdx_url)
+    publisher = build_entity("Humanitarian Data Exchange (HDX)", url="https://data.humdata.org/")
     creator = build_entity(org_name, url=org_url or hdx_url)
     contact_point = build_entity(org_name, url=hdx_url)
 
@@ -751,6 +911,11 @@ def build_base_record_v10(
     if date_suffix:
         record_id = f"{record_id}_{date_suffix}"
 
+    # Prepend geographic context to title if not already present.
+    # e.g. "Natural disaster incidents 2013" -> "Afghanistan - Natural disaster incidents 2013"
+    # Only applied for national/sub-national/urban records with 1-3 countries.
+    title = geo_prefix_title(title, iso3_codes, spatial.get("scale", ""))
+
     # Assemble base record
     record: Dict[str, Any] = {"id": record_id, "title": title}
     # description is always set (source attribution suffix guarantees non-empty)
@@ -770,6 +935,10 @@ def build_base_record_v10(
     record["spatial"] = spatial
     if temporal:
         record["temporal"] = temporal
+    if llm_spatial_resolution:
+        record["spatial_resolution"] = llm_spatial_resolution
+    if llm_temporal_resolution:
+        record["temporal_resolution"] = llm_temporal_resolution
     record["license"] = license_url
 
     # Lineage description: LLM-provided scientific description takes priority;

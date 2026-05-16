@@ -87,8 +87,9 @@ Full dataclasses, extraction cascade details, and LLM pipeline → see `.claude/
 
 ### Closed codelists (must match exactly)
 - **risk_data_type**: hazard, exposure, vulnerability, loss
-- **hazard_type**: coastal_flood, convective_storm, drought, earthquake, extreme_temperature, flood, landslide, strong_wind, tsunami, volcanic, wildfire
-- **process_type**: 32 values (fluvial_flood, pluvial_flood, ground_motion, liquefaction, storm_surge, tropical_cyclone, tornado, agricultural_drought, etc.)
+- **hazard_type (v0.3, 11 types)**: coastal_flood, convective_storm, drought, earthquake, extreme_temperature, flood, landslide, strong_wind, tsunami, volcanic, wildfire
+- **hazard_type (v1.0 adds 4 more)**: dust_sand_storm, erosion, pest_infestation, sea_level_rise
+- **process_type**: see constraint table below; authoritative source is `src/audit.py:TYPE_TO_PROCESS` (v1.0)
 - **exposure_category**: agriculture, buildings, infrastructure, population, natural_environment, economic_indicator, development_index
 - **analysis_type**: probabilistic, deterministic, empirical
 - **impact_metric**: 21 values (damage_ratio, loss_ratio, casualty_count, economic_loss_value, etc.)
@@ -110,16 +111,22 @@ Full dataclasses, extraction cascade details, and LLM pipeline → see `.claude/
 ## Key constraint tables (quick reference)
 
 ### hazard_type → valid process_types
-- flood → fluvial_flood, pluvial_flood, groundwater_flood, coastal_flood
-- earthquake → primary_rupture, ground_motion, liquefaction
-- coastal_flood → storm_surge, coastal_flood
-- convective_storm → tropical_cyclone, tornado, extratropical_cyclone
-- strong_wind → tropical_cyclone, tornado, extratropical_cyclone
-- landslide → landslide, debris_flow, rock_fall, shallow_landslide, slow_moving_landslide
+Authoritative source: `src/audit.py:TYPE_TO_PROCESS` (v1.0). v0.3 uses `primary_rupture`/`secondary_rupture` for earthquake instead of `rupture`.
+- coastal_flood → coastal_flood, storm_surge
+- convective_storm → tornado, lightning, thunderstorm, hail
 - drought → agricultural_drought, hydrological_drought, meteorological_drought, socioeconomic_drought
+- dust_sand_storm → dust_sand_storm  [v1.0 only]
+- earthquake → rupture, ground_motion, liquefaction, subsidence_uplift  (v0.3: primary_rupture, secondary_rupture)
+- erosion → coastal_erosion, soil_erosion  [v1.0 only]
 - extreme_temperature → extreme_cold, extreme_heat
-- volcanic → volcanic_eruption, ash_fall, lahar, pyroclastic_flow, lava_flow
-- tsunami → tsunami  |  wildfire → wildfire
+- flood → fluvial_flood, pluvial_flood, groundwater_flood, coastal_flood, glacial_lake_outburst
+- landslide → snow_avalanche, landslide_general, landslide_rockslide, landslide_mudflow, landslide_rockfall
+- pest_infestation → pest  [v1.0 only]
+- sea_level_rise → sea_level_rise  [v1.0 only]
+- strong_wind → extratropical_cyclone, tropical_cyclone, tornado
+- tsunami → tsunami
+- volcanic → ashfall, volcano_ballistics, lahar, lava, pyroclastic_flow, volcano_gas_aerosols
+- wildfire → wildfire, wildfire_smoke
 
 ### exposure_category → valid (dimension, quantity_kind) triplets
 - agriculture: (product, area/monetary/count)  |  buildings: (structure, count/area/monetary), (content, monetary)

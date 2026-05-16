@@ -110,6 +110,8 @@ class V10Classification:
     # Spatial hints from LLM
     countries: List[str]               # ISO3 codes
     spatial_scale: Optional[str]       # global|regional|national|sub-national|urban
+    spatial_resolution: Optional[str]  # e.g. "30m", "1km" — only when LLM finds it
+    temporal_resolution: Optional[str] # e.g. "daily", "monthly" — only when LLM finds it
 
     confidence: float                  # 0.0-1.0
     reasoning: str
@@ -209,8 +211,18 @@ erosion: Er:T/ha
 ## Exposure Categories (exact codes)
 agriculture | buildings | infrastructure | population | natural_environment | economic_indicator | development_index
 
-## Loss Impact Metrics (common values)
-economic_loss_value | buildings_damaged_count | affected_count | dead_count | injured_count | displaced_count | fatality_count | asset_loss | damage_ratio | loss_annual_average_value
+## Loss Impact Metrics (EXACT codelist codes only — do NOT invent values)
+economic_loss_value | insured_loss_value | loss_ratio_loss | casualty_count | fatality_count | casualty_ratio_loss | fatality_ratio_loss | loss_annual_average_value | loss_probable_maximum_value | at_risk_value | at_risk_tail_value | displaced_count | displaced_days | exposure_to_hazard | asset_loss | damage_ratio | damage_index | production_loss | risk_index | disruption_days | disruption_loss | downtime_loss
+
+Key mappings (common terms -> correct code):
+- "affected" / "people affected" / "exposed" -> exposure_to_hazard
+- "dead" / "deaths" / "fatalities" / "killed" -> casualty_count (or fatality_count)
+- "displaced" / "evacuated" -> displaced_count
+- "buildings damaged" / "structures damaged" / "housing damage" -> asset_loss
+- "buildings destroyed" / "structures destroyed" -> asset_loss
+- "injured" / "wounded" -> casualty_count
+- "economic loss" / "damage value" / "losses USD" -> economic_loss_value
+- "damage ratio" / "mean damage ratio" -> damage_ratio
 
 ## Spatial Scale (exact codes)
 global | regional | national | sub-national | urban
@@ -235,11 +247,18 @@ loss is now a LIST. Include one entry per distinct impact combination present in
 Examples: direct building damage + displaced population -> 2 entries; multiple hazards each causing deaths -> 1 entry per primary combination.
 Each entry:
 - hazard_type: ONE hazard type from the allowed list (NEVER "multiple"/"various")
+- hazard_process: ONE process code matching hazard_type (e.g. "fluvial_flood" for flood, "ground_motion" for earthquake)
 - asset_category: ONE exposure category
-- impact_metric: ONE metric from the allowed list
+- impact_metric: ONE metric from the EXACT codelist above (NEVER invent new values)
 - impact_type: "direct" | "indirect" | "total"
 - imt: intensity measure code, or null
 - description: 1-sentence description of this impact record (e.g. "Direct building damage from fluvial flooding")
+
+## Spatial and Temporal Resolution
+If the description or methodology explicitly states the spatial or temporal resolution, extract it:
+- spatial_resolution: e.g. "30m", "90m", "1km", "0.25deg", "100m" — only when explicitly stated
+- temporal_resolution: e.g. "daily", "monthly", "annual", "real-time" — only when explicitly stated
+Set both to null if not mentioned.
 
 ## Contributing Sources
 When a dataset aggregates data from multiple organizations (e.g., HDX HAPI, multi-agency compilations, ReliefWeb aggregations), extract each contributing source as a separate entry in contributing_sources.
@@ -375,14 +394,26 @@ def build_prompt_v10(
         '  "loss": [\n'
         '    {\n'
         '      "hazard_type": "flood",\n'
+        '      "hazard_process": "fluvial_flood",\n'
         '      "asset_category": "buildings",\n'
-        '      "impact_metric": "buildings_damaged_count",\n'
+        '      "impact_metric": "asset_loss",\n'
         '      "impact_type": "direct",\n'
         '      "imt": null,\n'
         '      "description": "Direct building damage from fluvial flooding"\n'
+        '    },\n'
+        '    {\n'
+        '      "hazard_type": "flood",\n'
+        '      "hazard_process": "fluvial_flood",\n'
+        '      "asset_category": "population",\n'
+        '      "impact_metric": "displaced_count",\n'
+        '      "impact_type": "indirect",\n'
+        '      "imt": null,\n'
+        '      "description": "People displaced by flooding"\n'
         '    }\n'
         '  ],\n'
         '  "spatial_scale": "urban",\n'
+        '  "spatial_resolution": "30m",\n'
+        '  "temporal_resolution": null,\n'
         '  "countries": ["GHA"],\n'
         '  "contributing_sources": [\n'
         '    {\n'
@@ -410,7 +441,11 @@ def build_prompt_v10(
         "- hazard.calculation_method: simulated | observed | inferred\n"
         "- exposure[].category must be from the allowed exposure categories list\n"
         "- loss[].hazard_type: ONE hazard type, NEVER 'multiple' or 'various'\n"
+        "- loss[].hazard_process: must match loss[].hazard_type using the process types list\n"
+        "- loss[].impact_metric: MUST be from the exact codelist — NEVER invent custom values\n"
         "- loss[].impact_type: direct | indirect | total\n"
+        "- spatial_resolution: string if mentioned in metadata (e.g. '30m', '1km'), else null\n"
+        "- temporal_resolution: string if mentioned in metadata (e.g. 'daily', 'monthly'), else null\n"
         "- contributing_sources: list organizations/datasets contributing; empty list [] if single-source\n"
         "- lineage_description: scientific pipeline description, or null if insufficient info\n"
         "- countries: ISO 3166-1 alpha-3 codes (3 letters, e.g. KEN, BGD)\n"
@@ -578,6 +613,16 @@ def _parse_response(raw: Dict[str, Any], hdx_id: str) -> V10Classification:
     scale_raw = raw.get("spatial_scale", "")
     spatial_scale = scale_raw if scale_raw in _VALID_SCALES else None
 
+    # Resolutions (optional free-text extracted by LLM from description)
+    _raw_sp_res = raw.get("spatial_resolution")
+    spatial_resolution: Optional[str] = (
+        _raw_sp_res.strip() if isinstance(_raw_sp_res, str) and _raw_sp_res.strip() else None
+    )
+    _raw_tm_res = raw.get("temporal_resolution")
+    temporal_resolution: Optional[str] = (
+        _raw_tm_res.strip() if isinstance(_raw_tm_res, str) and _raw_tm_res.strip() else None
+    )
+
     # Hazard details (single optional dict - enhanced with return_periods, calculation_method)
     hazard: Optional[Dict[str, Any]] = None
     raw_haz = raw.get("hazard")
@@ -681,6 +726,12 @@ def _parse_response(raw: Dict[str, Any], hdx_id: str) -> V10Classification:
                     "impact_type": impact_type,
                     "imt": loss_item.get("imt") or (hazard or {}).get("imt"),
                 }
+                # hazard_process: from loss item, else fall back to hazard block process
+                _loss_proc = loss_item.get("hazard_process") or loss_item.get("process")
+                if not _loss_proc and hazard:
+                    _loss_proc = hazard.get("process")
+                if _loss_proc:
+                    parsed_loss["hazard_process"] = _loss_proc
                 loss_desc = (loss_item.get("description", "") or "").strip()
                 if loss_desc:
                     parsed_loss["description"] = loss_desc
@@ -725,6 +776,8 @@ def _parse_response(raw: Dict[str, Any], hdx_id: str) -> V10Classification:
         loss=loss,                # List[Dict] - may be empty
         countries=countries,
         spatial_scale=spatial_scale,
+        spatial_resolution=spatial_resolution,
+        temporal_resolution=temporal_resolution,
         confidence=confidence,
         reasoning=reasoning,
         contributing_sources=contributing_sources,
