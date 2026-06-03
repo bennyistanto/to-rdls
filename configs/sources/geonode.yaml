@@ -42,6 +42,90 @@ portals:
     keyword_filters: []
     category_filters: []
 
+  - name: "icpac"
+    base_url: "https://geoportal.icpac.net"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    # GeoNode 4.x: unified /api/v2/resources/ endpoint instead of /datasets/
+    api_endpoint: "resources"
+    keyword_filters: []
+    category_filters: []
+
+  - name: "eurac"
+    base_url: "https://maps.eurac.edu"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    api_endpoint: "resources"   # GeoNode 4.x; picks up documents alongside datasets
+    keyword_filters: []
+    category_filters: []
+
+  - name: "resilienceacademy"
+    base_url: "https://geonode.resilienceacademy.ac.tz"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    api_endpoint: "resources"   # GeoNode 4.x; ~24% of content is documents
+    keyword_filters: []
+    category_filters: []
+
+  - name: "fossilfuelatlas"
+    base_url: "https://www.fossilfuelatlasportal.org"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    api_endpoint: "resources"   # GeoNode 4.x; picks up documents
+    keyword_filters: []
+    category_filters: []
+
+  - name: "kmap_inforac"
+    base_url: "https://kmap.info-rac.org"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    api_endpoint: "resources"
+    # kmap_inforac documents are mostly REMPEC / Barcelona Convention meeting
+    # reports and working group minutes - bureaucratic content, not HEVL data.
+    # Limiting to data products only drops 18k -> ~500 useful records.
+    include_types: ["dataset", "layer"]
+    max_datasets: 1500
+    keyword_filters: []
+    category_filters: []
+
+  - name: "framefavn"
+    base_url: "https://framefavn.org"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    api_endpoint: "resources"   # GeoNode 4.x; 30 of 39 resources are documents
+    keyword_filters: []
+    category_filters: []
+
+  - name: "riskinfo_lk"
+    base_url: "https://www.riskinfo.lk"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    keyword_filters: []
+    category_filters: []
+
+  - name: "gishub_kemenhub"
+    base_url: "https://gishub.kemenhub.go.id"
+    enabled: true
+    verify_ssl: true
+    rate_limit: 1.5
+    rows_per_page: 50
+    keyword_filters: []
+    category_filters: []
+
   # Example portal -- update base_url to a real GeoNode instance
   # - name: "thinkhazard-geonode"
   #   base_url: "https://geonode.thinkhazard.org"

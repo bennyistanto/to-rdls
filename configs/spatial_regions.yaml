@@ -1,0 +1,279 @@
+# =============================================================================
+# Regional sea + continental coverage for spatial enrichment
+# =============================================================================
+# When a portal tags a record with a regional code (e.g. "MES", "EUR") that is
+# not an ISO3 country, this map expands it to a member-country list AND sets
+# spatial.scale = "regional". Without this map the record falls through to
+# spatial.scale = "global", losing geographic context.
+#
+# Sources cited per region. When portal data carries newer / different codes,
+# extend the map; the closed-codelist ISO3 filter in translate_geonode_v10
+# still gates the final output.
+#
+# Code conventions:
+#   - 3-letter UPPERCASE codes for portability (e.g. MES, RED, EUR).
+#   - Aliases listed under `aliases` are matched case-insensitively
+#     (e.g. "Mediterranean Sea", "med", "MED" all → MES).
+# =============================================================================
+
+regional_seas:
+  MES:
+    name: "Mediterranean Sea"
+    sources:
+      - "IHO Sea Areas"
+      - "UNEP MAP Barcelona Convention contracting parties"
+    aliases: ["mediterranean sea", "mediterranean", "med"]
+    countries:
+      - ALB  # Albania
+      - DZA  # Algeria
+      - BIH  # Bosnia and Herzegovina
+      - HRV  # Croatia
+      - CYP  # Cyprus
+      - EGY  # Egypt
+      - FRA  # France
+      - GRC  # Greece
+      - ISR  # Israel
+      - ITA  # Italy
+      - LBN  # Lebanon
+      - LBY  # Libya
+      - MLT  # Malta
+      - MCO  # Monaco
+      - MNE  # Montenegro
+      - MAR  # Morocco
+      - PSE  # Palestine
+      - SVN  # Slovenia
+      - ESP  # Spain
+      - SYR  # Syrian Arab Republic
+      - TUN  # Tunisia
+      - TUR  # Turkey
+
+  RED:
+    name: "Red Sea"
+    sources: ["IHO Sea Areas"]
+    aliases: ["red sea"]
+    countries: [EGY, SDN, ERI, DJI, YEM, SAU, JOR, ISR]
+
+  BLA:
+    name: "Black Sea"
+    sources: ["IHO Sea Areas"]
+    aliases: ["black sea"]
+    countries: [TUR, BGR, ROU, UKR, RUS, GEO]
+
+  BAL:
+    name: "Baltic Sea"
+    sources: ["IHO Sea Areas", "HELCOM contracting parties"]
+    aliases: ["baltic sea", "baltic"]
+    countries: [DNK, EST, FIN, DEU, LVA, LTU, POL, RUS, SWE]
+
+  NSE:
+    name: "North Sea"
+    sources: ["IHO Sea Areas", "OSPAR Convention"]
+    aliases: ["north sea"]
+    countries: [BEL, DNK, FRA, DEU, NLD, NOR, GBR, SWE]
+
+  CAR:
+    name: "Caribbean Sea"
+    sources: ["IHO Sea Areas", "Cartagena Convention"]
+    aliases: ["caribbean sea", "caribbean"]
+    countries:
+      - ATG  # Antigua and Barbuda
+      - BHS  # Bahamas
+      - BRB  # Barbados
+      - BLZ  # Belize
+      - COL  # Colombia
+      - CRI  # Costa Rica
+      - CUB  # Cuba
+      - DMA  # Dominica
+      - DOM  # Dominican Republic
+      - GRD  # Grenada
+      - GTM  # Guatemala
+      - GUY  # Guyana
+      - HTI  # Haiti
+      - HND  # Honduras
+      - JAM  # Jamaica
+      - MEX  # Mexico
+      - NIC  # Nicaragua
+      - PAN  # Panama
+      - KNA  # Saint Kitts and Nevis
+      - LCA  # Saint Lucia
+      - VCT  # Saint Vincent and the Grenadines
+      - TTO  # Trinidad and Tobago
+      - VEN  # Venezuela
+      - SUR  # Suriname
+
+  ARS:
+    name: "Arabian Sea / Persian Gulf"
+    sources: ["IHO Sea Areas", "ROPME Sea Area"]
+    aliases: ["arabian sea", "persian gulf", "arabian gulf", "gulf"]
+    countries: [BHR, IRN, IRQ, KWT, OMN, QAT, SAU, ARE, YEM, PAK, IND]
+
+  EAS:
+    name: "East China Sea"
+    sources: ["IHO Sea Areas"]
+    aliases: ["east china sea"]
+    countries: [CHN, JPN, KOR, TWN]
+
+  SCS:
+    name: "South China Sea"
+    sources: ["IHO Sea Areas"]
+    aliases: ["south china sea"]
+    countries: [CHN, VNM, PHL, MYS, BRN, IDN, TWN]
+
+  GOM:
+    name: "Gulf of Mexico"
+    sources: ["IHO Sea Areas"]
+    aliases: ["gulf of mexico"]
+    countries: [USA, MEX, CUB]
+
+  GOG:
+    name: "Gulf of Guinea"
+    sources: ["IHO Sea Areas", "Abidjan Convention"]
+    aliases: ["gulf of guinea"]
+    countries: [GHA, TGO, BEN, NGA, CMR, GNQ, GAB, COG, COD, AGO, CIV]
+
+  ESI:
+    name: "Eastern Indian Ocean (South Asia + Southeast Asia coast)"
+    sources: ["IHO Sea Areas - subset"]
+    aliases: ["eastern indian ocean"]
+    countries: [IND, LKA, MDV, BGD, MMR, THA, MYS, IDN, AUS]
+
+  WIO:
+    name: "Western Indian Ocean"
+    sources: ["IHO Sea Areas - subset", "Nairobi Convention"]
+    aliases: ["western indian ocean"]
+    countries: [SOM, KEN, TZA, MOZ, ZAF, MDG, MUS, SYC, COM]
+
+  IOC:
+    name: "Indian Ocean (broad)"
+    sources: ["IHO Sea Areas"]
+    aliases: ["indian ocean"]
+    countries:
+      # Broad coastal set; refer to WIO/ESI for narrower subsets.
+      - SOM
+      - KEN
+      - TZA
+      - MOZ
+      - ZAF
+      - MDG
+      - MUS
+      - SYC
+      - COM
+      - IND
+      - LKA
+      - MDV
+      - BGD
+      - MMR
+      - THA
+      - MYS
+      - IDN
+      - AUS
+      - PAK
+      - IRN
+      - OMN
+      - YEM
+
+# -----------------------------------------------------------------------------
+# Continental / UN regional groupings
+# -----------------------------------------------------------------------------
+# Use these when a portal tags a record with a continent / sub-region code or
+# name. Lists follow UN M.49 statistical regions where applicable.
+
+continental_regions:
+  AFR:
+    name: "Africa"
+    aliases: ["africa"]
+    # All 54 African countries
+    countries: [DZA, AGO, BEN, BWA, BFA, BDI, CMR, CPV, CAF, TCD, COM, COD,
+                COG, CIV, DJI, EGY, GNQ, ERI, SWZ, ETH, GAB, GMB, GHA, GIN,
+                GNB, KEN, LSO, LBR, LBY, MDG, MWI, MLI, MRT, MUS, MAR, MOZ,
+                NAM, NER, NGA, RWA, STP, SEN, SYC, SLE, SOM, ZAF, SSD, SDN,
+                TZA, TGO, TUN, UGA, ZMB, ZWE]
+
+  EAFR:
+    name: "Eastern Africa (IGAD region + Great Lakes)"
+    aliases: ["east africa", "eastern africa", "igad", "eaf"]
+    countries: [BDI, DJI, ERI, ETH, KEN, RWA, SOM, SSD, SDN, TZA, UGA]
+
+  WAFR:
+    name: "Western Africa (ECOWAS)"
+    aliases: ["west africa", "western africa", "ecowas"]
+    countries: [BEN, BFA, CPV, CIV, GMB, GHA, GIN, GNB, LBR, MLI, NER, NGA,
+                SEN, SLE, TGO]
+
+  SAFR:
+    name: "Southern Africa (SADC subset)"
+    aliases: ["southern africa", "sadc"]
+    countries: [AGO, BWA, COM, COD, SWZ, LSO, MDG, MWI, MUS, MOZ, NAM, SYC,
+                ZAF, TZA, ZMB, ZWE]
+
+  NAFR:
+    name: "Northern Africa"
+    aliases: ["north africa", "northern africa", "maghreb", "naf"]
+    countries: [DZA, EGY, LBY, MAR, SDN, TUN]
+
+  EUR:
+    name: "Europe"
+    aliases: ["europe"]
+    countries: [ALB, AND, AUT, BLR, BEL, BIH, BGR, HRV, CYP, CZE, DNK, EST,
+                FIN, FRA, DEU, GRC, HUN, ISL, IRL, ITA, LVA, LIE, LTU, LUX,
+                MLT, MDA, MCO, MNE, NLD, MKD, NOR, POL, PRT, ROU, RUS, SMR,
+                SRB, SVK, SVN, ESP, SWE, CHE, UKR, GBR, VAT]
+
+  ASI:
+    name: "Asia"
+    aliases: ["asia"]
+    countries: [AFG, ARM, AZE, BHR, BGD, BTN, BRN, KHM, CHN, CYP, GEO, IND,
+                IDN, IRN, IRQ, ISR, JPN, JOR, KAZ, PRK, KOR, KWT, KGZ, LAO,
+                LBN, MYS, MDV, MNG, MMR, NPL, OMN, PAK, PSE, PHL, QAT, SAU,
+                SGP, LKA, SYR, TJK, THA, TLS, TUR, TKM, ARE, UZB, VNM, YEM]
+
+  SEAS:
+    name: "Southeast Asia (ASEAN)"
+    aliases: ["southeast asia", "asean", "sea"]
+    countries: [BRN, KHM, IDN, LAO, MYS, MMR, PHL, SGP, THA, VNM]
+
+  ALP:
+    name: "Alpine region"
+    sources: ["Alpine Convention"]
+    aliases: ["alps", "alpine", "alpine region"]
+    # Alpine Convention contracting parties
+    countries: [AUT, FRA, DEU, ITA, LIE, MCO, SVN, CHE]
+
+  MEN:
+    name: "Middle East and North Africa"
+    aliases: ["mena", "middle east", "middle east and north africa"]
+    countries: [BHR, EGY, IRN, IRQ, ISR, JOR, KWT, LBN, LBY, MAR, OMN, PSE,
+                QAT, SAU, SYR, TUN, ARE, YEM, DZA]
+
+  PAC:
+    name: "Pacific Islands (PCRAFI / PSIDS)"
+    aliases: ["pacific islands", "pacific", "psids", "pcrafi"]
+    countries: [COK, FJI, FSM, KIR, MHL, NRU, NIU, PNG, PLW, WSM, SLB, TLS,
+                TON, TUV, VUT]
+
+  CAR:
+    name: "Caribbean (CARICOM region)"
+    aliases: ["caricom"]
+    countries: [ATG, BHS, BRB, BLZ, DMA, GRD, GUY, HTI, JAM, KNA, LCA, VCT,
+                SUR, TTO]
+
+  LAC:
+    name: "Latin America and the Caribbean"
+    aliases: ["latin america", "latam", "latin america and the caribbean"]
+    countries: [ATG, ARG, BHS, BRB, BLZ, BOL, BRA, CHL, COL, CRI, CUB, DMA,
+                DOM, ECU, SLV, GRD, GTM, GUY, HTI, HND, JAM, MEX, NIC, PAN,
+                PRY, PER, KNA, LCA, VCT, SUR, TTO, URY, VEN]
+
+# -----------------------------------------------------------------------------
+# Glossary of common GeoNode region tags that aren't ISO3
+# -----------------------------------------------------------------------------
+# Some GeoNode portals use opaque short codes for regions. These are the ones
+# we've actually encountered. Add to this table when you spot a new one in
+# `_geonode_regions` on a raw record.
+known_non_iso3_tags:
+  - {tag: "GLO", meaning: "Global", behavior: "leave as scale=global"}
+  - {tag: "MES", meaning: "Mediterranean Sea", expand_to: "MES"}    # kmap_inforac
+  - {tag: "World",   meaning: "Global", behavior: "leave as scale=global"}
+  - {tag: "Africa",  meaning: "Continental Africa", expand_to: "AFR"}
+  - {tag: "Europe",  meaning: "Continental Europe", expand_to: "EUR"}
+  - {tag: "Asia",    meaning: "Continental Asia",   expand_to: "ASI"}

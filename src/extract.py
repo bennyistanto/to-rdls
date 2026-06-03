@@ -102,9 +102,41 @@ DEFAULT_QUANTITY_KIND: Dict[str, str] = {
     "infrastructure":      "count",
     "agriculture":         "area",
     "natural_environment": "area",
-    "economic_indicator":  "monetary",
+    "economic_indicator":  "currency",  # v1.0: "currency" (not v0.3 "monetary")
     "development_index":   "count",
 }
+
+# v0.3 -> v1.0 quantity_kind translation. Older extractors and some LLM
+# responses still emit "monetary"; v1.0 uses "currency" (which is closed
+# against ISO 4217 codes for unit).
+_QK_V03_TO_V10: Dict[str, str] = {
+    "monetary": "currency",
+}
+
+
+def _resolve_quantity_kind(raw: Optional[str], category: str) -> str:
+    """Map legacy v0.3 codes to v1.0 codelist values; fall back to default."""
+    qk = (raw or "").strip().lower()
+    qk = _QK_V03_TO_V10.get(qk, qk)
+    if not qk:
+        qk = DEFAULT_QUANTITY_KIND.get(category, "count")
+    return qk
+
+
+def _default_unit_for(qk: str, hint: Optional[str] = None) -> Optional[str]:
+    """Return a sensible v1.0 unit for a quantity_kind, when caller has none.
+
+    - currency: USD fallback (ISO 4217 closed codelist, USD is widest scope).
+      Hint may carry a per-record currency override (e.g. "EUR" from a tag).
+    - count: "count" — mirrors hand-authored Mombasa/Accra records.
+    """
+    qk = (qk or "").strip().lower()
+    if qk == "currency":
+        cleaned = (hint or "").strip().upper()
+        return cleaned if cleaned and cleaned.isalpha() and len(cleaned) == 3 else "USD"
+    if qk == "count":
+        return "count"
+    return None
 
 # Default impact_metric per category — all values MUST be in impact_metric.csv open codelist
 _LOSS_METRIC_FALLBACK: Dict[str, str] = {
@@ -246,13 +278,15 @@ def build_exposure_block(
         dimension = exp.get("dimension")
         quantity_kind = exp.get("quantity_kind")
         description = (exp.get("description", "") or "").strip()
+        unit_hint = (exp.get("unit") or "").strip() or None
 
         # Validate dimension against closed enum; LLM often returns "count", "area", etc.
         resolved_dim = (
             dimension if dimension in _VALID_DIMENSIONS
             else DEFAULT_DIMENSION.get(category, "structure")
         )
-        resolved_qk = quantity_kind or DEFAULT_QUANTITY_KIND.get(category, "count")
+        resolved_qk = _resolve_quantity_kind(quantity_kind, category)
+        resolved_unit = unit_hint or _default_unit_for(resolved_qk)
 
         item: Dict[str, Any] = {
             "id": f"exposure_{len(result) + 1}",
@@ -267,13 +301,15 @@ def build_exposure_block(
                 "description": description,
             }
 
+        measurement: Dict[str, Any] = {"quantity_kind": resolved_qk}
+        if resolved_unit:
+            measurement["unit"] = resolved_unit
+
         item["metrics"] = [
             {
                 "id": "metric_1",
                 "dimension": resolved_dim,
-                "measurement": {
-                    "quantity_kind": resolved_qk,
-                },
+                "measurement": measurement,
             }
         ]
 
@@ -428,6 +464,15 @@ def build_loss_block(
         if haz_process:
             haz_obj["process"] = haz_process
 
+        raw_qk = loss_item.get("quantity_kind")
+        resolved_qk = _resolve_quantity_kind(raw_qk, asset_category)
+        unit_hint = (loss_item.get("unit") or "").strip() or None
+        resolved_unit = unit_hint or _default_unit_for(resolved_qk)
+
+        measurement: Dict[str, Any] = {"quantity_kind": resolved_qk}
+        if resolved_unit:
+            measurement["unit"] = resolved_unit
+
         loss_entry: Dict[str, Any] = {
             "id": f"loss_{len(losses) + 1}",
             "hazard": haz_obj,
@@ -437,9 +482,7 @@ def build_loss_block(
                 "impact_type": impact_type,
                 "impact_modelling": impact_modelling,
                 "impact_metric": impact_metric,
-                "measurement": {
-                    "quantity_kind": DEFAULT_QUANTITY_KIND.get(asset_category, "count"),
-                },
+                "measurement": measurement,
                 "loss_type": "ground_up",
                 "loss_approach": loss_approach,
                 "loss_frequency_type": loss_freq,

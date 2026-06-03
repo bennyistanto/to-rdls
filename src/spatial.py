@@ -41,6 +41,59 @@ def load_spatial_config(yaml_path: Union[str, Path]) -> Dict[str, Any]:
     }
 
 
+def load_regional_codes(yaml_path: Union[str, Path]) -> Dict[str, Dict[str, Any]]:
+    """Load regional sea + continental groupings from spatial_regions.yaml.
+
+    Builds a lookup table keyed by:
+      - canonical 3-letter code (e.g. "MES", "EUR") - uppercase
+      - alias strings - lowercased
+
+    Each value is {code, name, countries:list[ISO3], category: "sea"|"region"}.
+    """
+    if not Path(yaml_path).exists():
+        return {}
+    cfg = load_yaml(yaml_path)
+    lookup: Dict[str, Dict[str, Any]] = {}
+
+    for category_key in ("regional_seas", "continental_regions"):
+        category = "sea" if category_key == "regional_seas" else "region"
+        for code, payload in (cfg.get(category_key) or {}).items():
+            if not isinstance(payload, dict):
+                continue
+            countries = [c for c in (payload.get("countries") or []) if isinstance(c, str)]
+            if not countries:
+                continue
+            entry = {
+                "code": code,
+                "name": payload.get("name", code),
+                "countries": countries,
+                "category": category,
+            }
+            lookup[code.upper()] = entry
+            for alias in (payload.get("aliases") or []):
+                lookup[alias.strip().lower()] = entry
+    return lookup
+
+
+def expand_regional_code(
+    code: str,
+    regional_lookup: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Resolve a region/sea code or alias to its entry.
+
+    Returns the lookup entry (with 'countries' list) or None if no match.
+    Tries exact uppercase match first, then case-insensitive alias.
+    """
+    if not code or not isinstance(code, str) or not regional_lookup:
+        return None
+    cleaned = code.strip()
+    if not cleaned:
+        return None
+    if cleaned.upper() in regional_lookup:
+        return regional_lookup[cleaned.upper()]
+    return regional_lookup.get(cleaned.lower())
+
+
 # ---------------------------------------------------------------------------
 # Country name normalization
 # ---------------------------------------------------------------------------

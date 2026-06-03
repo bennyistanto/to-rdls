@@ -59,7 +59,22 @@ def sanitize_text(text: str) -> str:
     # 6. Replace internal double quotes with single quotes
     clean = clean.replace('"', "'")
 
-    # 7. Collapse whitespace to single space
+    # 7. Strip safe Markdown patterns (UI consumers render plain text)
+    #    Conservative: avoid single-asterisk/underscore italic because of
+    #    snake_case identifiers and glob patterns in scientific descriptions.
+    #    Block-level patterns (headings, bullets, blockquotes) are anchored to
+    #    LINE-START only so mid-sentence " - " separators in titles like
+    #    "Damage Costs - statistics" are preserved. This must run BEFORE the
+    #    whitespace collapse below because \n is the line-start marker.
+    clean = re.sub(r"\*\*([^*]+)\*\*", r"\1", clean)            # **bold**
+    clean = re.sub(r"__([^_]+)__", r"\1", clean)                # __bold__
+    clean = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", clean)  # [label](url) -> label (url)
+    clean = re.sub(r"`([^`]+)`", r"\1", clean)                  # `code`
+    clean = re.sub(r"(?:^|\n)\s*#{1,6}\s+", "\n", clean)        # # ATX headings
+    clean = re.sub(r"(?:^|\n)\s*[-*+]\s+", "\n", clean)         # list bullets at line start
+    clean = re.sub(r"(?:^|\n)\s*>\s+", "\n", clean)             # blockquotes
+
+    # 8. Collapse whitespace to single space
     clean = re.sub(r"\s+", " ", clean)
 
     return clean.strip()

@@ -43,6 +43,18 @@ class GeoNodePortalConfig:
     verify_ssl: bool = True
     keyword_filters: Optional[List[str]] = None
     category_filters: Optional[List[str]] = None
+    # GeoNode 4.x serves the unified /api/v2/resources/ endpoint and
+    # response shape uses "resources" array containing items with
+    # resource_type ∈ {layer, document, map, ...}. Set to "resources" for
+    # those portals (e.g. ICPAC). GeoNode 2.x/3.x portals use "datasets".
+    api_endpoint: str = "datasets"
+    # Resource types to keep when crawling /api/v2/resources/.
+    # Defaults include 'document' because many portals (e.g. framefavn,
+    # riskinfo_lk) publish their actual data products as documents (ZIP /
+    # archive uploads), not live datasets. Maps / geostories / dashboards
+    # are presentations and excluded by default.
+    include_types: Optional[List[str]] = None  # None -> default below in iter_datasets
+    max_datasets: Optional[int] = None  # per-portal crawl cap; overrides global if set
 
 
 @dataclass
@@ -100,6 +112,9 @@ class GeoNodeConfig:
                 verify_ssl=p.get("verify_ssl", True),
                 keyword_filters=kw_raw if isinstance(kw_raw, list) else None,
                 category_filters=cat_raw if isinstance(cat_raw, list) else None,
+                api_endpoint=p.get("api_endpoint", "datasets"),
+                include_types=(p.get("include_types") if isinstance(p.get("include_types"), list) else None),
+                max_datasets=(p.get("max_datasets") if isinstance(p.get("max_datasets"), int) else None),
             ))
 
         return cls(
@@ -242,28 +257,70 @@ def iter_datasets(
     if cat:
         params["filter{category.identifier.in}"] = ",".join(cat)
 
+    # GeoNode 4.x unified endpoint returns mixed resource types. By default we
+    # keep dataset / layer / document, because many portals publish their real
+    # data products as documents (ZIP archives, e.g. framefavn flood hazard
+    # maps). Maps / geostories / dashboards are presentations of other data
+    # and excluded by default. Per-portal `include_types` overrides this.
+    resource_kinds = set(portal.include_types or ["dataset", "layer", "document"])
+
+    # Server-side resource_type filter (GeoNode 4.x). MASSIVE speedup on
+    # portals where datasets are a small fraction of total resources (e.g.
+    # kmap_inforac: 432 datasets out of 18,515 resources). Only apply when
+    # crawling the unified /resources/ endpoint AND a restricted set of
+    # types is configured.
+    #
+    # GeoNode wants the filter parameter REPEATED for multi-value, not
+    # comma-separated. requests serialises `{key: [v1, v2]}` as
+    # `?key=v1&key=v2` which is what we need.
+    if portal.api_endpoint == "resources" and portal.include_types:
+        if len(portal.include_types) == 1:
+            params["filter{resource_type}"] = portal.include_types[0]
+        else:
+            params["filter{resource_type}"] = list(portal.include_types)
+
+    consecutive_failures = 0
     while True:
         params["page"] = page
         try:
-            response = client.get_json(client.api_url("datasets"), params=params)
+            response = client.get_json(
+                client.api_url(portal.api_endpoint), params=params,
+            )
+            consecutive_failures = 0  # reset on success
         except RuntimeError as e:
-            # Some GeoNode versions return 404 on empty pages
-            if "404" in str(e):
+            err_str = str(e)
+            # Some GeoNode versions return 404 on empty pages -> end of data.
+            if "404" in err_str:
                 break
-            raise
+            # Transient server error: skip the page, try the next one.
+            # If we hit 3 consecutive page failures the portal is too unstable
+            # to make further progress; bail with what we have.
+            consecutive_failures += 1
+            if consecutive_failures >= 3:
+                # Surface so callers know we stopped early but don't lose
+                # already-yielded records (the generator is already in motion).
+                return
+            page += 1
+            continue
 
-        # Handle different response shapes across GeoNode versions
-        datasets = response.get("datasets", [])
+        # Handle different response shapes across GeoNode versions.
+        # The response uses the endpoint name as the array key in most
+        # GeoNode releases (e.g. "datasets" or "resources"); fall back to
+        # "results" or a flat list.
+        datasets = response.get(portal.api_endpoint, [])
         if not datasets:
             datasets = response.get("results", [])
+        if not datasets and isinstance(response, list):
+            datasets = response
         if not datasets:
-            # Might be a flat list at root level
-            if isinstance(response, list):
-                datasets = response
-            else:
-                break
+            break
 
         for ds in datasets:
+            # Filter to data/layer types when crawling unified resources.
+            if portal.api_endpoint == "resources":
+                rtype = (ds.get("resource_type") or "").lower()
+                if rtype not in resource_kinds:
+                    continue
             yield ds
             yielded += 1
             if max_datasets and yielded >= max_datasets:

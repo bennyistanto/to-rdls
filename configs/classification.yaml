@@ -10,7 +10,11 @@
 # ---------------------------------------------------------------------------
 scoring:
   keyword_hit_weight: 2
-  candidate_min_score: 5
+  # candidate_min_score lowered from 5 -> 4 (2026-06-02) so that documents
+  # with just title-level signals (e.g. "Flood Hazard Map_..._RCP8.5..." on
+  # framefavn) get promoted. Records without at least medium-confidence
+  # components are still filtered downstream.
+  candidate_min_score: 4
   confidence_thresholds:
     high: 7
     medium: 4
