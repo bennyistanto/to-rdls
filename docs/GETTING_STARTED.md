@@ -100,7 +100,7 @@ This will:
 3. Classify borderline records via Claude Haiku (~$22 for 12,594 records)
 4. Merge results, rebuild IDs, validate, and distribute
 
-See [llm_review_guide.md](llm_review_guide.md) for detailed step-by-step instructions.
+See [pipelines/v0.3-hybrid.md](pipelines/v0.3-hybrid.md) for detailed step-by-step instructions.
 
 ### Step 4: Validate and distribute
 
@@ -132,14 +132,17 @@ Options:
 Validate RDLS JSON records from the command line:
 
 ```bash
-# v1.0 records (3-layer: schema + codelist + semantic)
+# v1.0 records - runs the full 5-layer audit (schema, codelist, semantic, media-type, consumer rules)
 python scripts/validate_records.py output/hdx/v1.0/dist/high/my_record.json
+
+# v1.0 - apply safe post-conversion enrichment across a collection, then report what needs review
+python scripts/validate_records.py --enrich "output/<collection>/**/*.json"
 
 # v0.3 records (semantic validation)
 python scripts/validate_records_v03.py output/rdls/my_record.json
 ```
 
-For interactive validation with auto-fix suggestions, open `notebooks/rdls_validate_metadata.ipynb` in Jupyter.
+See [the 5-layer audit](validation/audit-layers.md) and [validate + enrich](validation/validate-and-enrich.md) for what each layer checks and how records are fixed. For interactive validation, open `notebooks/rdls_validate_metadata.ipynb` in Jupyter.
 
 ### MCP Server
 

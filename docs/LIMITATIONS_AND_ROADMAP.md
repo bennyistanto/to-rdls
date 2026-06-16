@@ -1,116 +1,51 @@
 # Limitations and Roadmap
 
-This document describes what to-rdls cannot do yet, what work is pending, and the near-term roadmap.
+What the toolkit does not do yet, and what is planned next.
 
----
+## Current limitations
 
-## Current Limitations
+### No automated test suite
+The pipeline is validated through the [5-layer audit](validation/audit-layers.md) and spot-checks rather than unit tests. A small set of tests covers the review module; the core modules (classify, translate, extract, integrate, audit, enrich) have no automated tests. The audit is the de-facto regression guard - any record that regresses fails it - but module-level unit tests are still wanted.
 
-### Content-Blind Classification (Partially Solved)
+### `occurrence` on event-less hazards
+The schema requires an `occurrence` on every `Event`, but some sources (e.g. climate-index hazards) describe a hazard with no discrete, return-period events. The toolkit's faithful handling is to keep the `event_set` (`hazards[]` + `analysis_type` + `temporal`) and omit the empty events rather than invent return periods. Whether the schema should relax this for index-type hazards is an open question for the standard.
 
-The regex extraction pipeline classifies HEVL components based on metadata text only. It cannot distinguish between "data ABOUT earthquakes" (loss assessment) and "data CONTAINING earthquake measurements" (hazard data). This affected 2,313 records (82% of all hazard-classified records) in the HDX pipeline.
+### Records that need source data
+Some legacy records cannot be made valid without information the source does not contain (a missing resource URL, an empty vulnerability block, etc.). These are held aside for human follow-up rather than forced through - see the JKAN conversion notes. They are a data-availability limit, not a pipeline bug.
 
-**Mitigation:** The LLM review pipeline (Phase 3) addresses this for HDX data by combining metadata with actual column headers and sending to Claude Haiku for semantic classification. This reduced fabricated hazard blocks from 2,313 to near zero and correctly reclassified 3,443 records (27.3%).
+### LLM cache invalidation
+The LLM pipeline caches results keyed by prompt hash; changing a prompt invalidates the cache and requires a re-run. Make prompt changes deliberately.
 
-**Remaining gap:** The LLM pipeline is currently implemented only for HDX sources (which have CKAN API column headers). Non-HDX sources would need their own column enrichment strategy.
+### Windows / OneDrive
+- `PYTHONPATH` must include the repo root to import `src/`.
+- A git repository inside a cloud-sync folder (OneDrive) suffers `.git` lock failures during git's auto-gc; mitigate with `git config gc.auto 0` and an antivirus exclusion, or keep the repo outside the synced folder. See [jkan-upload](workflows/jkan-upload.md).
 
-For full details, see the [Problem 7 analysis](../temp/github_issue_problem7.md).
+### Country-code edge cases
+Kosovo (`XKX`) is not in ISO 3166-1 alpha-3; it is handled via `configs/spatial.yaml`, but raw `pycountry` lookups return `None`.
 
-### `occurrence: {}` Schema Gap
+## Resolved (kept for context)
 
-The RDLS v0.3 JSON Schema requires `occurrence` objects to have at least one property (`minProperties: 1`), but the pipeline produces empty `occurrence: {}` blocks for datasets that lack event-specific information. This causes 2,690 otherwise-valid records to fail schema validation.
-
-**Impact:** Of 8,822 RDLS-relevant records after LLM review, only 3,998 pass schema validation (45%). The remaining 4,493 are blocked primarily by this constraint. With the schema fix, projected validity rate rises to approximately 99.8%.
-
-**Status:** Waiting on team decision about schema revision (relax `minProperties` or make `occurrence` optional).
-
-### GeoNode Adapter Not Implemented
-
-`src/sources/geonode.py` exists as a stub with the interface defined but no implementation. The common field dictionary interface is ready, and the pattern from `sources/hdx.py` can be followed.
-
-### No Automated Test Suite
-
-The pipeline is validated manually through notebook runs and spot-checks. Only two test files exist (`tests/test_review_basic.py`, `tests/test_review_robustness.py`) covering the review module. Core pipeline modules (classify, translate, extract, integrate, validate) lack automated tests.
-
-### LLM Cache Invalidation
-
-The LLM review pipeline caches classifications keyed by `prompt_hash`. Changing the system prompt or user prompt template invalidates all cached results, requiring a full re-run (~$22 for 12,594 records). Prompt changes should be made deliberately.
-
-### Windows-Specific Issues
-
-- **PYTHONPATH:** Must be set explicitly to import `src/` modules (`set PYTHONPATH=C:\path\to\to-rdls`)
-- **OneDrive file locks:** OneDrive may lock files during sync, causing write failures in output directories
-- **Path separators:** Some scripts assume Unix paths; `pathlib.Path` is used consistently in `src/` but not all notebooks
-
-### Country Code Edge Cases
-
-- **XKX (Kosovo):** Not in ISO 3166-1 alpha-3 standard. The pipeline includes it via `spatial.yaml` country name fixes, but `pycountry` lookups will fail for Kosovo. Requires explicit handling.
-
----
-
-## Pending Work
-
-### Notebooks 01-05 Migration
-
-The HDX-specific pipeline (hdx-metadata-crawler notebooks 01-05) has not been ported to modular `src/` code:
-
-| Notebook | Function | Migration Status |
-|----------|----------|-----------------|
-| 01 HDX Crawler | CKAN API crawling, metadata download | `src/sources/hdx.py` has `HDXClient` (partial) |
-| 02 OSM Policy Exclusion | OpenStreetMap dataset detection and exclusion | Not ported |
-| 03 Define Mapping | Tag/keyword/org signal mapping setup | `src/classify.py` handles scoring (partial) |
-| 04 Classify Candidates | Integer-based HEVL scoring and candidate selection | `src/classify.py` (partial) |
-| 05 Review Overrides | Manual classification corrections, component dependency enforcement | `src/classify.py` has `apply_overrides()` and `enforce_component_deps()` (partial) |
-
-Notebooks 06-13 (translate, validate, extract HEVL, integrate) are fully ported to `src/` modules.
-
-### DesInventar and NISMOD Output Re-Run
-
-Both notebook scripts need re-execution to regenerate output files with the corrected ID format (after naming convention updates). Current output files have stale ID patterns.
-
-### Data Inventory Notebook (Draft)
-
-`notebooks/rdls_data_inventory_contents.ipynb` proposes using MCP + LLM for automated metadata writing from bulk data deliveries. The approach:
-1. Inventory folder contents via `src/inventory.py`
-2. Inspect files via `src/review.py`
-3. Use `inspect_folder_for_llm` MCP tool for Claude to classify and draft metadata
-
-**Status:** Draft/untested. Core `src/` functions work, but the notebook workflow has not been validated end-to-end.
-
----
-
-## Exploration
-
-### DELTA Resilience
-
-UNDRR's DELTA system is an operational disaster tracking database with 40+ tables covering disaggregated human effects, damages, losses, and disruption. Detailed comparison work has been completed:
-
-- [System-level comparison](delta_vs_rdls_system_comparison.md) - Architectural differences between DELTA (operational database) and RDLS (metadata catalog)
-- [Schema-level comparison](delta_vs_rdls_schema_comparison.md) - Field-by-field mapping (106 fields assessed: 10% good fit, 35% need adjustment, 55% no equivalent)
-- [Issue #19 revision notes](github_issue_19_revision.md) - Specific corrections for GFDRR/rdl-datapipeline mapping proposal
-
-**Status:** Waiting for example DELTA data export. When available, the team will develop `src/sources/delta.py` adapter and a notebook script for DELTA-to-RDLS transformation.
-
----
+- **Content-blind classification** - the v0.3 regex pipeline could not tell "data about a hazard" from "data of a hazard". The v1.0 LLM-first pipeline classifies from content and is source-agnostic, so this is no longer a structural ceiling.
+- **GeoNode / multi-source support** - GeoNode, STAC, and CoCliCo now have full v1.0 translators and have been run at scale; the toolkit is no longer HDX-only.
+- **Double-wrapping bug** - `validate_record()` validates a single unwrapped record.
 
 ## Roadmap
 
-### Near-Term
+**Near-term**
+1. Resolve the `occurrence` schema tension with the standard (relax for index-type hazards, or formalize the events-omitted representation).
+2. Clear the held-aside records once their missing source data or convention decisions land.
 
-1. ~~**Port notebooks 01-05** to modular `src/` code~~ - DONE: v1.0 LLM-first pipeline (`src/llm_classify.py`, `src/translate.py`, `src/extract.py`) replaces the entire classify-translate-extract chain for HDX
-2. **Resolve `occurrence: {}` schema constraint** - either relax `minProperties` in the RDLS schema or make `occurrence` optional
-3. **Re-run DesInventar and NISMOD scripts** with corrected naming convention
-4. ~~**Fix `schema.py` double-wrapping bug**~~ - DONE: `validate_record()` now validates unwrapped records
+**Medium-term**
+3. Automated unit tests for the core modules.
+4. A DELTA adapter (`src/sources/delta.py`) when example DELTA data is available.
 
-### Medium-Term
+**Long-term**
+5. Move the toolkit to its own standalone repository.
 
-5. **GeoNode adapter implementation** - Follow the `sources/hdx.py` pattern
-6. **Automated test suite** - Unit tests for classify, translate, extract, integrate, validate modules
-7. **DELTA adapter** - When example data becomes available
-8. **Data inventory workflow validation** - Test the MCP + LLM metadata writing approach end-to-end
-9. ~~**Column enrichment for non-HDX sources**~~ - v1.0 LLM pipeline is source-agnostic; extend `llm_classify.py` to other catalog adapters
+## Related exploration (archived)
 
-### Long-Term
+Comparison work with UNDRR's DELTA standard:
+- [System-level comparison](archive/delta_vs_rdls_system_comparison.md)
+- [Schema-level comparison](archive/delta_vs_rdls_schema_comparison.md)
 
-10. **Dedicated repository** - Move to-rdls to its own standalone repository
-11. **JKAN catalog enhancements** - Collapsible loss record display for datasets with many entries (see [jkan_issue_loss_display.md](jkan_issue_loss_display.md))
+Older issue drafts are kept under [docs/archive/issues/](archive/issues/).

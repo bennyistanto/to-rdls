@@ -1,6 +1,8 @@
 # to-rdls Architecture
 
-Technical architecture reference for the RDLS metadata transformation toolkit (v0.3 and v1.0 pipelines).
+Technical architecture reference for the RDLS metadata transformation toolkit.
+
+> **Two generations.** The **canonical** path is **v1.0 (LLM-first)**: a single Claude call classifies the RDLS components and extracts all fields, the record is built by `translate.py`/`extract.py`, and every record is validated by the [5-layer audit](validation/audit-layers.md). The **legacy** path is **v0.3 (regex + LLM hybrid)** - the cascade extraction and 5-pass auto-fix described in detail below - still used for some source ingestion. The source-adapter, naming, and config-driven principles are shared by both. See [pipelines/v1.0-llm-first.md](pipelines/v1.0-llm-first.md) for the canonical pipeline.
 
 ---
 
