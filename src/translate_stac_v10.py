@@ -10,9 +10,10 @@ Mapping decisions (reviewed 2026-06-03):
   - Multi-value `subcategory` strings ("coastal flood,fluvial flood,...")
     map to ONE record with the PRIMARY process; the description gets a
     "Also covers ..." note so secondary processes are not lost.
-  - The 12 "nan, nan" Items belong to extreme-precipitation Collections
-    (RX1day/RX5day/R99p/R95p). They map to `flood` / `pluvial_flood` with
-    a description note explaining the precipitation-index origin.
+  - The "nan, nan" Items are extreme-precipitation indices (RX1day/RX5day/
+    R99p/R95p). A raw precipitation index is NOT a hazard, so these are
+    SKIPPED (return None -> routed to not_rdls), per team guidance 2026-06.
+    Do NOT assume precipitation = flood/pluvial_flood.
   - Vague `scenarios` (e.g. "RCPs", "SSPs", "SSP-RCP combinations") cannot
     be matched against RDL's closed climate.scenario codelist; we record
     the raw string in description rather than fabricate a specific code.
@@ -188,6 +189,38 @@ def _parse_spatial_resolution(text: str) -> Tuple[Optional[float], Optional[str]
     return None, text
 
 
+def _parse_temporal_cadence(text: Optional[str]) -> Optional[str]:
+    """Parse the cadence tail of a STAC `temporal coverage` string.
+
+    Examples:
+      "1951-2014 (daily)"        -> "P1D"
+      "1850-2014 (monthly)"      -> "P1M"
+      "2000-2020 (5-yearly)"     -> "P5Y"
+      "1975-2030 (5-yearly)"     -> "P5Y"
+      "2010"                     -> None (no parenthetical cadence)
+      "1983-2016 (yearly)"       -> "P1Y"
+    """
+    if not text:
+        return None
+    m = re.search(r"\(\s*([^)]+?)\s*\)", text)
+    if not m:
+        return None
+    cad = m.group(1).strip().lower()
+    # Numeric prefix like "5-yearly" / "10-yearly"
+    nm = re.match(r"^(\d+)\s*-\s*(year|month|day|hour)(?:ly)?$", cad)
+    if nm:
+        n, unit = nm.group(1), nm.group(2)
+        return {"year": f"P{n}Y", "month": f"P{n}M", "day": f"P{n}D", "hour": f"PT{n}H"}[unit]
+    return {
+        "daily":   "P1D",
+        "monthly": "P1M",
+        "yearly":  "P1Y",
+        "annual":  "P1Y",
+        "hourly":  "PT1H",
+        "weekly":  "P7D",
+    }.get(cad)
+
+
 def _parse_scenarios(text: str) -> Tuple[Optional[str], str]:
     """Try to extract a SPECIFIC climate scenario code (e.g. RCP8.5, SSP5-8.5).
 
@@ -209,6 +242,200 @@ def _parse_scenarios(text: str) -> Tuple[Optional[str], str]:
 def _slug(text: str, max_len: int = 32) -> str:
     s = re.sub(r"[^a-z0-9]+", "", (text or "").lower())
     return s[:max_len] or "item"
+
+
+# ---------------------------------------------------------------------------
+# Generic STAC "stratification dimensions" extractor
+# ---------------------------------------------------------------------------
+# STAC publishers expose the dimensions along which a dataset varies
+# (scenarios, time horizons, return periods, defense levels, model runs, ...)
+# in several different shapes:
+#
+#   * Standard STAC Collection.summaries          -> dict[str, list]
+#   * CoCliCo extension summaries_descriptions    -> dict[str, str]   (per-key explainers)
+#   * CoCliCo extension summaries_labels          -> dict[str, dict]  (code -> human label)
+#   * STAC datacube extension cube:dimensions     -> dict[str, dict]  (values/extent + type)
+#   * Standard version                            -> str
+#
+# The extractor reads each shape if present and returns a normalised dict so
+# downstream builders treat all catalogs uniformly. New catalogs with novel
+# shapes should be added here, not in per-catalog branches.
+
+# Climate-scenario code map (cross-catalog form -> RDLS codelist code)
+_SCENARIO_CODE_MAP: Dict[str, str] = {
+    "SSP119": "SSP1-1.9", "SSP1-1.9": "SSP1-1.9", "SSP1.1.9": "SSP1-1.9",
+    "SSP126": "SSP1-2.6", "SSP1-2.6": "SSP1-2.6", "SSP1.2.6": "SSP1-2.6",
+    "SSP245": "SSP2-4.5", "SSP2-4.5": "SSP2-4.5", "SSP2.4.5": "SSP2-4.5",
+    "SSP370": "SSP3-7.0", "SSP3-7.0": "SSP3-7.0", "SSP3.7.0": "SSP3-7.0",
+    "SSP434": "SSP4-3.4", "SSP4-3.4": "SSP4-3.4",
+    "SSP460": "SSP4-6.0", "SSP4-6.0": "SSP4-6.0",
+    "SSP534": "SSP5-3.4", "SSP5-3.4": "SSP5-3.4",
+    "SSP585": "SSP5-8.5", "SSP5-8.5": "SSP5-8.5", "SSP5.8.5": "SSP5-8.5",
+    "RCP26": "RCP2.6", "RCP2.6": "RCP2.6",
+    "RCP45": "RCP4.5", "RCP4.5": "RCP4.5",
+    "RCP60": "RCP6.0", "RCP6.0": "RCP6.0",
+    "RCP85": "RCP8.5", "RCP8.5": "RCP8.5",
+}
+
+# Sentinel values that mean "not a scenario" — drop before counting unique codes
+_SCENARIO_SENTINELS = {"none", "no scenario", "no_scenario", "static",
+                       "baseline", "historical", "present", ""}
+
+
+def extract_stac_dimensions(obj: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Generic extractor for STAC stratification dimensions.
+
+    Reads from `summaries`, `summaries_descriptions`, `summaries_labels`,
+    `cube:dimensions`, and `version` on a Collection or Item dict. Returns:
+
+        {
+            "<dimension_name>": {
+                "values":      [v1, v2, ...],
+                "labels":      {code: human_label}   (optional),
+                "description": "explainer text"      (optional),
+            },
+            ...
+        }
+
+    Returns {} when nothing useful is present.
+    """
+    out: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(obj, dict):
+        return out
+
+    summaries = obj.get("summaries") or {}
+    descs = obj.get("summaries_descriptions") or {}
+    labels = obj.get("summaries_labels") or {}
+
+    if isinstance(summaries, dict):
+        for key, vals in summaries.items():
+            if vals is None or vals == "" or vals == [] or vals == {}:
+                continue
+            entry: Dict[str, Any] = {
+                "values": vals if isinstance(vals, list) else [vals],
+            }
+            if isinstance(descs, dict) and descs.get(key):
+                entry["description"] = str(descs[key]).strip()
+            if isinstance(labels, dict) and isinstance(labels.get(key), dict):
+                entry["labels"] = {str(k): str(v) for k, v in labels[key].items()}
+            out[key] = entry
+
+    # STAC datacube extension
+    cube = obj.get("cube:dimensions") or {}
+    if isinstance(cube, dict):
+        for key, info in cube.items():
+            if key in out or not isinstance(info, dict):
+                continue
+            vals = info.get("values") or info.get("extent") or []
+            if not vals:
+                continue
+            entry = {"values": vals if isinstance(vals, list) else [vals]}
+            if info.get("description"):
+                entry["description"] = str(info["description"]).strip()
+            if info.get("type"):
+                entry["type"] = str(info["type"])
+            out[key] = entry
+
+    return out
+
+
+def format_dimensions_text(
+    dims: Dict[str, Dict[str, Any]],
+    *,
+    include_descriptions: bool = True,
+    max_values_per_dim: int = 8,
+) -> str:
+    """Render the dimensions dict as a one-paragraph human-readable string.
+
+    Per-dimension format: `<name>: code1 (label1), code2 (label2), ... [- explainer]`.
+    Returns "" when dims is empty.
+    """
+    if not dims:
+        return ""
+    parts: List[str] = []
+    for name, info in dims.items():
+        vals = info.get("values") or []
+        if not isinstance(vals, list):
+            vals = [vals]
+        if not vals:
+            continue
+        labels = info.get("labels") or {}
+        shown: List[str] = []
+        for v in vals[:max_values_per_dim]:
+            vstr = str(v)
+            if labels.get(vstr) and labels[vstr] != vstr:
+                shown.append(f"{vstr} ({labels[vstr]})")
+            else:
+                shown.append(vstr)
+        line = f"{name}: " + ", ".join(shown)
+        if len(vals) > max_values_per_dim:
+            line += f", ... ({len(vals) - max_values_per_dim} more)"
+        if include_descriptions and info.get("description"):
+            line += f" - {info['description'].rstrip('.')}"
+        parts.append(line)
+    return "; ".join(parts)
+
+
+def extract_numeric_return_periods(dims: Dict[str, Dict[str, Any]]) -> List[float]:
+    """Pull numeric return periods (years) from a `rp`/`return period` dimension.
+
+    Drops sentinels like `static`, `0`, `none`, `no return period`. Returns a
+    sorted ascending list of floats. Used to populate
+    `event_sets[].events[].occurrence.probabilistic.return_period` when the
+    Collection genuinely lists discrete RPs.
+    """
+    SENTINELS = {"", "0", "static", "none", "no return period", "no_return_period", "baseline"}
+    for key, info in dims.items():
+        if key.strip().lower() not in {"rp", "return_period", "return period", "return periods"}:
+            continue
+        vals = info.get("values") or []
+        out: List[float] = []
+        for v in vals:
+            vv = str(v).strip()
+            if vv.lower() in SENTINELS:
+                continue
+            try:
+                out.append(float(vv))
+            except ValueError:
+                # Tolerate forms like "100yr" or "RP100"
+                m = re.search(r"\d+(?:\.\d+)?", vv)
+                if m:
+                    try:
+                        out.append(float(m.group()))
+                    except ValueError:
+                        pass
+        return sorted(set(out))
+    return []
+
+
+def lift_single_scenario(dims: Dict[str, Dict[str, Any]]) -> Optional[str]:
+    """If a `scenario`-like dimension contains exactly one codelist-valid SSP/RCP
+    value (after stripping sentinels), return the RDLS climate.scenario code.
+
+    Per RDLS v1.0 template: "use only when resource covers EXACTLY ONE
+    scenario." Multi-scenario datasets must NOT set climate.scenario; their
+    full scenario list goes into description / analysis_details.
+    """
+    for key, info in dims.items():
+        if key.strip().lower() not in {"scenario", "scenarios", "climate_scenario", "climate scenarios"}:
+            continue
+        vals = info.get("values") or []
+        cleaned: List[str] = []
+        for v in vals:
+            vv = str(v).strip()
+            if vv.lower() in _SCENARIO_SENTINELS:
+                continue
+            mapped = _SCENARIO_CODE_MAP.get(vv) or _SCENARIO_CODE_MAP.get(vv.replace(" ", ""))
+            if not mapped:
+                # Try regex extract from prose values like "RCP 8.5"
+                m = re.search(r"\b(RCP\s?[\d.]+|SSP\s?\d(?:-\s?\d\.?\d?)?)\b", vv)
+                if m:
+                    mapped = _SCENARIO_CODE_MAP.get(m.group(1).replace(" ", ""))
+            if mapped and mapped not in cleaned:
+                cleaned.append(mapped)
+        if len(cleaned) == 1:
+            return cleaned[0]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -577,17 +804,17 @@ def build_record_stac_v10(
 
     multi_processes: List[str] = []
     if risk_data_type == ["hazard"]:
+        # Precipitation-amount indices (RX1day/RX5day/R95p/R99p, etc.) arrive
+        # with subcategory "nan, nan". Per team guidance (2026-06): a raw
+        # precipitation index is NOT itself a hazard — do NOT assume it is
+        # flood/pluvial_flood. Skip it (routes to not_rdls), rather than
+        # fabricating a flood classification.
+        if subcat_lc == "nan, nan":
+            return None
         haz_type, haz_process, secondary = _HAZARD_SUBCAT_MAP.get(
             subcat_lc, ("flood", "fluvial_flood", [])
         )
         multi_processes = secondary
-        if subcat_lc == "nan, nan":
-            description = (
-                description.rstrip(".") +
-                f". Note: original subcategory is missing; mapped to {haz_type} / "
-                f"{haz_process} because this Item is a precipitation index "
-                f"(parent Collection: {sanitize_text(collection.get('title') or '?') or '?'})."
-            )
         if multi_processes:
             description = (
                 description.rstrip(".") +
@@ -803,6 +1030,19 @@ def build_record_stac_v10(
         "risk_data_type": risk_data_type,
         "publisher": publisher,
     }
+    # `usage notes` in the publisher's STAC items captures how / where to
+    # obtain or use the data ("free user account needed", "download via API",
+    # ...). RDLS v1.0 has a top-level `purpose` optional string that fits.
+    usage_notes = sanitize_text(props.get("usage notes") or "")
+    if usage_notes:
+        record["purpose"] = usage_notes
+    # `temporal coverage` carries a parenthetical cadence tail like "(daily)",
+    # "(monthly)", "(yearly)", "(5-yearly)". Lift it to top-level
+    # temporal_resolution as ISO 8601 duration. The date range itself is
+    # already captured via start_datetime / end_datetime.
+    temporal_resolution = _parse_temporal_cadence(props.get("temporal coverage"))
+    if temporal_resolution:
+        record["temporal_resolution"] = temporal_resolution
     record["contact_point"] = contact_point
     record["creator"] = creator
     record["spatial"] = spatial

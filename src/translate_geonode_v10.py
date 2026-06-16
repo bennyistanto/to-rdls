@@ -252,7 +252,18 @@ def _pick_media_type(fmt: str, link_type: str, modality: str, subtype: str) -> T
     """
     fmt_norm = (fmt or "").upper().strip()
     if modality in _CONFORMS_TO_BY_MODALITY:
-        # Services don't carry media_type; conforms_to documents the protocol.
+        # OGC services STILL need media_type OR format: the v1.0 schema anyOf
+        # rule requires one even when conforms_to documents the protocol.
+        # Assign the media_type the endpoint actually delivers, by protocol:
+        #   WMS GetMap -> PNG (or GeoTIFF for raster), WFS GetFeature -> GeoJSON,
+        #   WCS coverage -> GeoTIFF.  (Mirror of scripts/fix_ogc_resource_media_type.py.)
+        svc = (modality or "").upper()
+        if svc == "WMS":
+            return ("image/tiff;application=geotiff" if subtype == "raster" else "image/png"), ""
+        if svc == "WFS":
+            return "application/geo+json", ""
+        if svc == "WCS":
+            return "image/tiff;application=geotiff", ""
         return "", ""
     mt = _MEDIA_TYPE_BY_FORMAT.get(fmt_norm)
     if mt:

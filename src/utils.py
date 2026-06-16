@@ -80,6 +80,211 @@ def sanitize_text(text: str) -> str:
     return clean.strip()
 
 
+# ---------------------------------------------------------------------------
+# Resource media_type derivation (single source of truth)
+# ---------------------------------------------------------------------------
+#
+# media_type is an OPEN codelist and `format` is free text, so the JSON Schema
+# CANNOT catch a value that is well-formed but factually wrong (e.g.
+# media_type="text/csv" on a ".zip" download). To prevent that class of error
+# we DERIVE the media_type from ground truth - the resource URL - in one
+# canonical place, used by BOTH the generators (at write time) and the audit
+# consistency check (at validation time). Because both call the same function
+# they cannot silently disagree.
+#
+# Codes align with rdl-standard media_type.csv (open codelist) where one exists;
+# otherwise the correct IANA type is used (media_type is open, so allowed).
+
+MEDIA_TYPE_BY_EXTENSION: Dict[str, str] = {
+    ".zip":     "application/zip",
+    ".tif":     "image/tiff;application=geotiff",
+    ".tiff":    "image/tiff;application=geotiff",
+    ".csv":     "text/csv",
+    ".json":    "application/json",
+    ".geojson": "application/geo+json",
+    ".nc":      "application/netcdf",
+    ".parquet": "application/vnd.apache.parquet",
+    ".pq":      "application/vnd.apache.parquet",
+    ".gpkg":    "application/geopackage+sqlite3",
+    ".shp":     "application/vnd.shp",
+    ".gml":     "application/gml+xml",
+    ".xml":     "application/xml",
+    ".xlsx":    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".pdf":     "application/pdf",
+    ".png":     "image/png",
+    ".jpg":     "image/jpeg",
+    ".jpeg":    "image/jpeg",
+    ".kml":     "application/vnd.google-earth.kml+xml",
+    ".kmz":     "application/vnd.google-earth.kmz",
+    ".zarr":    "application/vnd.zarr",
+    ".h5":      "application/x-hdf5",
+    ".hdf5":    "application/x-hdf5",
+    ".las":     "application/vnd.las",
+    ".html":    "text/html",
+    ".htm":     "text/html",
+    ".txt":     "text/plain",
+    # NOTE: .gz / .tar deliberately NOT mapped. gzip transparently wraps a
+    # SINGLE file, so declaring the inner content type (e.g. a .csv.gz tagged
+    # text/csv, a .gpkg.gz tagged geopackage) is legitimate, not a contradiction
+    # - asserting application/gzip there would be a false positive.
+}
+
+# Single-file content types that a .zip container provably CANNOT be. A .zip
+# download declared as one of these is a genuine contradiction. Multi-file /
+# directory geospatial formats (shapefile, file-geodatabase, geopackage, zarr)
+# are DELIBERATELY excluded - they are routinely distributed zipped, so e.g.
+# application/vnd.shp on a "_shp.zip" is correct, not an error.
+ZIP_INCOMPATIBLE_SINGLE_FILE_TYPES: set = {
+    "text/csv", "text/plain",
+    "image/tiff;application=geotiff",
+    "image/tiff;application=geotiff;profile=cloud-optimized",
+    "image/tiff", "image/png", "image/jpeg",
+    "application/json", "application/geo+json",
+    "application/pdf", "application/netcdf",
+    "application/xml", "application/gml+xml",
+    "application/vnd.apache.parquet",
+}
+
+# media_types that are interchangeable - a mismatch BETWEEN members is NOT an
+# error (e.g. a .geojson legitimately tagged application/json).
+_MEDIA_TYPE_EQUIVALENCE: List[set] = [
+    {"application/json", "application/geo+json"},
+    {"image/tiff;application=geotiff", "image/tiff;application=geotiff;profile=cloud-optimized", "image/tiff"},
+    {"application/xml", "application/gml+xml", "text/xml"},
+    {"application/x-hdf5", "application/x-hdf"},
+    {"application/netcdf", "application/x-netcdf"},                 # same format, alternate spelling
+    {"application/vnd.google-earth.kmz", "application/vnd.google-earth.kml+xml"},  # kmz = zipped kml
+]
+
+
+def media_type_from_url(url: Optional[str]) -> Optional[str]:
+    """Return the media_type a URL DEFINITIVELY implies, or None.
+
+    Definitive signals only (never guesses):
+      1. a recognised file extension on the URL path (e.g. ``.zip`` -> application/zip)
+      2. an explicit OGC ``format=`` / ``outputFormat=`` query parameter on a
+         WMS/WFS/WCS service URL
+
+    Returns None for landing pages, extensionless API endpoints, or any URL
+    whose format cannot be determined from the URL string alone - so callers
+    never assert a type they cannot prove.
+    """
+    if not url or not isinstance(url, str):
+        return None
+    low = url.lower()
+    # An explicit OGC outputFormat= is definitive regardless of an explicit
+    # service= param (GeoServer /ows, /wfs, /wcs endpoints often omit it).
+    mout = re.search(r"[?&]outputformat=([^&]+)", low)
+    if mout:
+        mt = _media_type_from_format_token(mout.group(1), "wfs")
+        if mt:
+            return mt
+    # OGC service: assert when an explicit format/outputFormat is present.
+    msvc = re.search(r"[?&]service=(wms|wfs|wcs)\b", low)
+    if msvc:
+        mfmt = re.search(r"[?&](?:outputformat|format)=([^&]+)", low)
+        if mfmt:
+            return _media_type_from_format_token(mfmt.group(1), msvc.group(1))
+        return None  # service URL without explicit format -> do not assume
+    # plain path: take the final segment, match extension
+    path = low.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+    seg = path.rsplit("/", 1)[-1]
+    if seg.endswith((".tar.gz", ".tgz", ".gz", ".tar")):
+        return None  # archive/compression wrapper - inner content type may apply
+    m = re.search(r"(\.[a-z0-9]+)$", seg)
+    if m:
+        return MEDIA_TYPE_BY_EXTENSION.get(m.group(1))
+    return None
+
+
+def _media_type_from_format_token(raw: str, service: str) -> Optional[str]:
+    """Map an OGC ``format=``/``outputFormat=`` token to a media_type. Returns
+    None for ambiguous tokens (e.g. GeoServer SHAPE-ZIP) rather than guess."""
+    import urllib.parse
+    t = urllib.parse.unquote(raw).strip().lower()
+    if "geotiff" in t or "tiff" in t:
+        return "image/tiff;application=geotiff"
+    if "png" in t:
+        return "image/png"
+    if "jpeg" in t or "jpg" in t:
+        return "image/jpeg"
+    if "json" in t:
+        # WFS GetFeature application/json from GeoServer is GeoJSON
+        return "application/geo+json" if service == "wfs" else "application/json"
+    if t == "csv" or t.endswith("/csv"):
+        return "text/csv"
+    if "excel" in t:
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if "gml" in t:
+        return "application/gml+xml"
+    if "shape-zip" in t or "shapezip" in t or t == "shp":
+        # GeoServer SHAPE-ZIP delivers a zipped shapefile -> the shapefile type
+        # (multi-file format, legitimately zipped).
+        return "application/vnd.shp"
+    return None  # other tokens - ambiguous, do not assume
+
+
+def normalize_media_type(s: Optional[str]) -> Optional[str]:
+    """Canonicalise a media_type string: lowercase, no whitespace around
+    ``;`` / ``=`` (so 'image/tiff; application=geotiff' == 'image/tiff;application=geotiff')."""
+    if not s or not isinstance(s, str):
+        return s
+    out = s.strip().lower()
+    out = re.sub(r"\s*;\s*", ";", out)
+    out = re.sub(r"\s*=\s*", "=", out)
+    return out
+
+
+def media_types_compatible(a: Optional[str], b: Optional[str]) -> bool:
+    """True if two media_types are equal (whitespace-normalised) or in the
+    same equivalence group."""
+    if not a or not b:
+        return True  # nothing to contradict
+    a = normalize_media_type(a)
+    b = normalize_media_type(b)
+    if a == b:
+        return True
+    for grp in _MEDIA_TYPE_EQUIVALENCE:
+        if a in grp and b in grp:
+            return True
+    return False
+
+
+# Common free-text `format` labels -> media_type, for reconciling legacy
+# resources that used `format` instead of `media_type`.
+_FORMAT_LABEL_TO_MEDIA_TYPE: Dict[str, str] = {
+    "geotiff": "image/tiff;application=geotiff",
+    "geotiff (tif)": "image/tiff;application=geotiff",
+    "tif": "image/tiff;application=geotiff",
+    "tiff": "image/tiff;application=geotiff",
+    "csv": "text/csv",
+    "csv (csv)": "text/csv",
+    "geojson": "application/geo+json",
+    "geojson (geojson)": "application/geo+json",
+    "json": "application/json",
+    "json (json)": "application/json",
+    "shapefile": "application/vnd.shp",
+    "shapefile (shp)": "application/vnd.shp",
+    "geopackage": "application/geopackage+sqlite3",
+    "geopackage (gpkg)": "application/geopackage+sqlite3",
+    "netcdf": "application/netcdf",
+    "geoparquet": "application/vnd.apache.parquet",
+    "parquet": "application/vnd.apache.parquet",
+    "pdf": "application/pdf",
+    "zip": "application/zip",
+    "zarr": "application/vnd.zarr",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "excel (xlsx)": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
+def format_label_to_media_type(label: Optional[str]) -> Optional[str]:
+    """Best-effort map of a free-text `format` label to a media_type, or None."""
+    if not label:
+        return None
+    return _FORMAT_LABEL_TO_MEDIA_TYPE.get(label.strip().lower())
+
+
 def slugify(s: str, max_len: int = 80) -> str:
     """Convert string to URL-safe slug."""
     s = (s or "").strip().lower()

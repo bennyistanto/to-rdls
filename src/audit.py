@@ -196,16 +196,27 @@ class ValidationResult:
 def validate_layer1_schema(data: dict, schema: dict, result: ValidationResult):
     """Standard JSON Schema validation using jsonschema library.
 
-    Uses Draft7Validator to match the rdl-standard schema (JSON Schema Draft 7).
-    FormatChecker is required for 'date' and 'iri' format validation.
+    Uses Draft202012Validator to match the RDLS schema, which declares
+    "$schema": ".../draft/2020-12/schema" and uses 2020-12-only keywords such
+    as `prefixItems` (on `links`). A Draft7 validator silently ignores those
+    keywords, under-reporting errors - so we pin 2020-12 and only fall back to
+    Draft7 if the library is too old. FormatChecker enables 'date'/'iri' checks.
+
+    NOTE: pass the BAKED schema (schema/rdls_schema_v1.0.json via
+    scripts/refresh_published_schema.py). The rdl-standard SOURCE schema has
+    empty hazard conditionals and will under-report hazard type/process errors.
     """
     try:
-        from jsonschema import Draft7Validator, FormatChecker
+        from jsonschema import Draft202012Validator as _Validator, FormatChecker
     except ImportError:
-        result.warning("schema", "(root)", "jsonschema library not installed — skipping Layer 1. Install with: pip install jsonschema")
-        return
+        try:
+            from jsonschema import Draft7Validator as _Validator, FormatChecker
+            result.warning("schema", "(root)", "jsonschema too old for Draft 2020-12; using Draft7 (prefixItems etc. not checked). Upgrade jsonschema.")
+        except ImportError:
+            result.warning("schema", "(root)", "jsonschema library not installed — skipping Layer 1. Install with: pip install jsonschema")
+            return
 
-    validator = Draft7Validator(schema, format_checker=FormatChecker())
+    validator = _Validator(schema, format_checker=FormatChecker())
     for err in validator.iter_errors(data):
         path = " -> ".join(str(p) for p in err.absolute_path) if err.absolute_path else "(root)"
         result.error("schema", path, err.message[:500])
@@ -263,6 +274,7 @@ CODELIST_CHECKS = [
     ("vulnerability.functions.vulnerability.*.impact.type", "impact_type.csv", "impact type"),
     ("vulnerability.functions.vulnerability.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
     ("vulnerability.functions.vulnerability.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.vulnerability.*.impact.loss_statistic", "loss_statistic.csv", "loss statistic"),
     ("vulnerability.functions.vulnerability.*.taxonomy", "classification_scheme.csv", "taxonomy"),
     ("vulnerability.functions.fragility.*.approach", "function_approach.csv", "function approach"),
     ("vulnerability.functions.fragility.*.relationship", "relationship_type.csv", "relationship type"),
@@ -271,6 +283,7 @@ CODELIST_CHECKS = [
     ("vulnerability.functions.fragility.*.impact.type", "impact_type.csv", "impact type"),
     ("vulnerability.functions.fragility.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
     ("vulnerability.functions.fragility.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.fragility.*.impact.loss_statistic", "loss_statistic.csv", "loss statistic"),
     ("vulnerability.functions.fragility.*.taxonomy", "classification_scheme.csv", "taxonomy"),
     ("vulnerability.functions.fragility.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
     # damage_to_loss and engineering_demand share same Function base -- all Function fields apply
@@ -281,6 +294,7 @@ CODELIST_CHECKS = [
     ("vulnerability.functions.damage_to_loss.*.impact.type", "impact_type.csv", "impact type"),
     ("vulnerability.functions.damage_to_loss.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
     ("vulnerability.functions.damage_to_loss.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.damage_to_loss.*.impact.loss_statistic", "loss_statistic.csv", "loss statistic"),
     ("vulnerability.functions.damage_to_loss.*.taxonomy", "classification_scheme.csv", "taxonomy"),
     ("vulnerability.functions.damage_to_loss.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
     ("vulnerability.functions.engineering_demand.*.approach", "function_approach.csv", "function approach"),
@@ -290,15 +304,18 @@ CODELIST_CHECKS = [
     ("vulnerability.functions.engineering_demand.*.impact.type", "impact_type.csv", "impact type"),
     ("vulnerability.functions.engineering_demand.*.impact.modelling", "data_calculation_type.csv", "impact modelling"),
     ("vulnerability.functions.engineering_demand.*.impact.metric", "impact_metric.csv", "impact metric"),
+    ("vulnerability.functions.engineering_demand.*.impact.loss_statistic", "loss_statistic.csv", "loss statistic"),
     ("vulnerability.functions.engineering_demand.*.taxonomy", "classification_scheme.csv", "taxonomy"),
     ("vulnerability.functions.engineering_demand.*.damage_scale_name", "damage_scale_name.csv", "damage scale name"),
 
-    # Loss
+    # Loss -- impact details are NESTED under impact_and_losses.impact (v1.0);
+    # loss_type/loss_approach/loss_frequency_type stay on impact_and_losses.
     ("loss.losses.*.asset_category", "exposure_category.csv", "asset category"),
     ("loss.losses.*.asset_dimension", "metric_dimension.csv", "asset dimension"),
-    ("loss.losses.*.impact_and_losses.impact_type", "impact_type.csv", "impact type"),
-    ("loss.losses.*.impact_and_losses.impact_modelling", "data_calculation_type.csv", "impact modelling"),
-    ("loss.losses.*.impact_and_losses.impact_metric", "impact_metric.csv", "impact metric"),
+    ("loss.losses.*.impact_and_losses.impact.type", "impact_type.csv", "impact type"),
+    ("loss.losses.*.impact_and_losses.impact.modelling", "data_calculation_type.csv", "impact modelling"),
+    ("loss.losses.*.impact_and_losses.impact.metric", "impact_metric.csv", "impact metric"),
+    ("loss.losses.*.impact_and_losses.impact.loss_statistic", "loss_statistic.csv", "loss statistic"),
     ("loss.losses.*.impact_and_losses.loss_type", "loss_type.csv", "loss type"),
     ("loss.losses.*.impact_and_losses.loss_approach", "function_approach.csv", "loss approach"),
     ("loss.losses.*.impact_and_losses.loss_frequency_type", "analysis_type.csv", "loss frequency type"),
@@ -361,6 +378,27 @@ def validate_layer2_codelists(data: dict, registry: CodelistRegistry, result: Va
                         allowed=codes,
                     )
 
+    # GED4ALL asset_type.id check: the JSON Schema does NOT link asset_type.id to
+    # taxonomy_ged4all (it is a free Classification.id + scheme from classification_scheme),
+    # so a schema-walk misses it. When scheme=='GED4ALL', the id should be a
+    # taxonomy_ged4all code. Warn (not error): some assets have no single code
+    # (multimodal_transport_network, points_of_interest), and 'bui' is pending.
+    ged_codes, _ = registry.load("taxonomy_ged4all.csv")
+    if ged_codes:
+        ged_ok = set(ged_codes) | {"bui"}
+        for i, exp in enumerate(data.get("exposure", []) if isinstance(data.get("exposure"), list) else []):
+            at = exp.get("asset_type") if isinstance(exp, dict) else None
+            if isinstance(at, dict) and at.get("scheme") == "GED4ALL":
+                aid = at.get("id")
+                if aid and aid not in ged_ok:
+                    result.warning(
+                        "codelist", f"exposure[{i}].asset_type.id",
+                        f"asset_type.id '{aid}' is not a taxonomy_ged4all code but scheme='GED4ALL'. "
+                        f"Map to the GED4ALL code for the exposure_category (or drop the scheme if "
+                        f"no code fits, e.g. multimodal networks / mixed points-of-interest).",
+                        allowed=sorted(ged_ok),
+                    )
+
 
 # ---------------------------------------------------------------------------
 # Layer 3: Semantic / cross-field validation
@@ -405,6 +443,42 @@ TYPE_TO_IMT_CODELIST = {
 }
 
 # RULE 3: quantity_kind -> unit codelist file
+# Obsolete / incorrect quantity_kind values that DO have a correct v1.0 form.
+# quantity_kind.csv is an OPEN codelist and the Metadata Editor accepts novel
+# relevant custom values (e.g. `power` for installed generation capacity), so a
+# value merely being outside the codelist is NOT an error. These specific values
+# ARE errors: they are stale v0.3 terms (or a unit mistaken for a quantity_kind)
+# that have a canonical v1.0 codelist code. A record carrying them shows a
+# blank/unrecognised measurement because the editor's dropdown cannot match them.
+QUANTITY_KIND_OBSOLETE = {
+    "monetary": "currency",                              # v0.3 -> v1.0 rename
+    "weight": "mass",                                    # v0.3 -> v1.0 rename
+    "percent": "dimensionless_ratio (with unit 'percent')",  # percent is a unit, not a quantity_kind
+}
+
+# Obsolete impact_metric values (old codelist vocabulary) -> current v1.0
+# impact_metric codelist code. impact_metric is an OPEN codelist, but these are
+# stale terms from a previous codelist version (not intentional extensions), so
+# they error like QUANTITY_KIND_OBSOLETE. casualty_count and damage_ratio are
+# deliberately ABSENT - they have no unambiguous v1.0 target (pending decision).
+IMPACT_METRIC_OBSOLETE = {
+    "exposure_to_hazard": "exposure",
+    "displaced_count": "displaced",
+    "asset_loss": "loss",
+    "economic_loss_value": "loss",
+    "economic_loss": "loss",
+    "loss_annual_average_value": "loss",
+    "loss_probable_maximum_value": "loss",
+    "fatality_count": "death",
+    "injured_count": "ppl_injured",
+    "affected_population": "ppl_affected",
+    "downtime_loss": "downtime",
+    "disruption_days": "disruption",
+    "damage_ratio": "damage",  # ratio nature carried by measurement.quantity_kind=dimensionless_ratio
+}
+# casualty_count is deliberately ABSENT: kept as a valid custom value (no single
+# v1.0 code means killed+injured); the open-codelist branch passes it silently.
+
 QUANTITY_TO_UNIT_CODELIST = {
     "area": ("unit_area.csv", True),
     "count": ("unit_count.csv", True),
@@ -481,13 +555,42 @@ def _collect_measurement_objects(data: dict) -> list[tuple[str, dict]]:
             if m:
                 measurements.append((f"vulnerability.functions.{func_type}[{i}].impact.measurement", m))
 
-    # Loss
+    # Loss -- v1.0 nests measurement under impact_and_losses.impact.measurement;
+    # legacy v0.3 records put it flat at impact_and_losses.measurement.
     for i, loss in enumerate(data.get("loss", {}).get("losses", [])):
-        m = loss.get("impact_and_losses", {}).get("measurement", {})
-        if m:
-            measurements.append((f"loss.losses[{i}].impact_and_losses.measurement", m))
+        ial = loss.get("impact_and_losses", {})
+        if not isinstance(ial, dict):
+            continue
+        nested = ial.get("impact", {}).get("measurement", {}) if isinstance(ial.get("impact"), dict) else {}
+        if nested:
+            measurements.append((f"loss.losses[{i}].impact_and_losses.impact.measurement", nested))
+        flat = ial.get("measurement", {})
+        if flat:
+            measurements.append((f"loss.losses[{i}].impact_and_losses.measurement", flat))
 
     return measurements
+
+
+def _collect_impact_metrics(data: dict) -> list[tuple[str, str]]:
+    """Find all impact_metric values (loss + vulnerability function), covering
+    both the v1.0 nested path (impact.metric) and the v0.3 flat path."""
+    out = []
+    for i, loss in enumerate(data.get("loss", {}).get("losses", [])):
+        if not isinstance(loss, dict):
+            continue
+        ial = loss.get("impact_and_losses", {})
+        if not isinstance(ial, dict):
+            continue
+        if isinstance(ial.get("impact"), dict) and ial["impact"].get("metric"):
+            out.append((f"loss.losses[{i}].impact_and_losses.impact.metric", ial["impact"]["metric"]))
+        if ial.get("impact_metric"):  # legacy flat
+            out.append((f"loss.losses[{i}].impact_and_losses.impact_metric", ial["impact_metric"]))
+    for func_type in ["vulnerability", "fragility", "damage_to_loss", "engineering_demand"]:
+        funcs = data.get("vulnerability", {}).get("functions", {}).get(func_type, [])
+        for i, fn in enumerate(funcs):
+            if isinstance(fn, dict) and isinstance(fn.get("impact"), dict) and fn["impact"].get("metric"):
+                out.append((f"vulnerability.functions.{func_type}[{i}].impact.metric", fn["impact"]["metric"]))
+    return out
 
 
 def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: ValidationResult):
@@ -529,9 +632,37 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
                     )
 
     # --- RULE 3: quantity_kind -> unit ---
+    # quantity_kind.csv is an OPEN codelist. The Metadata Editor drives a
+    # dropdown from it but ALSO accepts custom values, so a novel relevant value
+    # (e.g. `power` for installed generation capacity, megawatt) is a legitimate
+    # open-codelist extension - NOT an error. We only hard-error on the specific
+    # obsolete v0.3 terms / unit-as-quantity_kind mistakes that have a canonical
+    # v1.0 code (QUANTITY_KIND_OBSOLETE): those do not round-trip in the editor's
+    # dropdown and must be the codelist code. Well-formed novel values are
+    # accepted; only a malformed value (not snake_case) is warned about.
+    _qk_codes, _ = registry.load("quantity_kind.csv")
     for path, m in _collect_measurement_objects(data):
         qk = m.get("quantity_kind")
         unit = m.get("unit")
+        if qk and qk in QUANTITY_KIND_OBSOLETE:
+            result.error(
+                "semantic", f"{path}.quantity_kind",
+                f"quantity_kind '{qk}' is an obsolete v0.3 value; use "
+                f"'{QUANTITY_KIND_OBSOLETE[qk]}'. (quantity_kind is an open codelist - "
+                f"novel relevant values like 'power' are allowed, but stale renames are not "
+                f"recognised by the Metadata Editor's dropdown.)",
+                allowed=_qk_codes,
+            )
+        elif qk and _qk_codes and qk not in _qk_codes:
+            # Open codelist: a well-formed novel value is an intentional, MDE-accepted
+            # custom extension. Only flag a value that is not even well-formed.
+            if not _VALID_CODE_PATTERN.match(qk):
+                result.warning(
+                    "semantic", f"{path}.quantity_kind",
+                    f"quantity_kind '{qk}' is not in the codelist and is not well-formed "
+                    f"snake_case; verify it's an intentional custom value.",
+                    allowed=_qk_codes,
+                )
         if qk and unit:
             mapping = QUANTITY_TO_UNIT_CODELIST.get(qk)
             if mapping:
@@ -621,6 +752,84 @@ def validate_layer3_semantic(data: dict, registry: CodelistRegistry, result: Val
                 f"Projected data should reference a baseline period.",
             )
 
+    # --- RULE 9: loss impact must be NESTED (v1.0), not flat (v0.3) ---
+    # v1.0 nests impact under impact_and_losses.impact.{type,modelling,metric,
+    # measurement} ($defs/Impact). The flat keys impact_type/impact_modelling/
+    # impact_metric on impact_and_losses are the v0.3 structure; the schema
+    # tolerates them as extras (impact is optional) so Layer 1 misses them.
+    _FLAT_IMPACT_KEYS = ("impact_type", "impact_modelling", "impact_metric")
+    for i, loss in enumerate(data.get("loss", {}).get("losses", [])):
+        if not isinstance(loss, dict):
+            continue
+        ial = loss.get("impact_and_losses")
+        if isinstance(ial, dict):
+            flat = [k for k in _FLAT_IMPACT_KEYS if k in ial]
+            if flat and "impact" not in ial:
+                result.error(
+                    "semantic", f"loss.losses[{i}].impact_and_losses",
+                    f"Loss uses the v0.3 FLAT impact structure ({', '.join(flat)}); RDLS v1.0 "
+                    f"nests these under an 'impact' object: "
+                    f"impact_and_losses.impact.{{type, modelling, metric, measurement}}.",
+                )
+
+    # --- RULE 10: impact_metric -> current codelist (obsolete-value check) ---
+    # impact_metric is an OPEN codelist, but the old codelist vocabulary
+    # (economic_loss_value, displaced_count, ...) was fully replaced. Stale
+    # values error like QUANTITY_KIND_OBSOLETE; novel well-formed values pass.
+    _im_codes, _ = registry.load("impact_metric.csv")
+    for path, metric in _collect_impact_metrics(data):
+        if not metric:
+            continue
+        if metric in IMPACT_METRIC_OBSOLETE:
+            result.error(
+                "semantic", path,
+                f"impact_metric '{metric}' is from a superseded codelist; use "
+                f"'{IMPACT_METRIC_OBSOLETE[metric]}'. (impact_metric is open - novel relevant "
+                f"values are allowed, but stale codelist terms are not recognised.)",
+                allowed=_im_codes,
+            )
+        elif _im_codes and metric not in _im_codes:
+            if not _VALID_CODE_PATTERN.match(metric):
+                result.warning(
+                    "semantic", path,
+                    f"impact_metric '{metric}' is not in the codelist and is not well-formed; "
+                    f"verify it's an intentional custom value.",
+                    allowed=_im_codes,
+                )
+
+    # --- RULE 11: event_set hazards[] processes vs events[] process coverage ---
+    # The schema requires a single `process` per Event.hazard, so a set can declare
+    # multiple processes at hazards[] level while each event carries one. That is
+    # CORRECT when the source ships ONE combined map per scenario (e.g. a single
+    # "fluvial/pluvial" depth raster). It is WRONG when the source ships SEPARATE
+    # per-process maps - then events should mirror each declared process.
+    # We cannot tell combined vs separate from the data alone, so this is a WARNING
+    # asking the author to verify, not a hard error.
+    for i, es in enumerate(data.get("hazard", {}).get("event_sets", [])):
+        if not isinstance(es, dict):
+            continue
+        set_procs = {h.get("process") for h in es.get("hazards", []) or []
+                     if isinstance(h, dict) and h.get("process")}
+        ev_procs = {ev.get("hazard", {}).get("process") for ev in es.get("events", []) or []
+                    if isinstance(ev.get("hazard"), dict) and ev["hazard"].get("process")}
+        if len(set_procs) > 1 and ev_procs and ev_procs < set_procs:
+            missing = sorted(set_procs - ev_procs)
+            result.warning(
+                "semantic", f"hazard.event_sets[{i}]",
+                f"event_set declares processes {sorted(set_procs)} but its events only use "
+                f"{sorted(ev_procs)} (not covered: {missing}). VERIFY: if the source ships "
+                f"SEPARATE per-process hazard maps, add events for the missing process(es); if "
+                f"the maps are COMBINED (one raster per scenario), this is correct - processes "
+                f"are declared at set level only.",
+            )
+        extra = ev_procs - set_procs
+        if set_procs and extra:
+            result.warning(
+                "semantic", f"hazard.event_sets[{i}]",
+                f"events use process(es) {sorted(extra)} not declared in the event_set hazards[] "
+                f"{sorted(set_procs)}; add them to hazards[] so the set-level scope is complete.",
+            )
+
 
 def _check_scale_countries(spatial: dict, path_prefix: str, result: ValidationResult):
     """RULE 4: Validate scale -> countries requirement.
@@ -672,8 +881,217 @@ def _check_entity(obj: dict, path: str, result: ValidationResult, required: bool
 # Main
 # ---------------------------------------------------------------------------
 
+def validate_layer4_consistency(data: dict, result: ValidationResult):
+    """Layer 4: cross-field CONSISTENCY checks the JSON Schema cannot catch.
+
+    The schema only checks shape (type, codelist membership, required). It
+    cannot detect a value that is well-formed but factually WRONG relative to
+    what it describes - e.g. media_type="text/csv" on a ".zip" download. This
+    layer re-derives ground truth from the data itself and flags contradictions.
+
+    Rule C1 - resource media_type vs URL (conservative, never guesses):
+      Derive the media_type the URL DEFINITIVELY implies (file extension or
+      explicit OGC format param), then flag only PROVABLE contradictions:
+        * URL is a .zip container, but the declared type is a single-file
+          content type a zip cannot be (csv, tiff, png, json, geojson, pdf,
+          netcdf, xml, parquet). Multi-file geospatial formats (shapefile,
+          file-geodatabase, geopackage, zarr) are NOT flagged on a zip - they
+          are legitimately distributed zipped.
+        * URL is a specific non-zip data file (.tif/.csv/.json/...) but the
+          declared type is incompatible with that exact type.
+      No assertion is made when the URL gives no definitive signal (landing
+      pages, extensionless endpoints) or resolves to text/html (viewer/app
+      pages are not reliable evidence of a resource's data format).
+    """
+    from src.utils import (media_type_from_url, media_types_compatible,
+                           format_label_to_media_type, normalize_media_type,
+                           ZIP_INCOMPATIBLE_SINGLE_FILE_TYPES)
+
+    for i, r in enumerate(data.get("resources", []) or []):
+        if not isinstance(r, dict):
+            continue
+        # The artifact you actually fetch determines the media_type:
+        # download_url first, else access_url.
+        expected = None
+        src_key = None
+        for key in ("download_url", "access_url"):
+            expected = media_type_from_url(r.get(key))
+            if expected:
+                src_key = key
+                break
+        if not expected or expected == "text/html":
+            continue  # not definitive for a data format -> do not assert
+
+        declared_mt = r.get("media_type")
+        declared_fmt = r.get("format")
+        # Resolve a free-text format to a media_type for comparison (may be None).
+        effective = declared_mt or format_label_to_media_type(declared_fmt)
+        if effective is None:
+            # No media_type, and format (if any) is free text we cannot map.
+            # Only the zip-vs-single-file rule could apply, and we can't tell -
+            # so do not assert (schema anyOf already requires media_type|format).
+            continue
+        path = f"resources -> {i}"
+        rid = r.get("id", f"[{i}]")
+        declared_label = declared_mt or f"format '{declared_fmt}'"
+
+        if expected == "application/zip":
+            # A zip only contradicts a single-file content type.
+            if normalize_media_type(effective) in ZIP_INCOMPATIBLE_SINGLE_FILE_TYPES:
+                result.error(
+                    "consistency", f"{path}",
+                    f"resource '{rid}': declared {declared_label} but the {src_key} "
+                    f"is a .zip archive - a single-file type cannot describe a zip. "
+                    f"Use media_type 'application/zip' (note the contents in the description).")
+        else:
+            # Specific non-zip data file: declared must match that exact type.
+            if not media_types_compatible(effective, expected):
+                result.error(
+                    "consistency", f"{path}",
+                    f"resource '{rid}': declared {declared_label} contradicts the "
+                    f"{src_key} which is definitively '{expected}'.")
+
+
+def _nested_get(obj, dotted):
+    """Walk a dotted path (e.g. 'impact.measurement.quantity_kind'); None if absent."""
+    cur = obj
+    for part in dotted.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+        if cur is None:
+            return None
+    return cur
+
+
+def _is_empty(v):
+    return v is None or (isinstance(v, str) and v.strip() == "")
+
+
+# Required-field rules enforced by the RDLS Metadata Editor (RDL_MDE.html) that
+# go BEYOND the JSON Schema. Mirrors GFDRR/CCDR-tools _static/RDL_MDE.html
+# (validateDatasetRequirements). The JSON Schema treats these as optional, so
+# Layer 1 cannot catch them - but the editor / DDH ingestion rejects records
+# that omit them. Keep this list in sync with the MDE if the team updates it.
+# NOTE: v1.0 nests impact under impact_and_losses.impact.{type,modelling,metric,
+# measurement} ($defs/Impact). The flat v0.3 paths (impact_type, impact_metric,
+# ...) are WRONG; a separate Layer 3 rule errors on the legacy flat structure.
+_MDE_LOSS_REQUIRED = [
+    ("hazard.type", "hazard type"),
+    ("asset_category", "asset category"),
+    ("asset_dimension", "asset dimension"),
+    ("impact_and_losses.impact.type", "impact type"),
+    ("impact_and_losses.impact.modelling", "impact modelling"),
+    ("impact_and_losses.impact.metric", "impact metric"),
+    ("impact_and_losses.impact.measurement.quantity_kind", "quantity kind"),
+    ("impact_and_losses.loss_type", "loss type"),
+    ("impact_and_losses.loss_approach", "loss approach"),
+    ("impact_and_losses.loss_frequency_type", "loss frequency type"),
+]
+_MDE_VULN_FUNC_REQUIRED = [
+    ("hazard_primary", "primary hazard type"),
+    ("hazard_primary.intensity_measure", "hazard intensity measurement"),
+    ("category", "exposure category"),
+    ("impact.type", "impact type"),
+    ("impact.modelling", "impact modelling"),
+    ("impact.metric", "impact metric"),
+    ("impact.measurement.quantity_kind", "quantity kind"),
+]
+_MDE_SOCIOECON_REQUIRED = [
+    ("indicator_name", "indicator name"),
+    ("indicator_code", "indicator code"),
+    ("description", "description"),
+    ("reference_year", "reference year"),
+]
+
+
+def validate_layer5_mde_rules(data: dict, result: ValidationResult):
+    """Layer 5: business rules enforced by the RDLS Metadata Editor / DDH
+    ingestion that the JSON Schema does NOT (it marks these fields optional).
+
+    Faithfully mirrors RDL_MDE.html's validateDatasetRequirements so a record
+    that passes here will pass the editor. Covers exposure metrics, loss
+    impact_and_losses sub-fields, vulnerability functions' impact.* and
+    hazard_primary, and socio-economic indicators. Reported as ERRORS.
+    """
+    rdt = [t for t in (data.get("risk_data_type") or []) if t]
+
+    # --- Exposure ---
+    if any("exposure" in t.lower() for t in rdt) and isinstance(data.get("exposure"), list):
+        for i, exp in enumerate(data["exposure"]):
+            if not isinstance(exp, dict):
+                continue
+            if _is_empty(exp.get("category")):
+                result.error("mde", f"exposure -> {i}", f"exposure {i+1} is missing required category")
+            metrics = exp.get("metrics") or []
+            if not metrics:
+                result.error("mde", f"exposure -> {i}", f"exposure {i+1} must have at least one metric")
+            for j, m in enumerate(metrics):
+                if not isinstance(m, dict):
+                    continue
+                if _is_empty(m.get("dimension")):
+                    result.error("mde", f"exposure -> {i} -> metrics -> {j}", f"exposure {i+1}, metric {j+1} is missing required dimension")
+                if not isinstance(m.get("measurement"), dict) or not m.get("measurement"):
+                    result.error("mde", f"exposure -> {i} -> metrics -> {j}", f"exposure {i+1}, metric {j+1} is missing required measurement")
+
+    # --- Loss ---
+    if any("loss" in t.lower() for t in rdt):
+        losses = _nested_get(data, "loss.losses") or []
+        for i, loss in enumerate(losses):
+            if not isinstance(loss, dict):
+                continue
+            for field, name in _MDE_LOSS_REQUIRED:
+                if _is_empty(_nested_get(loss, field)):
+                    result.error("mde", f"loss -> losses -> {i}", f"loss {i+1} is missing required {name}")
+
+    # --- Vulnerability ---
+    if any("vulnerability" in t.lower() for t in rdt):
+        vuln = data.get("vulnerability") or {}
+        funcs = vuln.get("functions") or {}
+        socio = vuln.get("socio_economic") or []
+        has_funcs = any(isinstance(funcs.get(k), list) and funcs.get(k) for k in funcs)
+        has_socio = bool(socio)
+        if not has_funcs and not has_socio:
+            result.error("mde", "vulnerability",
+                "vulnerability must specify at least one approach: functions (vulnerability/fragility/"
+                "damage_to_loss/engineering_demand) or socio_economic indicators")
+        # function-based: every function needs the MDE-required fields
+        for func_type, arr in funcs.items():
+            if isinstance(arr, list):
+                for i, func in enumerate(arr):
+                    if not isinstance(func, dict):
+                        continue
+                    for field, name in _MDE_VULN_FUNC_REQUIRED:
+                        if _is_empty(_nested_get(func, field)):
+                            result.error("mde", f"vulnerability -> functions -> {func_type} -> {i}",
+                                f"{func_type} function {i+1} is missing required {name}")
+        # socio-economic indicators
+        for i, ind in enumerate(socio):
+            if not isinstance(ind, dict):
+                continue
+            for field, name in _MDE_SOCIOECON_REQUIRED:
+                if _is_empty(_nested_get(ind, field)):
+                    result.error("mde", f"vulnerability -> socio_economic -> {i}",
+                        f"socio-economic indicator {i+1} is missing required {name}")
+
+    # --- Hazard `id` recommendation (WARNING) ---
+    # `id` is REQUIRED only on event_set.hazards[] (RDLS schema; caught by Layer 1).
+    # On loss.hazard / event.hazard / vuln hazard_primary|secondary it is OPTIONAL:
+    # the schema doesn't require it there, and rdl-jkan make_hazard now reads it via
+    # hazard.get("id") (PR #159) so a missing id no longer breaks ingestion. We keep a
+    # WARNING (not error) because a stable local id is good practice for references.
+    # event_set.hazards[] id is left to Layer 1 (schema-required) to avoid double-flagging.
+    for path, h in _collect_hazard_objects(data):
+        if (isinstance(h, dict) and h.get("type") and not h.get("id")
+                and ".hazards[" not in path):  # event_set.hazards[] handled by schema/Layer 1
+            result.warning("mde", f"{path}.id",
+                "hazard object has no 'id'. Optional here (schema requires it only on "
+                "event_set.hazards[]; rdl-jkan reads it via .get since PR #159), but a stable "
+                "local id is recommended for references.")
+
+
 def validate(data: dict, schema: dict, registry: CodelistRegistry) -> ValidationResult:
-    """Run all three validation layers."""
+    """Run all validation layers."""
     result = ValidationResult()
 
     print("Layer 1: JSON Schema validation...")
@@ -693,5 +1111,17 @@ def validate(data: dict, schema: dict, registry: CodelistRegistry) -> Validation
     l3_errors = len(result.errors) - l2_total
     l3_warnings = len(result.warnings) - l2_warnings
     print(f"  {l3_errors} errors, {l3_warnings} warnings found")
+
+    print("Layer 4: Resource media_type / URL consistency...")
+    l3_total = len(result.errors)
+    validate_layer4_consistency(data, result)
+    l4_errors = len(result.errors) - l3_total
+    print(f"  {l4_errors} errors found")
+
+    print("Layer 5: Metadata Editor (MDE) business rules...")
+    l4_total = len(result.errors)
+    validate_layer5_mde_rules(data, result)
+    l5_errors = len(result.errors) - l4_total
+    print(f"  {l5_errors} errors found")
 
     return result
