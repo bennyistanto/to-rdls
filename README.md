@@ -1,207 +1,115 @@
 # to-rdls: RDLS Metadata Transformation Toolkit
 
-Transform metadata from various sources (HDX, GeoNode, etc.) into
-[Risk Data Library Standard (RDLS)](https://docs.riskdatalibrary.org/) v0.3 or v1.0 JSON records.
+Transform dataset metadata from any data catalog into
+[Risk Data Library Standard (RDLS)](https://docs.riskdatalibrary.org/) v1.0 (or legacy v0.3) JSON records, validated against what real consumers enforce.
 
-> **Two pipeline generations** - v1.0 (canonical): LLM-first single-phase pipeline for HDX datasets, producing RDLS v1.0 records. v0.3 (legacy): Regex + LLM hybrid pipeline for HDX/GeoNode/DesInventar/NISMOD, producing RDLS v0.3 records. See [Pipeline Architecture](docs/llm_pipeline_architecture.md) for details.
+> **Two pipeline generations.** **v1.0 (canonical)** - LLM-first, single-call classify + extract, producing RDLS v1.0 records. **v0.3 (legacy)** - regex + LLM hybrid, still used for some source ingestion. See [docs/pipelines/](docs/pipelines/v1.0-llm-first.md).
+
+Maintained under GFDRR / World Bank's Digital Earth team. License: MPL-2.0.
 
 ## Overview
 
-This is a modular, config-driven toolkit that evolved from the [HDX-RDLS Metadata Crawler](https://github.com/bennyistanto/hdx-metadata-crawler) pipeline. While the crawler focused exclusively on HDX with a notebook-based approach, to-rdls redesigns the pipeline as a modular library supporting any metadata source.
+A modular, config-driven toolkit that evolved from the [HDX-RDLS Metadata Crawler](https://github.com/bennyistanto/hdx-metadata-crawler). It is **not** a Python package - it is a portable folder of `src/` modules, `scripts/` entry points, and YAML configs you can run alongside any project.
 
-It is **not** a Python package &mdash; it is a portable folder of scripts and YAML configs that you can copy alongside any project.
+To date it has produced roughly **9,600 RDLS v1.0 records** across HDX (~8,300), GeoNode (10 portals), STAC/CoCliCo, and program datasets (NISMOD, Tomorrow Cities, DesInventar, MDG, WBG-UFRA, and the converted JKAN legacy catalogue).
 
-## Key Capabilities
+## Key capabilities
 
-- **Multi-source metadata transformation** &mdash; HDX (complete), DesInventar, NISMOD ICRA, GeoNode
-- **LLM-first pipeline (v1.0)** &mdash; Single-phase Claude Haiku call classifying + extracting all HEVL components in one pass, producing RDLS v1.0 records
-- **HEVL extraction pipeline (v0.3)** &mdash; Regex-based signal detection with 2/3-tier cascades for Hazard, Exposure, Vulnerability, and Loss
-- **LLM-assisted classification (v0.3)** &mdash; 4-phase pipeline solving content-blind over-classification via Claude Haiku
-- **Schema validation and auto-fix** &mdash; 5-pass engine with confidence scoring and tiered distribution
-- **Data inventory and review** &mdash; Folder/ZIP inspection with automated HEVL classification and gap analysis
-- **MCP server** &mdash; 5 tools for Claude-assisted data review and metadata creation workflows
-- **Config-driven design** &mdash; 14 YAML config files, no hardcoded patterns or mappings
-- **Structured naming** &mdash; RDLS record IDs with component encoding, collision detection, and rebuild support
+- **Multi-source transformation** - HDX, GeoNode, STAC, CoCliCo, DesInventar, NISMOD (ICRA + SDK), MDG, WBG-UFRA, and v0.3 -> v1.0 conversion of legacy catalogues.
+- **LLM-first pipeline (v1.0)** - a single Claude call classifies the RDLS components and extracts all HEVL fields in one pass, building complete v1.0 records (multi-return-period event sets, multiple exposure items, multiple loss entries).
+- **HEVL extraction pipeline (v0.3)** - regex signal detection with 2/3-tier cascades for Hazard, Exposure, Vulnerability, Loss.
+- **5-layer audit** (`src/audit.py`) - validates every record against (1) the published JSON Schema, (2) codelist membership, (3) semantic / cross-field rules, (4) resource media-type vs URL, and (5) Metadata-Editor + consumer (JKAN) business rules.
+- **Validate + enrich** - `scripts/validate_records.py --enrich` applies safe post-conversion fixes (units, GED4ALL codes, media types, licenses) and reports what needs a human.
+- **Data inventory and review** - folder/ZIP inspection with automated HEVL classification and gap analysis.
+- **MCP server** - 5 tools for Claude-assisted data review and metadata authoring.
+- **Config-driven** - all patterns, mappings, and thresholds live in YAML; no hardcoded rules.
+- **Structured naming** - RDLS IDs `rdls_{types}-{iso3}_{org}_{slug}` with component encoding and collision handling.
 
 ## Structure
 
 ```
 to-rdls/
-├── src/                          # Importable library (no argparse, no side effects)
-│   ├── utils.py                  # Text processing, file I/O, slug generation
-│   ├── codelists.py              # v1.0 codelist utilities: normalise_unit(), VALID_* sets
-│   ├── schema.py                 # RDLS schema loading, validation, SchemaContext
-│   ├── spatial.py                # Country/region -> ISO3, spatial block inference
-│   ├── naming.py                 # RDLS ID + filename generation, collision detection
-│   ├── classify.py               # [v0.3] Dataset classification (tag/keyword/org scoring)
-│   ├── translate.py              # [v1.0] Base record builder (entities, resources, ordering)
-│   ├── translate_v03.py          # [v0.3] Base record builder (format, license, attributions)
-│   ├── llm_classify.py           # [v1.0] LLM-first classify + HEVL extract (single phase)
-│   ├── extract.py                # [v1.0] HEVL block builders from LLM response
-│   ├── extract_hazard.py         # [v0.3] Hazard block extraction (2-tier cascade)
-│   ├── extract_exposure.py       # [v0.3] Exposure block extraction (3-tier cascade)
-│   ├── extract_vulnloss.py       # [v0.3] Vulnerability + loss extraction
-│   ├── integrate.py              # Shared: HEVL merge, risk_data_type reconciliation
-│   ├── validate.py               # Pipeline-time: autofix, confidence scoring, distribution
-│   ├── audit.py                  # v1.0: 3-layer audit validator (schema + codelists + semantic)
-│   ├── validate_v03.py           # v0.3: semantic validation logic
-│   ├── inventory.py              # Standalone: folder/ZIP inventory generator (stdlib only)
-│   ├── review.py                 # Standalone: file inspection, HEVL classification, gap analysis
-│   ├── zipaccess.py              # Standalone: ZIP member extraction (supports nested ZIPs)
-│   └── sources/                  # Source-specific code (adapters + HDX pipeline extensions)
-│       ├── hdx.py                # HDX: CKAN API client, OSM detection, field extraction
-│       ├── hdx_review.py         # HDX: second-pass HEVL review (RDLS + HDX cross-ref)
-│       ├── hdx_llm_review.py     # HDX [v0.3]: 4-phase LLM classification pipeline
-│       ├── ckan_columns.py       # CKAN: column header fetcher with disk cache
-│       └── geonode.py            # GeoNode: source adapter
-│
-├── configs/                      # YAML configuration files (pipeline configs at root)
-│   ├── signal_dictionary.yaml    # HEVL extraction patterns (regex -> RDLS codelist)
-│   ├── rdls_defaults.yaml        # Default mappings, constraint tables
-│   ├── rdls_schema.yaml          # RDLS codelists (hazard_type, process_type, etc.)
-│   ├── classification.yaml       # Tag weights, keyword patterns, org hints
-│   ├── naming.yaml               # Record ID format, component codes, org abbreviations
-│   ├── pipeline.yaml             # Runtime thresholds, output modes, distribution tiers
-│   ├── format_mapping.yaml       # Data format aliases, skip list, service URL patterns
-│   ├── license_mapping.yaml      # License string -> RDLS license code
-│   ├── spatial.yaml              # Region->countries, country name fixes
-│   ├── llm_review.yaml           # v1.0 LLM pipeline config (model, thresholds, cost cap)
-│   ├── review_knowledge.yaml     # File inspection patterns for review module
-│   └── sources/                  # Source-specific configs (mirrors src/sources/)
-│       ├── hdx.yaml              # HDX-specific (API, OSM markers, format overrides)
-│       ├── hdx_llm_review.yaml   # HDX [v0.3] LLM review config (4-phase thresholds)
-│       └── geonode.yaml          # GeoNode-specific
-│
-├── scripts/                      # Executable entry points (thin wrappers over src/)
-│   ├── rdls_hdx_pipeline.py            # v1.0 LLM-first pipeline (canonical)
-│   ├── rdls_hdx_llm_review.py          # v0.3 LLM review pipeline (4 phases)
-│   ├── rdls_hdx_sanitize_validate.py   # Post-LLM sanitization and validation
-│   ├── rdls_geonode_pipeline.py        # GeoNode v0.3 pipeline
-│   ├── rdls_desinventar_01_*.py        # DesInventar loss record generation
-│   ├── rdls_nismod_*.py                # NISMOD ICRA record generation
-│   ├── validate_records.py             # v1.0: 3-layer audit CLI + --enrich post-conversion mode
-│   ├── validate_records_v03.py         # v0.3 semantic validation CLI
-│   └── convert_v03_to_v10.py          # Schema version conversion
-│
-├── notebooks/                    # Interactive Jupyter notebooks only
-│   ├── rdls_validate_metadata.ipynb    # Interactive metadata validator
-│   └── rdls_data_inventory_contents.ipynb  # Data inventory notebook
-│
-├── schema/                       # RDLS v0.3 and v1.0 JSON Schemas
-├── mcp_server.py                 # MCP server (5 tools for Claude workflows)
-├── environment.yml               # Conda environment (Python 3.12, geospatial stack)
-└── requirements.txt              # Pip dependencies
+├── src/                    # Importable library (no argparse, no side effects)
+│   ├── utils.py            # Text processing, file I/O, nested-dict navigation
+│   ├── codelists.py        # v1.0 codelist utilities (AUTHORITATIVE): normalise_unit(), VALID_* sets
+│   ├── schema.py           # Schema loading, validate_record(), SchemaContext
+│   ├── spatial.py          # Country/region -> ISO3, spatial block inference
+│   ├── naming.py           # RDLS ID + filename generation, collision handling
+│   ├── classify.py         # [v0.3] tag/keyword/org classification
+│   ├── translate.py        # [v1.0] base record builder (entities, resources, field ordering)
+│   ├── translate_v03.py    # [v0.3] base record builder
+│   ├── llm_classify.py     # [v1.0] LLM-first classify + HEVL extract (single phase)
+│   ├── extract.py          # [v1.0] HEVL block builders from the LLM response
+│   ├── extract_hazard.py / extract_exposure.py / extract_vulnloss.py  # [v0.3] cascades
+│   ├── integrate.py        # Shared: HEVL merge + risk_data_type reconciliation
+│   ├── validate.py         # Pipeline-time autofix, confidence scoring, distribution
+│   ├── audit.py            # v1.0: the 5-layer audit validator
+│   ├── enrich.py           # Post-conversion enrichment fixes
+│   ├── inventory.py / review.py / zipaccess.py   # Standalone data inspection
+│   └── sources/            # Source adapters (hdx, geonode) + HDX pipeline extensions
+├── configs/                # YAML configs (pipeline at root; per-source in configs/sources/)
+├── scripts/                # Executable entry points (one file = one action)
+├── schema/                 # RDLS v0.3 + v1.0 JSON Schemas and templates
+├── notebooks/              # Interactive Jupyter notebooks only
+├── docs/                   # Documentation (see below)
+└── mcp_server.py           # MCP server (5 tools)
 ```
 
 ## Documentation
 
-| Document | Description |
-| -------- | ----------- |
-| [Getting Started](docs/GETTING_STARTED.md) | Installation, setup, first pipeline run |
-| [Features](docs/FEATURES.md) | Complete capability overview |
-| [Architecture](docs/ARCHITECTURE.md) | Design principles, pipeline data flow, extension points |
-| [Module Reference](docs/MODULE_REFERENCE.md) | Each src/ module: purpose, functions, dataclasses |
-| [Config Reference](docs/CONFIG_REFERENCE.md) | Each YAML config: structure, fields, how to modify |
-| [Limitations and Roadmap](docs/LIMITATIONS_AND_ROADMAP.md) | Current gaps, pending work, near-term roadmap |
-| [Pipeline Architecture](docs/llm_pipeline_architecture.md) | LLM-first v1.0 pipeline: design, prompt structure, results |
-| [LLM Review Guide](docs/llm_review_guide.md) | Operations guide for the v0.3 LLM classification pipeline |
-| [LLM Review Output](docs/llm_review_output.md) | Results, not-RDLS categorization, prefix distribution, report interpretation |
-| [DELTA vs RDLS Comparison](docs/delta_vs_rdls_system_comparison.md) | System-level comparison with UNDRR DELTA |
+Start at **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)**. Full map:
 
-## Quick Start
+| Area | Document |
+|------|----------|
+| Setup + first run | [Getting Started](docs/GETTING_STARTED.md) |
+| Capability overview | [Features](docs/FEATURES.md) |
+| System design + data flow | [Architecture](docs/ARCHITECTURE.md) |
+| **Pipelines** | [v1.0 LLM-first](docs/pipelines/v1.0-llm-first.md) · [v0.3 hybrid](docs/pipelines/v0.3-hybrid.md) · [Source adapters](docs/pipelines/sources.md) |
+| **Reference** | [Modules](docs/reference/modules.md) · [Config](docs/reference/config.md) · [Schema (v0.3)](docs/reference/schema.md) · [v1.0 spec](docs/reference/v1.0-spec.md) · [Naming](docs/reference/naming.md) · [Constraints](docs/reference/constraints.md) · [Codelists](docs/reference/codelists.md) · [Signals](docs/reference/signals.md) |
+| **Validation** | [5-layer audit](docs/validation/audit-layers.md) · [Validate + enrich](docs/validation/validate-and-enrich.md) |
+| **Workflows** | [Convert a source](docs/workflows/convert-a-source.md) · [JKAN upload](docs/workflows/jkan-upload.md) |
+| Gaps + roadmap | [Limitations and Roadmap](docs/LIMITATIONS_AND_ROADMAP.md) |
+| Historical | [docs/archive/](docs/archive/) |
 
-```python
-import sys
-from pathlib import Path
+## Quick start
 
-# Add to-rdls to path
-sys.path.insert(0, str(Path("to-rdls")))
+Set up the environment (see [Getting Started](docs/GETTING_STARTED.md) for the full geospatial stack), then:
 
-from src.utils import load_json, load_yaml
-from src.spatial import load_spatial_config
-from src.schema import load_rdls_schema, validate_record
-from src.translate_v03 import build_rdls_record, load_format_config, load_license_config
-from src.extract_hazard import HazardExtractor, build_hazard_block
-from src.sources.hdx import extract_hdx_fields, normalize_dataset_record
+```bash
+# Run the v1.0 pipeline over a folder of source dataset JSON
+python -m src path/to/folder
 
-# Load configs
-CONFIGS = Path("to-rdls/configs")
-spatial_cfg = load_spatial_config(CONFIGS / "spatial.yaml")
-format_cfg = load_format_config(CONFIGS / "format_mapping.yaml")
-license_cfg = load_yaml(CONFIGS / "license_mapping.yaml")
-signal_dict = load_yaml(CONFIGS / "signal_dictionary.yaml")
-defaults = load_yaml(CONFIGS / "rdls_defaults.yaml")
-schema = load_rdls_schema("path/to/rdls_schema_v0.3.json")
-
-# Process a dataset
-raw = load_json("path/to/hdx_dataset.json")
-ds = normalize_dataset_record(raw)
-fields = extract_hdx_fields(ds)
-
-# Build base RDLS record
-record = build_rdls_record(
-    fields=fields,
-    components=["hazard", "exposure"],
-    spatial_config=spatial_cfg,
-    format_config=format_cfg,
-    license_config=license_cfg,
-    source_base_url="https://data.humdata.org",
-)
-
-# Extract hazard block
-extractor = HazardExtractor(signal_dict, defaults)
-hazard_extraction = extractor.extract(ds)
-hazard_block = build_hazard_block(hazard_extraction)
-
-# Validate
-is_valid, errors = validate_record(record, schema)
+# Validate + audit v1.0 records (all 5 layers) and apply post-conversion enrichment
+python scripts/validate_records.py --enrich "output/<collection>/**/*.json"
 ```
 
-## Adding a New Source
+Validate a single record from Python:
 
-To add support for a new metadata source (e.g., GeoNode):
+```python
+from src.schema import validate_record, load_json
+schema = load_json("schema/rdls_schema_v1.0.json")
+ok, errors = validate_record(record, schema)   # never wrap the record before validating
+```
 
-1. Create `src/sources/your_source.py` with:
-   - A client class for API interaction
-   - `normalize_record()` to unwrap source-specific JSON
-   - `extract_fields()` returning the same keys as `extract_hdx_fields()`
+## Adding a new source
 
-2. Create `configs/sources/your_source.yaml` with:
-   - API endpoints and settings
-   - Source-specific format name overrides
-   - Source-specific field path mappings
+1. Create `src/sources/your_source.py` with a client class, `normalize_record()`, and `extract_fields()` returning the same keys as `extract_hdx_fields()`.
+2. Create `configs/sources/your_source.yaml` with endpoints, format overrides, and field-path mappings.
+3. The rest of the pipeline (classify, translate, HEVL extract, validate) runs unchanged.
 
-3. The rest of the pipeline (classification, translation, HEVL extraction,
-   validation) works identically with no changes needed.
+See [docs/workflows/convert-a-source.md](docs/workflows/convert-a-source.md) for the end-to-end walkthrough.
 
 ## Dependencies
 
-### Core (pip)
+- **Core (pip)**: `pyyaml`, `requests`, `jsonschema` (Draft 2020-12), `anthropic`, `rapidfuzz`
+- **Geospatial (conda)**: `gdal`, `rasterio`, `fiona`, `geopandas`, `shapely`, `pyproj`
+- **Data + documents**: `pandas`, `openpyxl`, `netcdf4`, `xarray`, `pillow`, `python-docx`, `PyMuPDF`
+- **MCP server**: `mcp`
 
-- `pyyaml>=6.0` &mdash; YAML config loading
-- `requests>=2.28` &mdash; HTTP client for API crawling
-- `jsonschema>=4.20` &mdash; RDLS schema validation (Draft 2020-12)
-- `anthropic>=0.40` &mdash; Claude API client (optional; pipeline uses `urllib` direct HTTP)
-- `rapidfuzz>=3.5` &mdash; Fuzzy codelist matching
-
-### Geospatial (conda)
-
-- `gdal>=3.8`, `rasterio>=1.3`, `fiona>=1.9`, `geopandas>=0.14` &mdash; Geospatial file inspection
-- `shapely>=2.0`, `pyproj>=3.6` &mdash; Geometry and projection handling
-
-### Data and Documents (conda + pip)
-
-- `pandas>=2.1`, `openpyxl>=3.1`, `xlrd>=2.0` &mdash; Tabular data handling
-- `netcdf4>=1.6`, `xarray>=2024.1` &mdash; Scientific data formats
-- `pillow>=10.0`, `python-docx>=1.1`, `PyMuPDF>=1.24` &mdash; Document reading (images, DOCX, PDF)
-
-### MCP Server
-
-- `mcp>=1.2.0` &mdash; Claude Code MCP server SDK
+Full environment in `environment.yml` / `requirements.txt`.
 
 ## License
 
-This project is licensed under the Mozilla Public License 2.0.
-See LICENSE for the full license text or visit [https://www.mozilla.org/en-US/MPL/2.0/](https://www.mozilla.org/en-US/MPL/2.0/).
+Mozilla Public License 2.0. See LICENSE or [mozilla.org/MPL/2.0](https://www.mozilla.org/en-US/MPL/2.0/).
 
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-FF7139.svg?style=for-the-badge)](https://www.mozilla.org/en-US/MPL/2.0/)
