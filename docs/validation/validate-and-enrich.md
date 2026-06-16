@@ -45,8 +45,6 @@ Each fixer in `scripts/` encodes one **general rule** and applies it to all reco
 | `fix_measurement_and_junk.py` | normalize measurement structure and remove pipeline-internal junk fields | Layer 1/2 |
 | `fix_broken_stats_descriptions.py` | repair malformed statistics blocks | Layer 1 |
 
-(Fixer filenames sometimes carry the source/record where the issue first appeared; the transform itself is general and safe to run corpus-wide.)
-
 ## Anti-recurrence checkers
 
 Run after every schema resync so the template and codelists never drift from the standard:
