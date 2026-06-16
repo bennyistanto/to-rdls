@@ -42,21 +42,53 @@ from src.enrich import fix_file, resolve_files
 # Audit mode
 # ---------------------------------------------------------------------------
 
+def _schema_has_baked_conditionals(schema_path: Path) -> bool:
+    """True if the schema's hazard type->process conditionals are populated
+    (i.e. the baked/published schema), not empty placeholders."""
+    try:
+        with open(schema_path, encoding="utf-8") as f:
+            schema = json.load(f)
+        defs = schema.get("$defs", {})
+        cond = defs.get("conditional_hazard_type_to_process", {})
+        return len(cond.get("allOf", [])) > 0
+    except Exception:
+        return False
+
+
 def run_audit(args: argparse.Namespace) -> int:
     """Three-layer audit validation. Returns exit code."""
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
 
-    # Resolve schema path
+    # Resolve schema path.
+    #
+    # IMPORTANT: prefer the BAKED local schema (schema/rdls_schema_v1.0.json),
+    # produced by scripts/refresh_published_schema.py. The rdl-standard SOURCE
+    # schema ships the hazard type->process and type->IMT conditionals as EMPTY
+    # placeholders (they are only baked in by the docs build), so validating
+    # against it silently skips every hazard pairing rule that JKAN / downstream
+    # consumers enforce. Only fall back to the source schema if the baked copy
+    # is missing, and warn loudly when we do.
     schema_dir = repo_root / "schema"
+    baked_schema = schema_dir / "rdls_schema_v1.0.json"
     if args.schema:
         schema_path = Path(args.schema)
+    elif baked_schema.exists() and _schema_has_baked_conditionals(baked_schema):
+        schema_path = baked_schema
     else:
         rdl_standard_schema = repo_root.parent / "rdl-standard" / "schema" / "rdls_schema.json"
-        if rdl_standard_schema.exists():
+        if baked_schema.exists():
+            schema_path = baked_schema
+            print("WARNING: schema/rdls_schema_v1.0.json has EMPTY hazard conditionals.")
+            print("  Run: python scripts/refresh_published_schema.py  to bake them in.")
+        elif rdl_standard_schema.exists():
             schema_path = rdl_standard_schema
+            print("WARNING: using rdl-standard SOURCE schema - hazard type/process and")
+            print("  type/IMT pairing rules will NOT be checked (empty conditionals).")
+            print("  Run: python scripts/refresh_published_schema.py  for full validation.")
         else:
-            schema_path = schema_dir / "rdls_schema_v1.0.json"
+            print("ERROR: no schema found. Run scripts/refresh_published_schema.py first.")
+            return 1
     if not schema_path.exists():
         print(f"ERROR: Schema file not found: {schema_path}")
         return 1

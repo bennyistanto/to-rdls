@@ -47,7 +47,8 @@ to-rdls/
 │       └── geonode.py      # GeoNode source adapter
 ├── configs/                # Pipeline YAML configs at root; source-specific in configs/sources/
 ├── schema/                 # RDLS v0.3 and v1.0 JSON Schemas + templates
-├── scripts/                # Executable entry points (thin wrappers, one file = one action)
+├── scripts/                # DURABLE, reusable entry points + tools (one file = one action).
+│                           #   One-off / case-specific / scratch scripts go in temp/, NOT here.
 └── notebooks/              # Interactive Jupyter notebooks only (.ipynb)
 ```
 
