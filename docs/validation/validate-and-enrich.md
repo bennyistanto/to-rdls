@@ -38,12 +38,12 @@ Each fixer in `scripts/` encodes one **general rule** and applies it to all reco
 | `fix_quantity_kind_codelist.py` | migrate obsolete `quantity_kind`/`unit` vocabulary to the current codelist | Layer 2, Layer 3 - rule 3 |
 | `fix_ged4all_asset_codes.py`, `fix_ged4all_buildings_code.py` | set `asset_type.id` to the GED4ALL code for its exposure category when scheme is GED4ALL | Layer 2 (GED4ALL) |
 | `fix_resource_media_type_consistency.py`, `fix_ogc_resource_media_type.py` | align resource `media_type`/`format` to what the URL actually serves | Layer 4 |
-| `fix_eventset_hazards_coverage.py`, `fix_phuquoc_eventset.py` | reconcile a combined-hazard event_set's declared processes with its events | Layer 3 - rules 1, 11 |
+| `fix_eventset_hazards_coverage.py`, `fix_combined_flood_eventset.py` | reconcile a combined-hazard event_set's declared processes with its events | Layer 3 - rules 1, 11 |
 | `fix_hazard_ids.py` | give every hazard object a stable `id` (consumer ingestion reads it unconditionally) | Layer 5 |
 | `fix_title_tag_codes.py` | strip trailing `[code]` tags from human-facing titles | quality |
 | `fix_resource_descriptions.py`, `wrap_resource_descriptions.py` | turn a bare code/slug resource description into `"{title} ({label})"` | quality / Metadata Editor |
 | `fix_measurement_and_junk.py` | normalize measurement structure and remove pipeline-internal junk fields | Layer 1/2 |
-| `fix_heigit_broken_stats.py` | repair malformed statistics blocks | Layer 1 |
+| `fix_broken_stats_descriptions.py` | repair malformed statistics blocks | Layer 1 |
 
 (Fixer filenames sometimes carry the source/record where the issue first appeared; the transform itself is general and safe to run corpus-wide.)
 
