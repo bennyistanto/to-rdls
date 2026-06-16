@@ -32,7 +32,7 @@ to-rdls/
 │   ├── integrate.py        # Merge HEVL blocks into base record (shared)
 │   ├── naming.py           # Structured ID: rdls_{type}-{iso3}{org}_{slug}
 │   ├── validate.py         # Pipeline-time: 5-pass autofix, confidence scoring, distribution
-│   ├── audit.py            # v1.0: 3-layer audit validator (schema + codelists + semantic)
+│   ├── audit.py            # v1.0: 5-layer audit (schema, codelists, semantic, media-type, consumer rules)
 │   ├── validate_v03.py     # v0.3: semantic validation logic
 │   ├── enrich.py           # Post-conversion enrichment fixes (unit, URI, license, format)
 │   ├── inventory.py        # Delivery folder/ZIP inventory (standalone, stdlib only)
@@ -53,7 +53,7 @@ to-rdls/
 
 Data flow: `source adapter → extract_fields() → classify → translate → HEVL extract → integrate → validate_and_score → distribute_records`
 
-Full dataclasses, extraction cascade details, and LLM pipeline → see `.claude/module-reference.md`
+Full dataclasses, extraction cascade details, and LLM pipeline → see `docs/reference/modules.md`
 
 ## Config files reference
 
@@ -96,17 +96,18 @@ Full dataclasses, extraction cascade details, and LLM pipeline → see `.claude/
 - **data_format**: 20+ values (GeoTIFF, NetCDF, CSV, GeoJSON, Shapefile, GeoPackage, etc.)
 - **access_modality**: file_download, download_page, API, OGC_API, WMS, WFS, WCS, STAC, REST, dashboard
 
-## Companion reference docs (.claude/)
+## Companion reference docs (docs/reference/)
 
 | File | Contents |
 |------|----------|
-| `module-reference.md` | All modules: function signatures, dataclasses, HEVL cascade, LLM pipeline, GeoNode adapter |
-| `schema-reference.md` | Full JSON Schema $defs + Layer 3 closed codelist validation table |
-| `constraints-reference.md` | function_type_constraints, loss signal defaults, valid asset triplets, impact metric constraints |
-| `naming-reference.md` | ID format, component codes, hazard/exposure item codes, slug rules, org shortname rules |
-| `signals-reference.md` | Hazard/exposure signal patterns, exclusion patterns, tag weights, socioeconomic indicators |
-| `configs-detail-reference.md` | Format mapping details, region→country mappings, DesInventar mappings, org_hints |
-| `v1.0-reference.md` | Full RDLS v1.0 spec (GCA data only): differences, codelist rules, cross-field rules |
+| `modules.md` | All modules: function signatures, dataclasses, HEVL cascade, LLM pipeline, GeoNode adapter |
+| `schema.md` | Full JSON Schema $defs + Layer 3 closed codelist validation table |
+| `constraints.md` | function_type_constraints, loss signal defaults, valid asset triplets, impact metric constraints |
+| `naming.md` | ID format, component codes, hazard/exposure item codes, slug rules, org shortname rules |
+| `signals.md` | Hazard/exposure signal patterns, exclusion patterns, tag weights, socioeconomic indicators |
+| `config.md` | Config files reference + detailed sections (format mapping, region→country, DesInventar, org_hints) |
+| `v1.0-spec.md` | Full RDLS v1.0 spec: differences, codelist rules, cross-field rules |
+| `codelists.md` | Closed/open codelists, GED4ALL taxonomy, obsolete-vocabulary migrations |
 
 ## Key constraint tables (quick reference)
 
@@ -133,7 +134,7 @@ Authoritative source: `src/audit.py:TYPE_TO_PROCESS` (v1.0). v0.3 uses `primary_
 - infrastructure: (structure, count/length/monetary)  |  population: (population, count)
 - natural_environment: (product, area)  |  economic_indicator: (index, monetary/count)  |  development_index: (index, count)
 
-Full tables → `.claude/constraints-reference.md`
+Full tables → `docs/reference/constraints.md`
 
 ## Execution environment
 
@@ -243,7 +244,7 @@ Key differences: separate top-level `publisher`/`creator`/`contact_point`, `line
 Common codes: `square_metre`, `hectare`, `metre`, `kilometre`, `kilogram`, `kilowatt_hour`.
 NEVER use abbreviations (`m2`, `ha`, `m`) directly — they are not codelist codes.
 
-Full v1.0 spec → `.claude/v1.0-reference.md`
+Full v1.0 spec → `docs/reference/v1.0-spec.md`
 
 ### CRITICAL: Post-conversion enrichment (run after EVERY v0.3 -> v1.0 conversion)
 
@@ -258,7 +259,7 @@ Then manually fix what the script flags: `asset_type.id` (must be per-item, not 
 `title`, `description`, `scheme` (GED4ALL where fits, absent otherwise), `uri`.
 
 Full checklist with media_type rules, backup convention, validation steps:
-`.claude/v1.0-reference.md` section "Post-conversion checklist"
+`docs/reference/v1.0-spec.md` section "Post-conversion checklist"
 
 ## CRITICAL: Metadata record validation requirement
 
@@ -286,7 +287,7 @@ Required output: `PASSED` (zero errors). Every record must include:
 ```
 
 ### Layer 3 — Closed codelist check
-After schema validation, verify closed-codelist fields are valid (schema may accept strings not in the codelist). Full table → `.claude/schema-reference.md`
+After schema validation, verify closed-codelist fields are valid (schema may accept strings not in the codelist). Full table → `docs/reference/schema.md`
 
 ### One record per file rule
 Each record saved as `{record_id}.json` wrapped with `{"datasets": [{...}]}`. Never merge into one file as primary output.
