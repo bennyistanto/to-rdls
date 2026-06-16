@@ -849,7 +849,9 @@
       "Bash(sed 's#scripts/##')",
       "Bash(sed 's#src/sources/##')",
       "Bash(sed -i 's#v1\\\\.0 3-layer audit: schema + codelist + semantic#v1.0 5-layer audit: schema, codelist, semantic, media-type, consumer rules#g; s#v1\\\\.0 three-layer validation CLI#v1.0 audit CLI \\(runs all 5 layers\\)#g' docs/reference/modules.md)",
-      "Bash(sed -i 's#batch 3-layer validation against the baked schema#batch validation \\(all 5 audit layers\\) against the baked schema#g' docs/reference/v1.0-spec.md)"
+      "Bash(sed -i 's#batch 3-layer validation against the baked schema#batch validation \\(all 5 audit layers\\) against the baked schema#g' docs/reference/v1.0-spec.md)",
+      "Bash(awk '{print \" \"$5\" \"$6\" \"$7\" \"$9}')",
+      "Bash(PYTHONPATH=. C:/Users/benny/miniforge3/envs/to-rdls/python.exe -c \"import json; d=json.load\\(open\\('schema/rdls_template_v1.0.json',encoding='utf-8'\\)\\); print\\('  rdls_template_v1.0.json OK -', len\\(json.dumps\\(d\\)\\), 'chars'\\)\")"
     ]
   }
 }
