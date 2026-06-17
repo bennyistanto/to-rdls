@@ -11,7 +11,7 @@ with real, valid stats is left alone). The rest of the description (methodology,
 attribute list, attribution) is preserved. Validates each record (5 layers).
 
 Usage:
-    python scripts/fix_heigit_broken_stats.py <dir> [...] [--dry-run]
+    python scripts/fix_broken_stats_descriptions.py <dir> [...] [--dry-run]
 """
 from __future__ import annotations
 import json, re, sys
