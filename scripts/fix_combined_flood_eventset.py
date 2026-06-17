@@ -12,7 +12,7 @@ Targets only records that have flood event_sets whose id names a flood sub-proce
 or 'combined' (the phuquoc pattern); other records are untouched. Validates each.
 
 Usage:
-    python scripts/fix_phuquoc_eventset.py <dir> [...] [--dry-run]
+    python scripts/fix_combined_flood_eventset.py <dir> [...] [--dry-run]
 """
 from __future__ import annotations
 import json, re, sys
